@@ -2988,12 +2988,17 @@ function check_capability(
   purpose: One capability of a `needs` clause.
 
   let mutable updated be world
-  if effects.has_grant_clauses(grant) and func.name.text is not "main" then
+  let is_memory be grant.path.join(".") is "memory"
+  if (effects.has_grant_clauses(grant) or is_memory) and func.name.text is not "main" then
+    let message be
+      if is_memory then "the memory budget (`memory at most`) belongs to the program's grant"
+      otherwise "a budget (`at most`) or a guard (`only to`) belongs to the program's grant"
+      end
     change updated to push_error(
       world: updated,
       owner: owner,
       code: "grant-clause",
-      message: "a budget (`at most`) or a guard (`only to`) belongs to the program's grant",
+      message: message,
       span: syntax.span,
       fix: "move it to the `needs` of `main` or of a `test`"
     )
@@ -3054,20 +3059,48 @@ function check_sinks(world: World, owner: Integer, grant: Grant, span: Span) ret
 end
 
 function check_budget(world: World, owner: Integer, grant: Grant, span: Span) returns World
-  purpose: A budget applies to network, process and filesystem only.
+  purpose: A budget applies to network, process and filesystem only; the memory budget to `memory`.
 
-  if grant.budget is nothing then return world end
-  let head be grant.path.first() otherwise ""
-  if ["network", "process", "filesystem"].contains(head) then return world end
   let joined be grant.path.join(".")
-  return push_error(
-    world: world,
-    owner: owner,
-    code: "grant-clause",
-    message: "`{joined}` takes no budget; budgets apply to network, process and filesystem",
-    span: span,
-    fix: "drop the `at most` clause"
-  )
+  if joined is "memory" then
+    let fine be
+      match grant.budget
+        when some(found) then effects.is_memory_unit(found.unit)
+        when nothing then false
+      end
+    if fine then return world end
+    return push_error(
+      world: world,
+      owner: owner,
+      code: "grant-clause",
+      message: "`memory` takes `at most` a count of bytes, kilobytes, megabytes or gigabytes",
+      span: span,
+      fix: "write `memory at most 256 megabytes`"
+    )
+  end
+  let budget be grant.budget otherwise return world
+  let head be grant.path.first() otherwise ""
+  if not ["network", "process", "filesystem"].contains(head) then
+    return push_error(
+      world: world,
+      owner: owner,
+      code: "grant-clause",
+      message: "`{joined}` takes no budget; budgets apply to network, process and filesystem",
+      span: span,
+      fix: "drop the `at most` clause"
+    )
+  end
+  if effects.is_memory_unit(budget.unit) then
+    return push_error(
+      world: world,
+      owner: owner,
+      code: "grant-clause",
+      message: "`{joined}` takes a budget per second, minute, hour, day or run, not a memory",
+      span: span,
+      fix: "write `at most 60 per minute`"
+    )
+  end
+  return world
 end
 
 function check_guard_reachable(

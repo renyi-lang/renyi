@@ -318,6 +318,61 @@ fn a_memory_budget_stops_a_call_that_grows_past_it() {
 }
 
 #[test]
+fn the_program_and_the_sandbox_tighten_the_memory_budget_to_the_smaller() {
+    // decision AW64: `memory at most` in the grant of `main`, and the
+    // sandbox file's `memory` beside it
+    let dir = scratch("memory");
+    let grow = |budget: &str| {
+        format!(
+            "module grow\n  purpose: Grow a list without end.\n\nimport std.console\n\npublic function main() needs console, memory at most {budget}\n  purpose: Append until the budget stops it.\n\n  let mutable items: List of Integer be []\n  for each step from 1 to 100000000\n    change items to items.append(step)\n  end\n  console.print(\"{{items.length()}}\")\nend\n"
+        )
+    };
+    let wide = format!("{dir}/wide/grow.ry");
+    let narrow = format!("{dir}/narrow/grow.ry");
+    std::fs::create_dir_all(format!("{dir}/wide")).expect("wide");
+    std::fs::create_dir_all(format!("{dir}/narrow")).expect("narrow");
+    std::fs::write(&wide, grow("1 gigabytes")).expect("wide/grow.ry");
+    std::fs::write(&narrow, grow("16 megabytes")).expect("narrow/grow.ry");
+    let small = format!("{dir}/small.json");
+    let large = format!("{dir}/large.json");
+    std::fs::write(
+        &small,
+        "{\"grant\": \"console\", \"memory\": \"16 megabytes\"}\n",
+    )
+    .expect("small.json");
+    std::fs::write(
+        &large,
+        "{\"grant\": \"console\", \"memory\": \"1 gigabyte\"}\n",
+    )
+    .expect("large.json");
+    let run = |args: &[&str]| {
+        Command::new(env!("CARGO_BIN_EXE_renyi"))
+            .current_dir(root())
+            .args(args)
+            .output()
+            .expect("the renyi binary runs")
+    };
+    for (args, expected) in [
+        (vec!["run", &narrow], "16 megabytes"),
+        (vec!["run", "--sandbox", &small, &wide], "16 megabytes"),
+        (vec!["run", "--sandbox", &large, &narrow], "16 megabytes"),
+    ] {
+        let out = run(&args);
+        assert_eq!(
+            out.status.code(),
+            Some(2),
+            "{args:?}: {}",
+            text(&out.stderr)
+        );
+        assert!(
+            text(&out.stderr).contains(&format!("the memory budget of {expected} was exceeded")),
+            "{args:?}: {}",
+            text(&out.stderr)
+        );
+    }
+}
+
+#[test]
 fn run_takes_a_sandbox_grant_from_a_file() {
     let dir = scratch("cli");
     let wide = format!("{dir}/wide.json");

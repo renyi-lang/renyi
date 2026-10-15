@@ -150,6 +150,8 @@ let item_words: List of Text be ["public", "function", "type", "ability", "test"
 
 let budget_units: List of Text be ["second", "minute", "hour", "day", "run"]
 
+let memory_units: List of Text be ["bytes", "kilobytes", "megabytes", "gigabytes"]
+
 public function parse(lexed: Lexed, chars: List of Text, declarations: Boolean) returns ParsedModule
   purpose: The module of a lexed text, comments set aside; the lexer's diagnostics come first.
 
@@ -1419,8 +1421,29 @@ function parse_budget(cursor: Cursor) returns Parsed of Budget or fails with Hal
     )
     fail with Halt(cursor: flagged)
   end
-  let per_word be past_word(cursor: limit.cursor, code: words.word_per) otherwise fail
-  let unit be advance(per_word)
+  let per_word be eat_word(cursor: limit.cursor, code: words.word_per)
+  let per_found be per_word.found
+  if not per_found then
+    let memory_unit be advance(per_word.cursor)
+    let memory_token be memory_unit.token
+    let memory_text be text_of(cursor: memory_unit.cursor, span: memory_token.span)
+    if not memory_units.contains(memory_text) then
+      let flagged be expected(
+        cursor: memory_unit.cursor,
+        what: "`per` and a unit of time, or a memory in `bytes`, `kilobytes`, `megabytes` or `gigabytes`",
+        span: memory_token.span,
+        fix: "write `at most 60 per minute` or `at most 256 megabytes`"
+      )
+      fail with Halt(cursor: flagged)
+    end
+    let memory_node be Budget(
+      limit: text_of(cursor: limit.cursor, span: limit_token.span),
+      unit: Name(text: memory_text, span: memory_token.span),
+      span: join(left: start_token.span, right: memory_token.span)
+    )
+    return Parsed(node: memory_node, cursor: memory_unit.cursor)
+  end
+  let unit be advance(per_word.cursor)
   let unit_token be unit.token
   let unit_text be text_of(cursor: unit.cursor, span: unit_token.span)
   if not budget_units.contains(unit_text) then

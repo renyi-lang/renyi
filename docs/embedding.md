@@ -31,7 +31,9 @@ fields are optional, and there are no others:
 `Grant::parse` reads the clause, `Grant::from_json` and `Grant::from_file`
 the object; the memory is `bytes`, `kilobytes`, `megabytes` or
 `gigabytes`. An empty clause grants nothing: a module loaded with it can
-compute and nothing else.
+compute and nothing else. A program's `main` may declare a memory budget
+of its own, `memory at most 256 megabytes` in its `needs` (decision
+AW64); under `renyi run --sandbox` the smaller of the two is in force.
 
 ## 2. Loading a module
 
@@ -127,7 +129,8 @@ assert_eq!(text, r#"{"across":11,"down":12}"#);
 ## 4. The memory budget
 
 `memory` in the grant bounds the bytes a call holds above the level at
-its start. The VM reads the count at every call, every primitive and
+its start (a function other than `main` carries no budget of its own, so
+the host's is the one in force for a call). The VM reads the count at every call, every primitive and
 every loop turning, and a call over the budget ends as a whole with
 `OverMemory { limit, used }`; the next call starts afresh. A budgeted
 call runs on the interpreter, as a narrated or profiled one does

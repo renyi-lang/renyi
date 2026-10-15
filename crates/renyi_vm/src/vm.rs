@@ -450,6 +450,9 @@ pub struct Vm<'p> {
     pub listener: Option<TcpListener>,
     /// See `Options::memory`.
     memory: Option<u64>,
+    /// The budget in force for this run: the host's and the declared one,
+    /// the smaller (decision AW64).
+    budgeted: Option<u64>,
     /// Whether this VM's budget is the one `memory` counts against.
     counting: bool,
     /// See `Options::screen`.
@@ -685,6 +688,18 @@ pub(crate) fn plain_variant_type(program: &Program, ty: TypeId) -> bool {
     program.types.meta(ty).refinements.is_empty()
 }
 
+/// Whether `main` or a test declares a memory budget (decision AW64),
+/// which keeps the run on the interpreter as a host's budget does.
+fn declares_memory(program: &Program) -> bool {
+    program
+        .main
+        .is_some_and(|main| grant::memory_of(&program.function_metas[main].needs).is_some())
+        || program
+            .tests
+            .iter()
+            .any(|test| grant::memory_of(&test.needs).is_some())
+}
+
 impl<'p> Vm<'p> {
     pub fn new(program: &'p Program, options: Options) -> Vm<'p> {
         // the image's loading writes to the streams (decision AS1)
@@ -700,6 +715,7 @@ impl<'p> Vm<'p> {
             || options.explain
             || options.profile
             || options.memory.is_some()
+            || declares_memory(program)
             || options
                 .screen
                 .as_ref()
@@ -783,6 +799,7 @@ impl<'p> Vm<'p> {
             watch: options.watch,
             listener: options.listener,
             memory: options.memory,
+            budgeted: None,
             counting: false,
             screen: options.screen,
             suspension: None,
@@ -818,12 +835,20 @@ impl<'p> Vm<'p> {
             ));
         }
         self.started = natives::now_millis();
-        if let Some(limit) = self.memory {
+        // the budget in force: the host's (`--sandbox`, the embedding API)
+        // and the declared one (`memory at most`, decision AW64), the
+        // smaller when both are given
+        self.budgeted = match (self.memory, grant::memory_of(declared)) {
+            (Some(host), Some(own)) => Some(host.min(own)),
+            (host, own) => host.or(own),
+        };
+        if self.counting {
+            memory::end();
+            self.counting = false;
+        }
+        if let Some(limit) = self.budgeted {
             if !memory::installed() {
                 return Err("the memory budget needs the counting allocator: a binary declares `renyi::Allocator` as its global allocator".to_string());
-            }
-            if self.counting {
-                memory::end();
             }
             if !memory::begin(limit) {
                 return Err(
@@ -927,7 +952,7 @@ impl<'p> Vm<'p> {
     pub(crate) fn memory_check(&self) -> Result<(), Interrupt> {
         if self.counting && memory::over() {
             return Err(Interrupt::OverMemory {
-                limit: self.memory.unwrap_or(0),
+                limit: self.budgeted.unwrap_or(0),
                 used: memory::peak(),
             });
         }

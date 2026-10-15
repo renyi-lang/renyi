@@ -1605,8 +1605,10 @@ fn capability_text(capability: &Capability) -> String {
         None => path.join("."),
     };
     if let Some(budget) = &capability.budget {
+        // a memory budget has no `per` (decision AW64)
+        let per = if budget.is_memory() { "" } else { "per " };
         out.push_str(&format!(
-            " at most {} per {}",
+            " at most {} {per}{}",
             budget.count, budget.per.text
         ));
     }
@@ -1851,6 +1853,8 @@ end
 
     #[test]
     fn grant_clauses_and_replays_round_trip() {
+        // the memory budget (decision AW64)
+        stays("module demo\n\npublic function main() needs console, memory at most 256 megabytes\n  purpose: Try the memory budget.\n\n  console.print(\"hi\")\nend\n");
         stays("module demo\n\npublic function main()\n  or fails with AppError\n  needs console, network.http(\"api.example.com\") at most 60 per minute\n  purpose: Try the grant clauses.\n\n  console.print(\"hi\")\nend\n\ntest \"the forecast is read\" needs network.http replays \"fixtures/forecast.json\"\n  check true\nend\n");
         stays("module demo\n\npublic function main()\n  needs filesystem.read(\"secrets\") only to console or network.http(\"api.example.com\")\n  purpose: Guard the secrets.\n\n  console.print(\"hi\")\nend\n");
     }

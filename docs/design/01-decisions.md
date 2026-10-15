@@ -10326,3 +10326,76 @@ canonical form. GAPS 1.19 and sketch R3-3 closed; the cheat sheet
 unchanged at 3,000 of 3,000 tokens. Gates: fmt, clippy, cargo test 67
 suites ok, format check of compiler/ and bench/, lint, tokens, wasm, all
 exit 0 (gates44.log, 19:29:47). (Claude)
+
+**AW64. Stage 45, the memory budget written in the program (GAPS 3.6):
+the owner's answers (2026-10-15 evening).** The study is the handoff's
+section "Stage 45". Four questions, the recommended option chosen each
+time:
+1. **`memory` in the grant, with a budget in bytes**: `needs console,
+   memory at most 256 megabytes`. `memory` is a path of the capability
+   tree that no primitive needs, so it stands only in the `needs` of
+   `main` or of a test, and only with its budget; `Budget ::= 'at most'
+   Integer ('per' TimeUnit | 'bytes' | 'kilobytes' | 'megabytes' |
+   'gigabytes')`, no reserved word added. The reviewer reads the whole
+   grant in one clause (P2's reason). This supersedes AP1 (iii) in part:
+   the mechanism of AP1 (the counting allocator, the flag read at the
+   safe points, the crash with the limit and the peak) stands; "the
+   budget is the host's to set, not the program's to declare" does not,
+   and open item R7-1 is closed again by this entry. The sandbox file's
+   `memory` and the embedding API's stay as the host's tightening: the
+   smaller of the host's and the program's is in force. The
+   alternatives: a clause of its own on `main` (`within 256 megabytes`:
+   a second home for what the reviewer reads as the grant, and `within`
+   the deadline word), and keeping AP1 (the probes of the study: a
+   runaway recursion takes 700 megabytes a second with nothing to stop
+   it where no host set a budget). 2. **Over the budget, a crash, as
+   now**: exit status 2, "the memory budget of 16 megabytes was exceeded
+   (24 megabytes held)". A failure the program could handle was the
+   alternative; the handler would run with the budget spent. 3. **No
+   depth or step limit**: the memory budget is the guard. The probes
+   showed a frame of a plain recursion costs about 140 bytes and the
+   native stack is not at risk on any tier (ten million frames in 2.3
+   seconds, no overflow), so a depth number of the VM's own would be a
+   hidden constant on the hottest path, and a step budget a cost on
+   every tier that no reviewer can relate to the program's work. 4.
+   **The cheat sheet names the clause** on its "Only there:" line, and a
+   line elsewhere is trimmed to pay for it.
+A surface change under V11: this entry, then the grammar file, the
+reference, the cheat sheet, the formatter, the conformance suite and
+both parsers in one commit. A budgeted run stays on the interpreter
+(AP1, AG3); whether the generated code can keep the budget at its
+allocating helpers within AU1's one percent is the stage's second part,
+to be measured. (user)
+
+**AW65. Stage 45a built: the memory budget in the grant (2026-10-15
+evening).** `docs/grammar.ebnf` and the reference's excerpt gain the
+memory units in `Budget`; `budget` in `parser.rs` and `parse_budget` in
+`compiler/parser.ry` read `per` and a unit of time or a unit of memory,
+the one diagnostic for neither ("expected `per` and a unit of time, or a
+memory in `bytes`, `kilobytes`, `megabytes` or `gigabytes`, found
+`weeks`", decision AD1); the tree is `Budget`'s as before, the unit's
+text saying which kind (decision W1, no change). `memory` joins the
+capability tree in `effects.rs` and `effects.ry`, covered by every grant
+since it is a budget and not an effect; both checkers refuse it on a
+function other than `main`, without its budget or with a unit of time,
+and refuse a unit of memory on `network`, `process` or `filesystem`, all
+`grant-clause`. The formatter spells a memory budget without `per`. In
+the VM, `grant::memory_of` reads the declared budget in bytes,
+`begin_run` puts the smaller of it and the host's in force
+(`Vm::budgeted`), a test's own the same way, and a program whose `main`
+or test declares one runs on the interpreter as a host's budget does;
+the recording's grant spells it `memory at most 256 megabytes` and reads
+it back. The reference's section 11 (the grammar, the tree, the grant
+clauses, the static rules, the command line) and appendix B; the cheat
+sheet at 2,996 of 3,000 tokens, the `purpose:` sentence shortened to pay
+for the clause; the conformance suite gains five cases (over the budget,
+exit 2; within it; misplaced; bare; the units crossed); `rules.rs`,
+`grammar.rs`, the parser's, the formatter's, the effects' and the
+grant's unit tests; `sandbox.rs` drives the binary through the program's
+budget alone, the file's tightening the program's and the program's
+tightening the file's. The embedding guide, the system design's section
+4.2, the sketch's section 11 and GAPS 3.6 say the same. Gates: fmt,
+clippy, cargo test 67 suites ok, format check of compiler/ and bench/,
+lint, tokens, wasm, all exit 0 (gates45.log, 20:30:43); the parse and
+check judges equal on the probes. 45b, the budget kept by the generated
+code, is open. (Claude)

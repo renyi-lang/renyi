@@ -1,0 +1,10 @@
+module memory_budget_bare
+  purpose: `memory` without its budget (decision AW64).
+
+import std.console
+
+public function main() needs console, memory
+  purpose: Print a greeting.
+
+  console.print("hi")
+end

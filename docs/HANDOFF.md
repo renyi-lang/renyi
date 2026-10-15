@@ -245,10 +245,15 @@ function value charged where it is named, a function type's `needs` a
 bound; the handoff's section "Stage 43"), and stage 44 closed its
 residue, GAPS 1.19 (AW62, AW63: a type may be written in parentheses,
 a returned function type is written so; the handoff's section "Stage
-44"). The work next is the owner's call at the next session: GAPS 3.6
-(the memory budget has no syntax), the roadmap's remaining candidates
-(the Rust front end's name sets as bits, the liveness walk's residue)
-or something new. The watch rounds
+44"). Stage 45 closed GAPS 3.6 the same evening (AW64, AW65: `memory
+at most 256 megabytes` in the grant of `main`, the sandbox's setting
+tightening it; the handoff's section "Stage 45"); its second part,
+45b, is open: the budget kept by the generated code at its allocating
+helpers, measured under AU1's rule, so that a program with a memory
+clause need not run interpreted. The work next is the owner's call at
+the next session: 45b, the roadmap's remaining candidates (the Rust
+front end's name sets as bits, the liveness walk's residue) or
+something new. The watch rounds
 (Gmail, the notifications, the ten list pull requests, the Glama
 badge) were a cron of session 15, stopped on the owner's word of
 2026-10-15 evening ("如果有回复或者更新我通知你": the owner reports
@@ -4250,6 +4255,172 @@ iterator in two slots, the Rust front end's name sets).
 Then the first stage the owner confirms. Done in session 14: the study is
 the section "Stage 29, the new backend: the design study (session 14)"
 below, and the owner's answers are decision AW1.
+
+## Stage 45, the memory budget written in the program (GAPS 3.6): the design study (session 15)
+
+**The gap.** GAPS 3.6: the memory budget of a run is a setting of the
+sandbox (decision AP1: `memory` in the grant file, `renyi::Grant`, the
+counting allocator), and a program cannot declare one; and the VM has
+no step or recursion limit. The owner chose it as the next stage on
+2026-10-15 evening, after stage 44, the study first.
+
+**What AP1 decided, which this stage would reverse in part.** AP1
+(iii): "a setting rather than `at most 256 megabytes memory` in the
+grammar (open item R7-1, closed): the budget is the host's to set, not
+the program's to declare". The mechanism (the counting allocator, the
+flag read at the safe points, `OverMemory`) is not in question; the
+question is the spelling in the program. A decision that gives the
+program a memory clause names AP1 (iii) as superseded in that part;
+R7-1 is reopened and closed again by it; `07-system-design.md` section
+4.2 ("The budget is a setting of the sandbox, not a clause of the
+grammar") and `embedding.md` section 4 change with it.
+
+**The rule as it stands.** `Capability ::= CapabilityPath Budget? ('only
+to' ...)?`, `Budget ::= 'at most' Integer 'per' ('second' | 'minute' |
+'hour' | 'day' | 'run')` (grammar line 86); the units are plain
+identifiers compared by text, `per` the reserved word, `at most` the
+phrase (`compiler/words.ry` lines 63 and 112). The checker allows a
+budget on `main` and on a test only (`grant-clause`, `world.rs` line
+1878) and on `network`, `process` and `filesystem` only (line 1905);
+`compiler/declare.ry` line 2991 the same. The VM keeps a `Counter` per
+budgeted capability (`grant.rs` line 65) and `Options::memory` apart
+(`vm.rs` line 140), set by `renyi run --sandbox` from the file
+(`sandbox.rs` line 603, `apply_flag`) and by the embedding API; the
+run's `counting` begins at `vm.rs` line 822 and the flag is read at a
+call, a primitive and a loop turning (`memory_check`, lines 1126, 1252,
+2263, 2500) and in the generated code's helpers (`runtime.rs` lines
+1133, 1164, 1178; `extension.rs` line 283); over it, the run ends as a
+crash, exit 2, "the memory budget of 16 megabytes was exceeded (22
+megabytes held)" (`lib.rs` line 1593). A budgeted run stays on the
+interpreter (`vm.rs` line 695, decisions AG3 and AP1). The recording's
+`grant` is a list of the capabilities' spellings (`recording.rs` line
+165), a budget among them through `Counter::spelling`.
+
+**What the probes show** (lane `D:/Projects/.worktrees/Renyi/gap36/`,
+the release binary of 2026-10-14). `recurse.ry`, a recursion without
+end: on the JIT and on the interpreter alike it runs on, the working
+set 3.6 GB after 5 seconds (peak 5.1 GB on the JIT), killed by hand at
+30 seconds; no stack overflow on either tier, since the frames are the
+VM's own vector and a direct call of the generated code pushes no
+native frame per call. `deep.ry` to a fixed depth: one million frames
+in 0.5 to 1.0 seconds on every tier (the JIT, `RENYI_NATIVE_SYNC=1`,
+the template tier), ten million in 1.7 to 2.3 seconds; under `--sandbox`
+with `"memory": "1 gigabyte"` one million passes and ten million is
+refused at 1.4 gigabytes held, so a frame of this recursion costs about
+140 bytes. `grow.ry`, a list appended to without end, under a 16
+megabyte grant: refused at 24 megabytes held, exit 2. So: the budget
+works where it is set, nothing stops a run where it is not, and a
+runaway recursion is a memory problem, not a stack problem.
+
+**The candidates for the spelling.**
+
+A. **`memory` in the grant, with a budget in bytes.** `needs console,
+memory at most 256 megabytes`: `memory` a path of the capability tree
+that no primitive needs (so no function but `main` or a test may name
+it: `grant-clause` as today, and a bare `memory` without `at most` is
+refused the same way), and `Budget ::= 'at most' Integer ('per'
+TimeUnit | MemoryUnit)` with `bytes`, `kilobytes`, `megabytes` and
+`gigabytes` (the units of the grant file, `sandbox.rs` line 130). The
+reviewer reads it in the one clause that holds the whole grant (P2's
+reason); no reserved word is added; the parsers' `budget` grows a
+second arm; the checker allows the byte form on `memory` only and the
+`per` form on the three budgeted capabilities only; `Options::memory`
+is set from `main`'s grant, and the sandbox file's `memory` tightens
+it (the smaller wins), as its capabilities intersect. The recording's
+`grant` lists it as `memory at most 256 megabytes` and a replay counts
+as a run does. The cheat sheet's "Only there:" line names it.
+
+B. **A clause of its own on `main`.** `public function main() needs
+console within 256 megabytes`: a new signature clause after `needs`,
+both parsers, the formatter, the tree (decision W1), the cheat sheet's
+signature line. Reads well but puts a second home beside the grant for
+what the reviewer reads as the grant, and `within` is the deadline word
+of a `Duration` (J12).
+
+C. **Keep AP1.** The budget stays the host's; GAPS 3.6 is closed as
+decided by AP1 (iii) with the probes above as its record; only the
+limits question (below) is decided.
+
+The recommendation is A: one clause for everything the run may use.
+
+**Over the budget.** Today a crash (exit 2, the message above). The
+alternative, a failure the program can handle (an `OverMemory` the
+program catches with `otherwise`), is unreliable: the handler runs
+with the budget spent, and every text it builds allocates. The
+recommendation: a crash, as now, naming the budget and the peak.
+
+**The limits.** (a) No depth limit: the memory clause bounds a runaway
+recursion (140 bytes a frame: a 256 megabyte budget allows about 1.8
+million frames), the native stack is not at risk, and a depth number
+of the VM's own would be one more hidden constant that a legitimate
+deep recursion hits. (b) A default depth limit of the VM (say one
+million frames), a crash past it: one compare per frame push on the
+interpreter and in the generated code's prologue (`link_node`, decision
+AW24: a direct call pushes no frame record, so the count would be kept
+apart), on the hottest path. (c) A step budget as well, `steps at most
+N per run` in the grant, the classic gas of a sandbox: a counter per op
+or per basic block (the hotness count exists on the template tier and
+the interpreter, not on the Cranelift tier), so a cost on every tier
+and a number no reviewer can relate to the program's work. The
+recommendation is (a), with the embedding API unchanged (a host that
+wants a time bound has `within` inside the module; a host-side deadline
+per call is a stage of its own if asked).
+
+**The JIT under a budget.** A budgeted run stays on the interpreter
+(AP1, AG3), so a program that declares a memory clause would run
+interpreted every time, which the stage must measure: the generated
+code already reads the flag in the helpers that allocate (`runtime.rs`
+lines 1133 to 1178), and a loop that allocates in place
+(`rt_list_push`) would need the read there too. Plan: build the clause
+on the interpreter first (45a, the surface and the semantics), then
+measure the JIT with the flag read at its allocating helpers (45b): if
+the cost on the benchmarks is within AU1's one percent, a budgeted run
+goes to the JIT and the reference's sentence changes; if not, it stays
+interpreted and the reference says what a memory clause costs.
+
+**The cost of A.** The grammar file and the reference's excerpt (one
+alternative in `Budget`); `budget` in `parser.rs` and `parse_budget` in
+`compiler/parser.ry` (decision AD1: the same diagnostics, "a budget is
+per `second`, ... or a memory in `bytes`, `kilobytes`, `megabytes` or
+`gigabytes`"); `memory` in `TREE` and the checker's two rules in
+`world.rs` and `declare.ry`; the formatter's capability spelling;
+`Options::memory` from `main`'s grant in `runner.rs` and the
+intersection with the sandbox's in `sandbox.rs`; the recording's grant
+string; the reference's section 11 (the grammar, the tree, the static
+rules, the run-time paragraph) and appendix B's exit statuses, the
+cheat sheet's "Only there:" line (over budget: a line to trim), the
+sketch's section 11 and a new item R3-4 closed, `07-system-design.md`
+4.2, `embedding.md` sections 4 and 5, GAPS 3.6 closed, a decision
+entry superseding AP1 (iii) in part; conformance cases: a program over
+its own budget (exit 2, `stderr_contains`), a program within it, the
+clause on a function other than `main` (`grant-clause`), `memory`
+without a budget (`grant-clause`), a time unit on `memory` and a
+memory unit on `network.http` (`grant-clause`); a test in `rules.rs`
+and the corner lists of `grammar.rs`; the selfhost judges.
+
+**The questions for the owner** (asked 2026-10-15 evening): the
+spelling (A, B or C); what happens over the budget (a crash as now, or
+a failure the program handles); the limits (none beyond the memory
+clause, a default depth limit of the VM, or a step budget too); and the
+cheat sheet (the clause added and a line trimmed, or unchanged).
+
+**The answers and the build (2026-10-15 evening).** The owner chose
+the recommended option four times (decision AW64: `memory at most`
+in the grant, a crash over it, no depth or step limit, the cheat sheet
+names it). Built the same evening as 45a (decision AW65): the grammar
+file and the reference's excerpt; `budget` in `parser.rs` and
+`parse_budget` in `compiler/parser.ry` with the one new diagnostic
+text; `memory` in both trees, covered by every grant; the two rules in
+`world.rs` and `declare.ry`; the formatter; `grant::memory_of`,
+`Vm::budgeted`, `declares_memory` and the recording's spelling in the
+VM; the five conformance cases `memory_budget_*.ry`; the tests in
+`rules.rs`, `grammar.rs`, `parser.rs`, `format.rs`, `effects.rs`,
+`grant.rs` and `sandbox.rs`; the reference, the cheat sheet (2,996
+tokens), the sketch, the system design, the embedding guide, GAPS 3.6.
+The probes are in the lane `D:/Projects/.worktrees/Renyi/gap36/`.
+Gates: fmt, clippy, cargo test 67 suites ok, format check of compiler/ and bench/, lint, tokens, wasm, all exit 0 (gates45.log, 20:30:43); the parse and check judges equal on the probes. Open: 45b, the budget kept by the generated code (the
+helpers of `runtime.rs` read the flag already; `rt_list_push` and the
+loop turning do not), measured on the benchmarks under AU1's rule.
 
 ## Stage 44, the clauses after a returned function type (GAPS 1.19, sketch R3-3): the design study (session 15)
 

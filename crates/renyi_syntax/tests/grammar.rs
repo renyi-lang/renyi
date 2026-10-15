@@ -837,6 +837,10 @@ fn every_conformance_program_gets_the_parser_verdict() {
 /// accept.
 const ACCEPTED: &[(&str, &str)] = &[
     (
+        "a memory budget (decision AW64)",
+        "module corner\n\npublic function main() needs console, memory at most 256 megabytes\n  purpose: Hold little.\n\n  console.print(\"hi\")\nend\n\ntest \"it holds little\" needs console, memory at most 1 gigabytes\n  check true\nend\n",
+    ),
+    (
         "a parenthesised type (decision AW62)",
         "module corner\n\nfunction pick() returns (function(Text) needs console) needs console\n  return announce\nend\n\nfunction maybe_pick() returns maybe (function(Text)) or fails with Text needs console\n  return announce\nend\n\nfunction size(items: List of (Integer)) returns (Integer)\n  return items.length()\nend\n",
     ),
@@ -881,6 +885,11 @@ const ACCEPTED: &[(&str, &str)] = &[
 /// Spellings both reject: the parser with the fix named here, the grammar
 /// by having no derivation.
 const REJECTED: &[(&str, &str, &str)] = &[
+    (
+        "a budget with a unit of neither kind",
+        "module corner\n\nfunction main() needs network.http at most 3 weeks\nend\n",
+        "write `at most 60 per minute` or `at most 256 megabytes`",
+    ),
     (
         "a parenthesised type left open",
         "module corner\n\nfunction go() returns (Integer\n  return 1\nend\n",

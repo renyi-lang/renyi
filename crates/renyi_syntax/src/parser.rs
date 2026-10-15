@@ -1007,7 +1007,28 @@ impl<'s> Parser<'s> {
             return Err(());
         }
         let count = self.text_of(&count_token);
-        self.expect_word(Word::Per)?;
+        // `per` a unit of time (decision P2), else a memory in bytes
+        // (decision AW64)
+        if !self.eat_word(Word::Per) {
+            let unit_token = self.advance();
+            let unit = self.text_of(&unit_token);
+            if !MEMORY_UNITS.contains(&unit.as_str()) {
+                self.expected(
+                    "`per` and a unit of time, or a memory in `bytes`, `kilobytes`, `megabytes` or `gigabytes`",
+                    unit_token.span,
+                    "write `at most 60 per minute` or `at most 256 megabytes`",
+                );
+                return Err(());
+            }
+            return Ok(Budget {
+                count,
+                per: Name {
+                    text: unit,
+                    span: unit_token.span,
+                },
+                span: start.join(unit_token.span),
+            });
+        }
         let unit_token = self.advance();
         let unit = self.text_of(&unit_token);
         if !matches!(unit.as_str(), "second" | "minute" | "hour" | "day" | "run") {
@@ -2884,6 +2905,23 @@ mod tests {
             .diagnostics
             .iter()
             .any(|d| d.message.contains("per `second`")));
+        // or a memory in one of four (decision AW64)
+        let memory = parse(
+            "module demo\n\nfunction main() needs console, memory at most 256 megabytes\nend\n",
+        );
+        assert!(memory.diagnostics.is_empty(), "{:?}", memory.diagnostics);
+        let Item::Function(main) = &memory.module.items[0] else {
+            panic!()
+        };
+        let budget = main.needs[1].budget.as_ref().expect("budget");
+        assert!(budget.is_memory());
+        assert_eq!(budget.per.text, "megabytes");
+        let neither =
+            parse("module demo\n\nfunction main() needs network.http at most 3 weeks\nend\n");
+        assert!(neither
+            .diagnostics
+            .iter()
+            .any(|d| d.message.contains("found `weeks`")));
     }
 
     #[test]

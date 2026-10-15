@@ -1,0 +1,14 @@
+module memory_budget_misplaced
+  purpose: The memory budget on a function other than `main` (decision AW64).
+
+import std.console
+
+function greet() needs console, memory at most 16 megabytes
+  console.print("hi")
+end
+
+public function main() needs console
+  purpose: Call the helper.
+
+  greet()
+end

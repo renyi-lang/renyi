@@ -147,8 +147,10 @@ runtime; Renyi's effect system is the boundary itself.
   the grant bounds the bytes a call holds above the level at its start,
   counted by the process's allocator and read at every call, primitive
   and loop turning; a call that exceeds it fails as a whole with
-  `OverMemory`, and the host is told the limit and the peak. The budget
-  is a setting of the sandbox, not a clause of the grammar (R7-1 closed).
+  `OverMemory`, and the host is told the limit and the peak. The program
+  declares its own as `memory at most 256 megabytes` in the grant of
+  `main` (decision AW64), and the host's setting tightens it to the
+  smaller.
 - **Data.** `Sandbox::guarded(value, capability)` tags a value the host
   hands in with a guard of the grant (P3), so a sandboxed module can be
   given a secret it may use only toward one sink.
@@ -235,8 +237,10 @@ before it runs: Erlang's hot code loading with static types.
 
 - R7-1: the syntax of a memory budget in a grant (`at most 256 megabytes
   memory`, or a command-line and embedding-only setting). Closed by
-  decision AP1: a setting of the sandbox, `memory` in the grant file and
-  in `renyi::Grant`, no clause in the grammar.
+  decision AP1 as a setting of the sandbox, `memory` in the grant file
+  and in `renyi::Grant`; reopened and closed again by decision AW64:
+  `memory at most 256 megabytes` in the `needs` of `main` or of a test,
+  the host's setting tightening it.
 - R7-2: who runs the registry and how its recomputation of manifests is
   trusted (signatures, reproducible builds of section 3).
 - R7-3: whether a hot swap may replace a definition on the stack of a

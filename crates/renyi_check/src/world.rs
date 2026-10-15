@@ -1875,12 +1875,17 @@ impl World {
             .collect();
         let needs: Vec<Capability> = function.needs.iter().map(Capability::from_ast).collect();
         for (capability, syntax) in needs.iter().zip(&function.needs) {
-            if capability.has_grant_clauses() && function.name.text != "main" {
+            let is_memory = capability.path == ["memory"];
+            if (capability.has_grant_clauses() || is_memory) && function.name.text != "main" {
                 self.error_with_fix(
                     module,
                     "grant-clause",
-                    "a budget (`at most`) or a guard (`only to`) belongs to the program's grant"
-                        .into(),
+                    if is_memory {
+                        "the memory budget (`memory at most`) belongs to the program's grant".into()
+                    } else {
+                        "a budget (`at most`) or a guard (`only to`) belongs to the program's grant"
+                            .into()
+                    },
                     syntax.span,
                     "move it to the `needs` of `main` or of a `test`".into(),
                 );
@@ -1905,7 +1910,23 @@ impl World {
                     );
                 }
             }
-            if capability.budget.is_some() {
+            if is_memory {
+                // the memory budget (decision AW64): `memory` stands only
+                // with a budget, and only one in bytes
+                let fine = capability
+                    .budget
+                    .as_ref()
+                    .is_some_and(|(_, unit)| crate::effects::is_memory_unit(unit));
+                if !fine {
+                    self.error_with_fix(
+                        module,
+                        "grant-clause",
+                        "`memory` takes `at most` a count of bytes, kilobytes, megabytes or gigabytes".into(),
+                        syntax.span,
+                        "write `memory at most 256 megabytes`".into(),
+                    );
+                }
+            } else if let Some((_, unit)) = &capability.budget {
                 let budgeted = matches!(
                     capability.path.first().map(String::as_str),
                     Some("network") | Some("process") | Some("filesystem")
@@ -1920,6 +1941,17 @@ impl World {
                         ),
                         syntax.span,
                         "drop the `at most` clause".into(),
+                    );
+                } else if crate::effects::is_memory_unit(unit) {
+                    self.error_with_fix(
+                        module,
+                        "grant-clause",
+                        format!(
+                            "`{}` takes a budget per second, minute, hour, day or run, not a memory",
+                            capability.path.join(".")
+                        ),
+                        syntax.span,
+                        "write `at most 60 per minute`".into(),
                     );
                 }
             }

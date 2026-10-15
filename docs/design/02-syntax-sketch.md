@@ -709,6 +709,12 @@ public function main() or fails with AppError
   whole program). Budgets apply to `network`, `process` and `filesystem`;
   `renyi run --at-most network.http=60/minute` narrows one from the command
   line.
+- `memory at most COUNT UNIT` is the **memory budget** (decision AW64;
+  the units `bytes`, `kilobytes`, `megabytes`, `gigabytes`): the bytes
+  the run may hold above the level at its start, counted by the
+  allocator; a run that exceeds it ends as a crash does. `memory` is a
+  budget and not an effect: it stands only here, with its clause, and
+  the sandbox's `memory` (decision AP1) tightens it.
 - `only to SINK or SINK` is a **guard** (decision P3): every value that
   entered the program through the capability carries that origin, as does
   every value computed from it, and it may leave the program only through
@@ -906,6 +912,10 @@ open items start at R3-1 and are listed here when they arise.
 
 - R3-1: an `Iterable` ability, so that `for each` can walk a program's own
   types. Decided as V10: one method, `to_list`, in section 5.
+- R3-4: the memory budget of a run had no spelling in the program
+  (`docs/GAPS.md` 3.6; decision AP1 had made it the host's setting).
+  Decided as AW64: `memory at most 256 megabytes` in the `needs` of
+  `main` or of a test, the sandbox's `memory` tightening it.
 - R3-3: a function whose return type is a function type could write its
   own `needs` or failures only by writing the clause word twice (the
   type's, then its own), since the clauses after `returns function(...)`

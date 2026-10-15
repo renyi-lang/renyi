@@ -35,8 +35,7 @@ A function whose first parameter is `self: Text` is a method: `text.trim()`.
 Clause order: `returns`, `or fails with`, `needs`, `for any`, `purpose:`,
 `tags:`, `see also:`, `deprecated:`, `expose as tool`, `example:` lines, blank
 line, body. Omit `returns` when nothing is returned. The `module` line and
-every `public` function, type and constant must carry a `purpose:` line, or
-the checker rejects it.
+every `public` definition must carry `purpose:`.
 
 ## Calls
 ```
@@ -218,8 +217,8 @@ pure. Capabilities: `console`, `filesystem.read`, `filesystem.write`,
 `process`, `foreign`, `python`, `screen`. A parent
 covers its children. A literal argument narrows a scope:
 `filesystem.read("data")`, `network.http("api.example.com")`; no argument
-covers every scope. `main` declares the whole grant. Only there: `at most 60 per minute` (budget; also `per run`) and
-`only to console` (what it reads leaves only there).
+covers every scope. `main` declares the whole grant. Only there: `at most 60 per minute` (budget; also `per run`),
+`memory at most 256 megabytes` and `only to console` (what it reads leaves only there).
 ```
 public function main() or fails with AppError
   needs console, network.http("api.example.com") at most 60 per minute

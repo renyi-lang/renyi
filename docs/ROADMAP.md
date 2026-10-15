@@ -806,6 +806,23 @@ where one decided, the status. The dates are those of the decisions.
     formatter's `returned_type_text` with a test, `function_type_parens.ry`,
     the corner lists, the reference's sections 3, 4 and 16, the sketch,
     GAPS 1.19 closed.
+45. **The memory budget written in the program, gap 3.6** (session 15,
+    2026-10-15 evening; the handoff's section "Stage 45"). The study:
+    AP1 (iii) had made the budget the host's setting; the probes showed
+    a runaway recursion taking 700 megabytes a second with nothing to
+    stop it, about 140 bytes a frame, and no native stack at risk on
+    any tier. The owner's answers (AW64): `memory at most 256
+    megabytes` in the grant of `main` or of a test, `memory` a budget
+    and not an effect; a crash over it, as now; no depth or step
+    limit; the cheat sheet names the clause. Built (AW65, 45a): the
+    grammar file, both parsers, both checkers, the formatter, the VM's
+    `memory_of` and `budgeted` with the host's setting tightening the
+    program's, the recording's spelling, five conformance cases, the
+    binary driven through the tightening, the reference, the cheat
+    sheet at 2,996 tokens, the sketch, the system design, the
+    embedding guide, GAPS 3.6 closed. Open: 45b, the budget kept by the
+    generated code so that a budgeted run need not stay on the
+    interpreter.
 
 ## 3. The tracks
 
@@ -813,7 +830,9 @@ The same stages grouped by the line of work they belong to, with the
 state of each line.
 
 - **A. The design and the normative texts**: stages 1, 2, 9 (the
-  freeze), 11 (the grammar and the reference), 17 (the positioning).
+  freeze), 11 (the grammar and the reference), 17 (the positioning),
+  44 and 45 (surface changes under V11: a type in parentheses, the
+  memory budget in the grant).
   The surface is frozen (V11): a change is a new decision entry first,
   then the reference, the grammar, the cheat sheet, the formatter and
   the conformance suite in one commit. Open: R3-1 (`Iterable`), section
@@ -993,7 +1012,10 @@ round for the compile row, closed (AW52 to AW59) on
 -25.0%, the ratio against the reference 7.09 to 5.31, the emitter's
 own part halved; the liveness walk's residue (about 30 million) left.
 Stage 43, gap 1.11, closed (AW60, AW61) the same evening, and stage
-44, its residue GAPS 1.19 (AW62, AW63), after it. The article waits
-for a stable version (the owner's word of 2026-10-15 evening), then
-its arXiv submission. Not scheduled: GAPS 3.6, the Rust front end's
-name sets as bits, the liveness walk's residue.
+44, its residue GAPS 1.19 (AW62, AW63), after it, and stage 45, GAPS
+3.6 (AW64, AW65: the memory budget in the grant), after that; its
+second part, 45b, is open: the budget kept by the generated code,
+measured under AU1's rule. The article waits for a stable version (the
+owner's word of 2026-10-15 evening), then its arXiv submission. Not
+scheduled: the Rust front end's name sets as bits, the liveness walk's
+residue.

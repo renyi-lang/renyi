@@ -30,7 +30,26 @@ pub const TREE: &[&str] = &[
     "foreign",
     "python",
     "screen",
+    "memory",
 ];
+
+/// Whether a budget's unit is one of memory (decision AW64).
+pub fn is_memory_unit(unit: &str) -> bool {
+    ast::MEMORY_UNITS.contains(&unit)
+}
+
+/// `memory at most COUNT UNIT` in bytes; `None` when the unit is not one
+/// of memory or the product does not fit in 64 bits.
+pub fn memory_bytes(count: &str, unit: &str) -> Option<u64> {
+    let factor: u64 = match unit {
+        "bytes" => 1,
+        "kilobytes" => 1 << 10,
+        "megabytes" => 1 << 20,
+        "gigabytes" => 1 << 30,
+        _ => return None,
+    };
+    count.parse::<u64>().ok()?.checked_mul(factor)
+}
 
 /// Capabilities that take a scope argument (a path, a host, a variable, a
 /// program name or a Python package); the others take none.
@@ -90,6 +109,11 @@ impl Capability {
     /// `runtime_scoped` says the callee checks its actual path or host at run
     /// time, which the library primitives do.
     pub fn covers(&self, needed: &Capability, runtime_scoped: bool) -> bool {
+        // the memory budget is not an effect: every grant covers it
+        // (decision AW64)
+        if needed.path == ["memory"] {
+            return true;
+        }
         if needed.path.len() < self.path.len() || needed.path[..self.path.len()] != self.path[..] {
             return false;
         }
@@ -145,6 +169,19 @@ mod tests {
             budget: None,
             only_to: Vec::new(),
         }
+    }
+
+    #[test]
+    fn the_memory_budget_is_covered_by_every_grant_and_counts_in_bytes() {
+        // decision AW64
+        assert!(cap("console", None).covers(&cap("memory", None), false));
+        assert!(!cap("memory", None).covers(&cap("console", None), false));
+        assert_eq!(memory_bytes("256", "megabytes"), Some(256 << 20));
+        assert_eq!(memory_bytes("4096", "bytes"), Some(4096));
+        assert_eq!(memory_bytes("1", "gigabytes"), Some(1 << 30));
+        assert_eq!(memory_bytes("60", "minute"), None);
+        assert_eq!(memory_bytes("x", "megabytes"), None);
+        assert!(is_memory_unit("kilobytes") && !is_memory_unit("run"));
     }
 
     #[test]

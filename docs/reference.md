@@ -1028,7 +1028,7 @@ the iterations as the tasks of section 12.
 Capabilities        ::= Capability (',' Capability)*
 Capability          ::= CapabilityPath Budget? ('only to' CapabilityPath ('or' CapabilityPath)*)?
 CapabilityPath      ::= DottedName ('(' PlainText ')')?
-Budget              ::= 'at most' Integer 'per' ('second' | 'minute' | 'hour' | 'day' | 'run')
+Budget              ::= 'at most' Integer ('per' ('second' | 'minute' | 'hour' | 'day' | 'run') | 'bytes' | 'kilobytes' | 'megabytes' | 'gigabytes')
 ```
 
 ### Meaning
@@ -1049,13 +1049,14 @@ process              start other programs (`std.process`)
 foreign              call the C functions of a foreign module (decision AF1)
 python               call the functions of a Python module through the bridge (decision AJ3)
 screen               hand a frame to the host that draws it (`std.screen`, decision AW31)
+memory               the bytes the run may hold above its start: a budget, not an effect (decision AW64)
 ```
 
 A parent (`filesystem`, `network`) covers its children. A capability may
 carry one literal **scope** that narrows it: a path prefix for
 `filesystem` and its children, a host for `network` and its children, a
 variable name for `environment`, a program name for `process`, a package
-for `python`; `console`, `time`, `random`, `foreign` and `screen` take
+for `python`; `console`, `time`, `random`, `foreign`, `screen` and `memory` take
 none. A
 declaration without a scope covers every scope. A granted capability
 covers a needed one when its path is the same or an ancestor and its
@@ -1077,7 +1078,15 @@ Two **grant clauses** may follow a capability in the `needs` of `main` or
 of a `test`, and only there. `at most COUNT per UNIT` is a budget (decision
 P2): the units are `second`, `minute`, `hour` and `day` (sliding windows)
 and `run` (the whole program); budgets apply to `network`, `process` and
-`filesystem` and their children. `only to SINK or SINK` is a guard
+`filesystem` and their children. `memory at most 256 megabytes` is the
+**memory budget** (decision AW64; the units `bytes`, `kilobytes`,
+`megabytes` and `gigabytes`): the bytes the run may hold above the level
+at its start, counted by the allocator and read at every call, primitive
+and loop turning; a run that exceeds it ends as a crash does, with exit
+status 2, naming the budget and the peak. `memory` is a budget, not an
+effect: no function needs it, it stands only with its `at most`, and a
+run under a memory budget stays on the interpreter. `only to SINK or
+SINK` is a guard
 (decision P3): every value that entered the program through the capability
 carries that origin, as does every value computed from it, and it may
 leave the program only through the listed sinks.
@@ -1121,6 +1130,8 @@ leave the program only through the listed sinks.
 - A sink after `only to` is a capability of the tree
   (`unknown-capability`); a scope is a text literal (`capability-scope`).
 - A budget or a guard stands in the `needs` of `main` or a test
+  (`grant-clause`); `memory` stands only with a budget in bytes, and a
+  budget per a unit of time only on `network`, `process` or `filesystem`
   (`grant-clause`); a guard whose sinks are all outside the grant can let
   nothing leave (`guard-no-sink`, a warning).
 - Across a package boundary only the capability kind is checked
@@ -1151,7 +1162,8 @@ scope reaches wherever it points. The command line
 narrows the grant and can only tighten it: `--deny capability` refuses to
 start when any function needs it, `--allow-host`, `--allow-read` and
 `--allow-write` narrow a scope, `--at-most capability=count/unit` adds a
-budget.
+budget, and `--sandbox` (appendix B) tightens the memory budget to the
+smaller of the file's and the program's.
 
 A budget keeps a counter per capability and scope; the primitive call that
 would exceed it fails with the module's `OverBudget` variant
@@ -1640,7 +1652,7 @@ Python scripts under `tools/` are development aids.
 | `renyi parse [--json] [--declarations] <file>` | the syntax tree; `--declarations` reads a library declaration file, whose functions have no bodies | 1 on a parse error |
 | `renyi index [--json \| --budgets \| --diff <base> \| --chunks [--language]] [path]` | the project map, its budgets, the semantic diff, the chunks for retrieval by embedding, of the project or of the language's documents and library (`design/05-agent-tooling.md`) | |
 | `renyi tools [path]` | the tool manifest (section 15) | |
-| `renyi run [options] <file> [arguments]` | check, then run `main` under its grant | 0; 1 when `main` fails; 2 on a crash or over the memory budget of `--sandbox`; the code of `environment.exit` |
+| `renyi run [options] <file> [arguments]` | check, then run `main` under its grant | 0; 1 when `main` fails; 2 on a crash or over the memory budget (`main`'s or `--sandbox`'s); the code of `environment.exit` |
 | `renyi run --manifest ...` | also print the run manifest (toolchain, the extensions beyond the standard library, code hash, the dependencies with the lockfile's version and hash of each, grant, arguments, environment, outcome, output hash) | as `run` |
 | `renyi record [--to <file>] [options] <file> [arguments]` | run `main` and write a recording of its effects, the manifest in its header | as `run` |
 | `renyi serve [--watch] [options] <file> [arguments]` | `run` for a service; with `--watch` (decision AO1), the files of the program's project are looked at every half second between requests and, when one changed and the program checks clean, `main` is run again on the new version between two requests with the listening socket kept open (no request is lost), the definitions that changed named on the standard error, a changed signature among them; a version with errors is reported and the last good one keeps serving; `--watch` takes `--deny`, `--allow-host`, `--allow-read`, `--allow-write`, `--at-most`, `--sandbox`, `--explain` and `--interpret` | as `run` |
@@ -1667,7 +1679,8 @@ and `--at-most` narrow the grant (section 11); `--sandbox <grant.json>`
 narrower than it declares: the file's `grant`, spelled as a `needs`
 clause is, intersected with `main`'s, its budgets and guards added, and
 its `memory` (`256 megabytes`) a budget on the bytes the run holds above
-its start, which ends the run as a crash does when exceeded; `main` must
+its start, the smaller of it and the program's own (section 11) in
+force, which ends the run as a crash does when exceeded; `main` must
 need nothing the grant does not cover, and a budgeted run stays on the
 interpreter (the same grant through the embedding API: `embedding.md`);
 `--redact <name>` keeps a

@@ -124,8 +124,21 @@ pub struct Capability {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Budget {
     pub count: String,
+    /// The unit: one of time after `per`, or one of memory (decision AW64).
     pub per: Name,
     pub span: Span,
+}
+
+/// The units of a memory budget, `memory at most 256 megabytes` (decision
+/// AW64).
+pub const MEMORY_UNITS: [&str; 4] = ["bytes", "kilobytes", "megabytes", "gigabytes"];
+
+impl Budget {
+    /// Whether the budget is a memory in bytes rather than a count per
+    /// unit of time.
+    pub fn is_memory(&self) -> bool {
+        MEMORY_UNITS.contains(&self.per.text.as_str())
+    }
 }
 
 /// A capability path with an optional scope, as the target of `only to`.

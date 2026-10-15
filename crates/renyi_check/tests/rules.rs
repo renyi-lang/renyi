@@ -62,6 +62,32 @@ fn program(body: &str) -> String {
 }
 
 #[test]
+fn the_memory_budget_stands_in_the_grant_with_a_unit_of_memory() {
+    // decision AW64: `memory at most` in the `needs` of `main`, in bytes
+    clean(&program(
+        "public function main() needs console, memory at most 256 megabytes\n  purpose: Hold little.\n\n  console.print(\"hi\")\nend\n",
+    ));
+    // the clause on another function, `memory` without a budget, a time
+    // unit on `memory` and a memory unit on a budgeted capability
+    raises(
+        &program("function go() needs console, memory at most 256 megabytes\n  console.print(\"hi\")\nend\n"),
+        "grant-clause",
+    );
+    raises(
+        &program("public function main() needs console, memory\n  purpose: Hold.\n\n  console.print(\"hi\")\nend\n"),
+        "grant-clause",
+    );
+    raises(
+        &program("public function main() needs console, memory at most 60 per minute\n  purpose: Hold.\n\n  console.print(\"hi\")\nend\n"),
+        "grant-clause",
+    );
+    raises(
+        &program("public function main() needs console, network.http at most 256 megabytes\n  purpose: Hold.\n\n  console.print(\"hi\")\nend\n"),
+        "grant-clause",
+    );
+}
+
+#[test]
 fn a_pure_function_with_an_example_is_clean() {
     clean(&program(
         "public function double(value: Integer) returns Integer\n  purpose: Twice the value.\n  example: double(2) is 4\n\n  return value * 2\nend\n",

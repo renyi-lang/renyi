@@ -1,0 +1,14 @@
+module memory_budget_over
+  purpose: A program over the memory budget its grant declares (decision AW64).
+
+import std.console
+
+public function main() needs console, memory at most 16 megabytes
+  purpose: Append until the budget stops the run.
+
+  let mutable items: List of Integer be []
+  for each step from 1 to 100000000
+    change items to items.append(step)
+  end
+  console.print("{items.length()}")
+end

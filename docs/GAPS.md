@@ -260,10 +260,16 @@ freeze, or take it out of the frozen surface until it exists.
    `crates/renyi/tests/foreign.rs` and two conformance cases);
    `capability-unavailable` is gone.
 5. **`lazy`** is reserved with no grammar rule (decision B4, as intended).
-6. The memory budget of a grant is a setting of the sandbox since
+6. The memory budget of a grant was a setting of the sandbox since
    decision AP1 (`memory` in the grant file and in `renyi::Grant`,
-   enforced by the counting allocator; open item R7-1 closed); the VM
-   has no step or recursion limit.
+   enforced by the counting allocator; open item R7-1 closed), and the
+   VM has no step or recursion limit. Done in stage 45 (decisions AW64
+   and AW65, 2026-10-15): `memory at most 256 megabytes` in the `needs`
+   of `main` or of a test, the sandbox's `memory` tightening it to the
+   smaller, a run over it a crash with exit status 2; no depth or step
+   limit by the owner's choice, the memory budget being the guard (a
+   runaway recursion costs about 140 bytes a frame and does not touch
+   the native stack on any tier; the handoff's section "Stage 45").
 
 ## 4. Milestones not started, or half done
 

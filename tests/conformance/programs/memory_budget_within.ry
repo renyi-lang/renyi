@@ -1,0 +1,14 @@
+module memory_budget_within
+  purpose: A program within the memory budget its grant declares (decision AW64).
+
+import std.console
+
+public function main() needs console, memory at most 64 megabytes
+  purpose: Print a greeting under the budget.
+
+  let mutable items: List of Integer be []
+  for each step from 1 to 1000
+    change items to items.append(step)
+  end
+  console.print("{items.length()} within the budget")
+end

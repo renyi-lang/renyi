@@ -403,6 +403,10 @@ fn restrict(granted: Capability, needs: &[Capability]) -> Vec<Capability> {
 /// console`.
 pub fn spell(capability: &Capability) -> String {
     let mut spelled = match &capability.budget {
+        // a memory budget has no `per` (decision AW64)
+        Some((count, unit)) if effects::is_memory_unit(unit) => {
+            format!("{} at most {count} {unit}", capability.spelling())
+        }
         Some((count, unit)) => format!("{} at most {count} per {unit}", capability.spelling()),
         None => capability.spelling(),
     };
@@ -418,6 +422,19 @@ pub fn spell(capability: &Capability) -> String {
         spelled.push_str(&format!(" only to {}", sinks.join(" or ")));
     }
     spelled
+}
+
+/// The memory budget a grant declares (decision AW64): the smallest
+/// `memory at most COUNT UNIT` among its capabilities, in bytes.
+pub fn memory_of(declared: &[Capability]) -> Option<u64> {
+    declared
+        .iter()
+        .filter(|capability| capability.path == ["memory"])
+        .filter_map(|capability| {
+            let (count, unit) = capability.budget.as_ref()?;
+            effects::memory_bytes(count, unit)
+        })
+        .min()
 }
 
 /// A capability from its spelling: `filesystem.read("data")`, `console`,
@@ -443,17 +460,30 @@ pub fn parse_capability(text: &str) -> Result<Capability, String> {
     };
     let (head, budget) = match text.split_once(" at most ") {
         Some((head, rest)) => {
-            let (count, unit) = rest
-                .split_once(" per ")
-                .ok_or_else(|| format!("`{text}`: a budget is `at most COUNT per UNIT`"))?;
-            let count = count.trim();
-            let unit = unit.trim();
+            // `COUNT per UNIT`, or `COUNT UNIT` for a memory (decision AW64)
+            let (count, unit, memory) = match rest.split_once(" per ") {
+                Some((count, unit)) => (count.trim(), unit.trim(), false),
+                None => match rest.trim().split_once(' ') {
+                    Some((count, unit)) => (count, unit.trim(), true),
+                    None => {
+                        return Err(format!(
+                            "`{text}`: a budget is `at most COUNT per UNIT`, or `at most COUNT UNIT` of memory"
+                        ))
+                    }
+                },
+            };
             if count.parse::<u64>().is_err() {
                 return Err(format!(
                     "`{text}`: the count `{count}` is not a whole number"
                 ));
             }
-            if Unit::parse(unit).is_none() {
+            if memory {
+                if !effects::is_memory_unit(unit) {
+                    return Err(format!(
+                        "`{text}`: the unit `{unit}` is not bytes, kilobytes, megabytes or gigabytes"
+                    ));
+                }
+            } else if Unit::parse(unit).is_none() {
                 return Err(format!(
                     "`{text}`: the unit `{unit}` is not second, minute, hour, day or run"
                 ));
@@ -598,6 +628,27 @@ pub fn normalize_path(text: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_memory_budget_is_spelled_without_per_and_read_back() {
+        // decision AW64
+        let spelled = "memory at most 256 megabytes";
+        let capability = parse_capability(spelled).expect("parses");
+        assert_eq!(
+            capability.budget,
+            Some(("256".to_string(), "megabytes".to_string()))
+        );
+        assert_eq!(spell(&capability), spelled);
+        assert_eq!(memory_of(std::slice::from_ref(&capability)), Some(256 << 20));
+        let smaller = parse_capability("memory at most 1024 kilobytes").expect("parses");
+        assert_eq!(memory_of(&[capability, smaller]), Some(1 << 20));
+        assert_eq!(
+            memory_of(&[parse_capability("console").expect("parses")]),
+            None
+        );
+        assert!(parse_capability("memory at most 3 weeks").is_err());
+        assert!(parse_capability("network.http at most 3 per week").is_err());
+    }
 
     fn cap(text: &str) -> Capability {
         parse_capability(text).unwrap()

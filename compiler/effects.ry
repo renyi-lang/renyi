@@ -40,8 +40,17 @@ let tree: List of Text be [
   "process",
   "foreign",
   "python",
-  "screen"
+  "screen",
+  "memory"
 ]
+
+let memory_units: List of Text be ["bytes", "kilobytes", "megabytes", "gigabytes"]
+
+public function is_memory_unit(unit: Text) returns Boolean
+  purpose: Whether a budget's unit is one of memory (decision AW64).
+
+  return memory_units.contains(unit)
+end
 
 public function tree_spelling() returns Text
   purpose: The built-in tree as a fix lists it.
@@ -118,6 +127,7 @@ end
 public function covers(granted: Grant, needed: Grant, runtime_scoped: Boolean) returns Boolean
   purpose: Whether a grant covers a need: an ancestor path and a containing scope.
 
+  if needed.path.join(".") is "memory" then return true end
   let width be granted.path.length()
   if needed.path.length() is less than width then return false end
   if needed.path.take(width) is not granted.path then return false end

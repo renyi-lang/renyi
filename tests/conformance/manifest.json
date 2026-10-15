@@ -240,6 +240,44 @@
       "exit_code": 0
     },
     {
+      "name": "a run over the memory budget its grant declares ends as a crash",
+      "command": "run",
+      "program": "tests/conformance/programs/memory_budget_over.ry",
+      "stdout": "tests/conformance/expected/empty.out",
+      "stderr_contains": [
+        "the memory budget of 16 megabytes was exceeded"
+      ],
+      "exit_code": 2
+    },
+    {
+      "name": "a run within the memory budget its grant declares finishes",
+      "command": "run",
+      "program": "tests/conformance/programs/memory_budget_within.ry",
+      "stdout": "tests/conformance/expected/memory_budget_within.out",
+      "exit_code": 0
+    },
+    {
+      "name": "the memory budget belongs to the grant of main",
+      "command": "check",
+      "program": "tests/conformance/programs/memory_budget_misplaced.ry",
+      "diagnostics": ["grant-clause"],
+      "exit_code": 1
+    },
+    {
+      "name": "memory stands only with its budget",
+      "command": "check",
+      "program": "tests/conformance/programs/memory_budget_bare.ry",
+      "diagnostics": ["grant-clause"],
+      "exit_code": 1
+    },
+    {
+      "name": "a memory budget is in bytes and a call budget per a unit of time",
+      "command": "check",
+      "program": "tests/conformance/programs/memory_budget_units.ry",
+      "diagnostics": ["grant-clause", "grant-clause"],
+      "exit_code": 1
+    },
+    {
       "name": "exhaustiveness looks inside the patterns",
       "command": "check",
       "program": "tests/conformance/programs/match_nested.ry",

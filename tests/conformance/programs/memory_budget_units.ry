@@ -1,0 +1,11 @@
+module memory_budget_units
+  purpose: A time unit on `memory` and a memory unit on a call budget (decision AW64).
+
+import std.console
+
+public function main()
+  needs console, memory at most 60 per minute, network.http at most 16 megabytes
+  purpose: Print a greeting.
+
+  console.print("hi")
+end
