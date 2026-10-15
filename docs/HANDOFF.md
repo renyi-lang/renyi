@@ -9928,9 +9928,16 @@ on a fresh clone).
   stream opened; the badge's title went from "Renyi on Glama" to
   "Renyi – MCP server rated A on Glama" within minutes, so the
   quality score the awesome-mcp-servers bot asks for exists; the
-  "Make Release" link beside the test (a release Glama lists and
-  hosts) is a public surface the session's permissions refused, so
-  it waits for the owner's click or their say-so; the badge
+  release was made on the owner's word at 01:45 on the 15th: "Create
+  Release" on the test's page asks a version and a changelog, and
+  release 0.2.1 is published ("Latest", by skymanbp); the Releases
+  tab's "Auto-Release" switch is on by default, so every GitHub
+  release of the repository builds and publishes a new version on
+  Glama by itself; the Discovery score rose to 83% with the release;
+  Glama's public API (`glama.ai/api/mcp`, `GET` only: servers,
+  connectors, instances, telemetry) has no release call, so the
+  personal token the owner put on line 2 of `.secret` was not
+  needed and was not used; the badge
   `[![renyi-lang/renyi MCP server](https://glama.ai/mcp/servers/renyi-lang/renyi/badges/score.svg)](https://glama.ai/mcp/servers/renyi-lang/renyi)`
   is in the pull request since 03:23 UTC on the 15th (after the
   repository link, as the list's other entries place it; the fork's
