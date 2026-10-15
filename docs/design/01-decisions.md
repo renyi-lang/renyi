@@ -10481,3 +10481,44 @@ clippy, cargo test 67 suites ok, format check of compiler/ and bench/,
 lint, tokens, all exit 0 (gates45c.log, 21:27:39); the wasm build failed
 there on the arity of the stub Jit::new, fixed and built clean, fmt and
 clippy clean after. (Claude)
+
+**AW67. Stage 46 built: the liveness walk's residue on both sides
+(2026-10-15 night).** The owner's order after 45b ("加速收尾项目，稳定版本", then
+the four answers: the stable version is 0.4.0, the unscheduled speed
+items go in before its tag, the article's numbers follow it with the
+arXiv endorsement request written, and the roadmap's obvious work is
+done first), so the two items the roadmap had not scheduled are one
+stage. (a) The Rust front end's name sets as bits, the fix AU55 left:
+`compile/liveness.rs` interns each name to a small index the first time
+the walk meets it (`Walk::intern`, one hash per occurrence) and keeps
+every set of names as a row of bits (`Bits`, a `Vec<u64>` that grows
+with the interned names: membership one bit test, the join of the names
+after a statement a word-wise or, a frame's `later` a copy of a few
+words), and the mentions and the bound names of an expression are
+gathered in one pass (`Walk::expr`, the mentions wanted or not) where
+`expr_mentions` and `expr_bound` walked it twice. The measure, the Rust
+front end's rows on `compiler/bodies.ry` under callgrind (the lane's
+`study_rust_rows.sh`, `renyi_45c` at 94a1a62 against `renyi_46a`): the
+compile row 467.9 to 461.0 million instructions, -1.5%; the check row
+177.8 to 177.7 million and the parse row 248.4 unchanged, which run no
+analysis; the analysis's own cost under 3 million after it, the
+interning's hashing 0.8 million of them. (b) The emitter's single pass,
+the residue AW59 left and estimated at 30 million: `own_mentions`,
+`own_bound` and the two expression families of `compiler/emit.ry` are
+`own_level` and the `_noted` family over `Noted`, a record of the
+mentions and the bound names, which a direct caller receives as a pair
+(AW9); a name appends its mention through `noted with mentions:
+noted.mentions.append(...)`, the update in the slot (AU11), a binding
+adds its name the same way (`bind`), and a pattern's or a loop's
+bindings go through `bind_pattern` and `bind_all`, which take the set
+out of the record so that it grows in place; `expr_bound` and its family
+stay for the names a loop's body binds at any depth, read by
+`block_bound`. The measure (`measure_46b.sh`: `renyi_46a` on the base
+worktree's `compiler/` and on the stage's, by perf stat): the compile
+row 1,926.4 to 1,916.6 million instructions, -0.5%, a third of the
+estimate, the pair built and taken apart per expression costing part of
+what the second walk cost; the bytecode written byte for byte the same
+(`cmp`), the judge of Z3 passing on both sides (four tests, 48.9 s).
+Gates: fmt, clippy, cargo test 67 suites ok, format check of compiler/
+and bench/, lint, tokens, wasm build and wasm clippy, all exit 0
+(gates46.log, 22:22:19). (Claude)

@@ -252,9 +252,16 @@ tightening it; the handoff's section "Stage 45"), and its second part,
 both tiers at a body's entry and a loop's back edge, the JIT's
 compilations left out of the count, the guard generated only under a
 budget after the first measure's cost, the image recording it, a
-budgeted run on the JIT). The work next is the owner's call at the
-next session: the roadmap's remaining candidates (the Rust front end's
-name sets as bits, the liveness walk's residue) or something new. The watch rounds
+budgeted run on the JIT). The owner's order after it, the same night:
+"加速收尾项目，稳定版本", answered in four (AW67): the stable version is
+0.4.0, the unscheduled speed items first, the article's numbers to
+0.4.0 with the arXiv endorsement request written, the roadmap's obvious
+work done before the tag. Stage 46 built the two speed items (AW67:
+the Rust front end's name sets as bits, the emitter's liveness walk in
+one pass; the handoff's section "Stage 46"). Left before the tag: the C
+archive's static library without fat LTO's bitcode (`docs/RELEASE.md`
+section 9); then release 0.4.0 by section 3 of that file; then the
+article. The watch rounds
 (Gmail, the notifications, the ten list pull requests, the Glama
 badge) were a cron of session 15, stopped on the owner's word of
 2026-10-15 evening ("如果有回复或者更新我通知你": the owner reports
@@ -4256,6 +4263,40 @@ iterator in two slots, the Rust front end's name sets).
 Then the first stage the owner confirms. Done in session 14: the study is
 the section "Stage 29, the new backend: the design study (session 14)"
 below, and the owner's answers are decision AW1.
+
+## Stage 46, the liveness walk's residue on both sides (session 15, night)
+
+**What it is.** Two items the roadmap had not scheduled, built as one
+stage once the owner asked for the stable version (decision AW67). (a)
+`crates/renyi_vm/src/compile/liveness.rs`: the names interned to small
+indexes as the walk meets them (`Walk::intern`), every set of names a
+`Bits` (a `Vec<u64>` that grows), the mentions and the bound names of an
+expression in one pass (`Walk::expr`, with `Option<&mut Vec<Mention>>`
+for the mentions, `None` from `statement_bound`). (b)
+`compiler/emit.ry`: `own_level` and the `_noted` family over the record
+`Noted(mentions, bound)`, a pair by AW9; the in-place forms are `return
+noted with mentions: noted.mentions.append(...)` (AU11's update in the
+slot) and the helpers `bind`, `bind_pattern` and `bind_all`, which take
+the set out of the record before adding to it, since a field read that
+is not the record's last read would share the set and a later add would
+copy it; the loop-depth family (`block_bound`, `statement_bound`,
+`expr_bound` and the rest) stays as it was.
+**The measure.** The Rust rows (`study_rust_rows.sh`, `study/base46`
+with `renyi_45c` and `study/46a` with `renyi_46a`): compile 467.9 to
+461.0 million instructions (-1.5%), check 177.8 to 177.7, parse 248.4
+unchanged. The compile row of the Renyi compiler (`measure_46b.sh`,
+`quick_compile_row.sh` with `renyi_46a` on the base worktree's sources
+and on the stage's): 1,926.4 to 1,916.6 million (-0.5%), the bytecode
+files equal. The estimate of AW59 was 30 million; the pair's building
+and taking apart per expression keeps part of it. The judge: `cargo test
+-p renyi --test selfhost`, four tests, 48.9 s, on both sides.
+**Lessons.** A record of two fields returned as a pair is cheap to pass
+but not free to take apart: a rewrite that threads such a record through
+every expression pays a call and two moves per node, so the saving of a
+merged walk is a fraction of the walk it removes. Callgrind's inclusive
+listing does not name the Renyi functions of an image's generated code,
+so a Renyi function's own cost is read from `renyi run --profile` or
+from the perf-stat delta, not from `compile.incl.txt`.
 
 ## Stage 45, the memory budget written in the program (GAPS 3.6): the design study (session 15)
 

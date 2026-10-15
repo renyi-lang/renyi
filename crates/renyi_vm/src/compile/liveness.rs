@@ -9,8 +9,14 @@
 //! query runs once per item and is never the last. The emitter written in
 //! Renyi computes the same set (`compiler/emit.ry`), which the judge of
 //! decision Z3 holds equal.
+//!
+//! The names are interned to small indexes as the walk meets them, one
+//! hash per occurrence, and every set of names is a row of bits
+//! (decision AW67): a name's membership is one bit test, the names after
+//! a statement joined by a word-wise or, and the mentions and the bound
+//! names of an expression are gathered in one pass over it.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use renyi_syntax::ast::{
     Block, Expr, ExprKind, Outcome, Pattern, Query, QueryTerminal, Stmt, StmtKind, TextPiece,
@@ -18,68 +24,544 @@ use renyi_syntax::ast::{
 
 /// The starts of the name tokens whose read is the last of their local.
 pub fn last_uses(body: &Block) -> HashSet<usize> {
-    let mut out = HashSet::new();
-    walk_block(body, &mut Vec::new(), &mut out);
-    out
+    let mut walk = Walk {
+        names: HashMap::new(),
+        out: HashSet::new(),
+    };
+    walk.block(body, &mut Vec::new());
+    walk.out
+}
+
+/// A set of names as bits, indexed by the interned name.
+#[derive(Clone, Default)]
+struct Bits(Vec<u64>);
+
+impl Bits {
+    fn insert(&mut self, name: u32) {
+        let word = (name / 64) as usize;
+        if word >= self.0.len() {
+            self.0.resize(word + 1, 0);
+        }
+        self.0[word] |= 1 << (name % 64);
+    }
+
+    fn contains(&self, name: u32) -> bool {
+        self.0
+            .get((name / 64) as usize)
+            .is_some_and(|word| word & (1 << (name % 64)) != 0)
+    }
+
+    fn extend(&mut self, other: &Bits) {
+        if other.0.len() > self.0.len() {
+            self.0.resize(other.0.len(), 0);
+        }
+        for (word, more) in self.0.iter_mut().zip(&other.0) {
+            *word |= more;
+        }
+    }
 }
 
 /// A block around the one being walked: the names mentioned after the
 /// statement that holds it, and, for a loop, the names its repeating part
 /// binds anew on every turn.
-struct Frame<'a> {
-    later: HashSet<&'a str>,
-    bound_by_loop: Option<HashSet<&'a str>>,
+struct Frame {
+    later: Bits,
+    bound_by_loop: Option<Bits>,
 }
 
 /// A read of a name at a statement's own level: the token's start and
 /// whether it is a candidate (a read outside any query and any part that
 /// runs more than once).
-struct Mention<'a> {
-    name: &'a str,
+struct Mention {
+    name: u32,
     start: usize,
     candidate: bool,
 }
 
-/// The last reads in a block, walked from its last statement so that the
-/// names mentioned after each statement are known; what comes back is
-/// every name the block mentions (read or bound) at any depth.
-fn walk_block<'a>(
-    block: &'a Block,
-    frames: &mut Vec<Frame<'a>>,
-    out: &mut HashSet<usize>,
-) -> HashSet<&'a str> {
-    let mut after: HashSet<&'a str> = HashSet::new();
-    for statement in block.statements.iter().rev() {
-        let mut own = Vec::new();
-        let mut bound = HashSet::new();
-        own_level(statement, &mut own, &mut bound);
-        let nested = walk_nested(statement, &after, frames, out);
-        for mention in &own {
-            if !mention.candidate {
-                continue;
+/// The walk over one body: the names interned so far and the last reads
+/// found.
+struct Walk<'a> {
+    names: HashMap<&'a str, u32>,
+    out: HashSet<usize>,
+}
+
+impl<'a> Walk<'a> {
+    fn intern(&mut self, name: &'a str) -> u32 {
+        let next = self.names.len() as u32;
+        *self.names.entry(name).or_insert(next)
+    }
+
+    /// The last reads in a block, walked from its last statement so that
+    /// the names mentioned after each statement are known; what comes
+    /// back is every name the block mentions (read or bound) at any
+    /// depth.
+    fn block(&mut self, block: &'a Block, frames: &mut Vec<Frame>) -> Bits {
+        let mut after = Bits::default();
+        for statement in block.statements.iter().rev() {
+            let mut own = Vec::new();
+            let mut bound = Bits::default();
+            self.own_level(statement, &mut own, &mut bound);
+            let nested = self.nested(statement, &after, frames);
+            for mention in &own {
+                if !mention.candidate {
+                    continue;
+                }
+                if own.iter().filter(|m| m.name == mention.name).count() != 1 {
+                    continue;
+                }
+                if nested.contains(mention.name) || after.contains(mention.name) {
+                    continue;
+                }
+                let allowed = frames.iter().all(|frame| {
+                    !frame.later.contains(mention.name)
+                        && frame
+                            .bound_by_loop
+                            .as_ref()
+                            .is_none_or(|bound| bound.contains(mention.name))
+                });
+                if allowed {
+                    self.out.insert(mention.start);
+                }
             }
-            if own.iter().filter(|m| m.name == mention.name).count() != 1 {
-                continue;
+            for mention in &own {
+                after.insert(mention.name);
             }
-            if nested.contains(mention.name) || after.contains(mention.name) {
-                continue;
+            after.extend(&bound);
+            after.extend(&nested);
+        }
+        after
+    }
+
+    /// A nested block walked with the frames around it, or with no frame
+    /// at all when it never falls through.
+    fn body(&mut self, frames: &mut Vec<Frame>, body: &'a Block) -> Bits {
+        if leaves(body) {
+            self.block(body, &mut Vec::new())
+        } else {
+            self.block(body, frames)
+        }
+    }
+
+    /// The blocks nested in a statement, each walked with the statement's
+    /// frame around it (what is mentioned after the statement, and for a
+    /// loop what its repeating part binds), or with no frame at all when
+    /// the block never falls through; the names they mention come back.
+    fn nested(&mut self, statement: &'a Stmt, after: &Bits, frames: &mut Vec<Frame>) -> Bits {
+        let mut names = Bits::default();
+        match &statement.kind {
+            StmtKind::If {
+                branches,
+                otherwise,
+            } => {
+                let mut bodies: Vec<&Block> = branches.iter().map(|(_, body)| body).collect();
+                bodies.extend(otherwise.iter());
+                self.plain(frames, after, &bodies, &mut names);
             }
-            let allowed = frames.iter().all(|frame| {
-                !frame.later.contains(mention.name)
-                    && frame
-                        .bound_by_loop
-                        .as_ref()
-                        .is_none_or(|bound| bound.contains(mention.name))
-            });
-            if allowed {
-                out.insert(mention.start);
+            StmtKind::Match {
+                arms, otherwise, ..
+            } => {
+                let mut bodies: Vec<&Block> = arms.iter().map(|arm| &arm.body).collect();
+                bodies.extend(otherwise.iter());
+                self.plain(frames, after, &bodies, &mut names);
+            }
+            StmtKind::RunConcurrently { body, .. } => {
+                self.plain(frames, after, &[body], &mut names)
+            }
+            StmtKind::ForEach { bindings, body, .. } => {
+                let mut bound = Bits::default();
+                for binding in bindings {
+                    let name = self.intern(&binding.text);
+                    bound.insert(name);
+                }
+                self.block_bound(body, &mut bound);
+                frames.push(Frame {
+                    later: after.clone(),
+                    bound_by_loop: Some(bound),
+                });
+                names.extend(&self.body(frames, body));
+                frames.pop();
+            }
+            StmtKind::RepeatUntil { body, .. } => {
+                let mut bound = Bits::default();
+                self.block_bound(body, &mut bound);
+                frames.push(Frame {
+                    later: after.clone(),
+                    bound_by_loop: Some(bound),
+                });
+                names.extend(&self.body(frames, body));
+                frames.pop();
+            }
+            _ => {}
+        }
+        names
+    }
+
+    /// The bodies of a statement that is not a loop, each walked under a
+    /// frame of what is mentioned after the statement.
+    fn plain(
+        &mut self,
+        frames: &mut Vec<Frame>,
+        after: &Bits,
+        bodies: &[&'a Block],
+        names: &mut Bits,
+    ) {
+        frames.push(Frame {
+            later: after.clone(),
+            bound_by_loop: None,
+        });
+        for body in bodies {
+            names.extend(&self.body(frames, body));
+        }
+        frames.pop();
+    }
+
+    /// A statement's own level, its nested blocks left out: the reads
+    /// (candidates outside a query and outside a part that runs more than
+    /// once), and the names bound there (its own binding, a loop's, a
+    /// pattern's, a query's), in one pass over each expression.
+    fn own_level(&mut self, statement: &'a Stmt, mentions: &mut Vec<Mention>, bound: &mut Bits) {
+        match &statement.kind {
+            StmtKind::Let { name, value, .. } => {
+                let name = self.intern(&name.text);
+                bound.insert(name);
+                self.expr(value, true, Some(mentions), bound);
+            }
+            // a write is not a mention: it reads nothing from the slot,
+            // and a read after it sees what it stored
+            StmtKind::Change { value, .. } => self.expr(value, true, Some(mentions), bound),
+            StmtKind::If { branches, .. } => {
+                for (condition, _) in branches {
+                    self.expr(condition, true, Some(&mut *mentions), bound);
+                }
+            }
+            StmtKind::Match { subject, arms, .. } => {
+                self.expr(subject, true, Some(&mut *mentions), bound);
+                for arm in arms {
+                    self.pattern_bound(&arm.pattern, bound);
+                    if let Some(guard) = &arm.guard {
+                        self.expr(guard, true, Some(&mut *mentions), bound);
+                    }
+                }
+            }
+            StmtKind::ForEach {
+                bindings,
+                source,
+                filter,
+                order,
+                ..
+            } => {
+                for binding in bindings {
+                    let name = self.intern(&binding.text);
+                    bound.insert(name);
+                }
+                self.expr(source, true, Some(&mut *mentions), bound);
+                if let Some(filter) = filter {
+                    self.expr(filter, false, Some(&mut *mentions), bound);
+                }
+                if let Some(order) = order {
+                    self.expr(&order.key, false, Some(&mut *mentions), bound);
+                }
+            }
+            StmtKind::RepeatUntil { condition, .. } => {
+                self.expr(condition, false, Some(mentions), bound)
+            }
+            StmtKind::RunConcurrently { within, .. } => {
+                if let Some(within) = within {
+                    self.expr(within, true, Some(mentions), bound);
+                }
+            }
+            StmtKind::Return(value) | StmtKind::Fail(value) => {
+                if let Some(value) = value {
+                    self.expr(value, true, Some(mentions), bound);
+                }
+            }
+            StmtKind::Crash(value)
+            | StmtKind::Ignore(value)
+            | StmtKind::Check(value)
+            | StmtKind::Expression(value) => self.expr(value, true, Some(mentions), bound),
+            StmtKind::Break | StmtKind::Continue => {}
+        }
+    }
+
+    /// The reads in an expression (into `mentions` when they are wanted,
+    /// candidates when `own`) and the names it binds (a match arm's
+    /// pattern, a query's bindings, at any depth), in one pass.
+    fn expr(
+        &mut self,
+        expr: &'a Expr,
+        own: bool,
+        mut mentions: Option<&mut Vec<Mention>>,
+        bound: &mut Bits,
+    ) {
+        match &expr.kind {
+            ExprKind::Name(name) => {
+                if let Some(mentions) = mentions {
+                    let name_index = self.intern(&name.text);
+                    mentions.push(Mention {
+                        name: name_index,
+                        start: name.span.start,
+                        candidate: own,
+                    });
+                }
+            }
+            ExprKind::Integer(_)
+            | ExprKind::Decimal(_)
+            | ExprKind::RawText(_)
+            | ExprKind::Boolean(_)
+            | ExprKind::Nothing
+            | ExprKind::SelfValue
+            | ExprKind::TypeName(_) => {}
+            ExprKind::Text { pieces, .. } => {
+                for piece in pieces {
+                    if let TextPiece::Hole(e) = piece {
+                        self.expr(e, own, mentions.as_deref_mut(), bound);
+                    }
+                }
+            }
+            ExprKind::Member { base, .. } => self.expr(base, own, mentions, bound),
+            ExprKind::Call { callee, args } => {
+                self.expr(callee, own, mentions.as_deref_mut(), bound);
+                for arg in args {
+                    self.expr(&arg.value, own, mentions.as_deref_mut(), bound);
+                }
+            }
+            ExprKind::Construct { args, .. } => {
+                for arg in args {
+                    self.expr(&arg.value, own, mentions.as_deref_mut(), bound);
+                }
+            }
+            ExprKind::List(items) => {
+                for item in items {
+                    self.expr(item, own, mentions.as_deref_mut(), bound);
+                }
+            }
+            ExprKind::Map(entries) => {
+                for (key, value) in entries {
+                    self.expr(key, own, mentions.as_deref_mut(), bound);
+                    self.expr(value, own, mentions.as_deref_mut(), bound);
+                }
+            }
+            ExprKind::Range { from, to, by } => {
+                self.expr(from, own, mentions.as_deref_mut(), bound);
+                self.expr(to, own, mentions.as_deref_mut(), bound);
+                if let Some(by) = by {
+                    self.expr(by, own, mentions, bound);
+                }
+            }
+            ExprKind::Not(inner) | ExprKind::Paren(inner) => self.expr(inner, own, mentions, bound),
+            ExprKind::Binary { left, right, .. } => {
+                self.expr(left, own, mentions.as_deref_mut(), bound);
+                self.expr(right, own, mentions, bound);
+            }
+            ExprKind::With { base, updates } => {
+                self.expr(base, own, mentions.as_deref_mut(), bound);
+                for update in updates {
+                    self.expr(&update.value, own, mentions.as_deref_mut(), bound);
+                }
+            }
+            ExprKind::Otherwise { value, fallback } => {
+                self.expr(value, own, mentions.as_deref_mut(), bound);
+                self.outcome(fallback, own, mentions, bound);
+            }
+            ExprKind::If {
+                branches,
+                otherwise,
+            } => {
+                for (condition, result) in branches {
+                    self.expr(condition, own, mentions.as_deref_mut(), bound);
+                    self.outcome(result, own, mentions.as_deref_mut(), bound);
+                }
+                self.outcome(otherwise, own, mentions, bound);
+            }
+            ExprKind::Match {
+                subject,
+                arms,
+                otherwise,
+            } => {
+                self.expr(subject, own, mentions.as_deref_mut(), bound);
+                for arm in arms {
+                    self.pattern_bound(&arm.pattern, bound);
+                    if let Some(guard) = &arm.guard {
+                        self.expr(guard, own, mentions.as_deref_mut(), bound);
+                    }
+                    self.outcome(&arm.body, own, mentions.as_deref_mut(), bound);
+                }
+                if let Some(fallback) = otherwise {
+                    self.outcome(fallback, own, mentions, bound);
+                }
+            }
+            // every part of a query runs once per item, or before the
+            // loop with a binding of the query's own in scope: never a
+            // last read
+            ExprKind::Query(query) => self.query(query, mentions, bound),
+        }
+    }
+
+    fn outcome(
+        &mut self,
+        outcome: &'a Outcome,
+        own: bool,
+        mentions: Option<&mut Vec<Mention>>,
+        bound: &mut Bits,
+    ) {
+        match outcome {
+            Outcome::Value(e) | Outcome::Crash(e, _) => self.expr(e, own, mentions, bound),
+            Outcome::Fail(e, _) | Outcome::Return(e, _) => {
+                if let Some(e) = e {
+                    self.expr(e, own, mentions, bound);
+                }
+            }
+            Outcome::Break(_) | Outcome::Continue(_) => {}
+        }
+    }
+
+    fn query(
+        &mut self,
+        query: &'a Query,
+        mut mentions: Option<&mut Vec<Mention>>,
+        bound: &mut Bits,
+    ) {
+        for source in &query.sources {
+            for binding in &source.bindings {
+                let name = self.intern(&binding.text);
+                bound.insert(name);
+            }
+            self.expr(&source.source, false, mentions.as_deref_mut(), bound);
+        }
+        if let Some(within) = &query.within {
+            self.expr(within, false, mentions.as_deref_mut(), bound);
+        }
+        if let Some(filter) = &query.filter {
+            self.expr(filter, false, mentions.as_deref_mut(), bound);
+        }
+        if let Some(order) = &query.order {
+            self.expr(&order.key, false, mentions.as_deref_mut(), bound);
+        }
+        if let Some(key) = &query.group_by {
+            self.expr(key, false, mentions.as_deref_mut(), bound);
+        }
+        match &query.terminal {
+            QueryTerminal::Collect(e)
+            | QueryTerminal::Sum(e)
+            | QueryTerminal::Any(e)
+            | QueryTerminal::All(e) => self.expr(e, false, mentions, bound),
+            QueryTerminal::Count | QueryTerminal::First | QueryTerminal::None => {}
+        }
+    }
+
+    // -------------------------------------------------------------- names
+
+    /// Every name a block binds, at any depth.
+    fn block_bound(&mut self, block: &'a Block, out: &mut Bits) {
+        for statement in &block.statements {
+            self.statement_bound(statement, out);
+        }
+    }
+
+    fn statement_bound(&mut self, statement: &'a Stmt, out: &mut Bits) {
+        match &statement.kind {
+            StmtKind::Let { name, value, .. } => {
+                let name = self.intern(&name.text);
+                out.insert(name);
+                self.expr(value, false, None, out);
+            }
+            StmtKind::Change { value, .. } => self.expr(value, false, None, out),
+            StmtKind::If {
+                branches,
+                otherwise,
+            } => {
+                for (condition, body) in branches {
+                    self.expr(condition, false, None, out);
+                    self.block_bound(body, out);
+                }
+                if let Some(body) = otherwise {
+                    self.block_bound(body, out);
+                }
+            }
+            StmtKind::Match {
+                subject,
+                arms,
+                otherwise,
+            } => {
+                self.expr(subject, false, None, out);
+                for arm in arms {
+                    self.pattern_bound(&arm.pattern, out);
+                    if let Some(guard) = &arm.guard {
+                        self.expr(guard, false, None, out);
+                    }
+                    self.block_bound(&arm.body, out);
+                }
+                if let Some(body) = otherwise {
+                    self.block_bound(body, out);
+                }
+            }
+            StmtKind::ForEach {
+                bindings,
+                source,
+                filter,
+                order,
+                body,
+            } => {
+                for binding in bindings {
+                    let name = self.intern(&binding.text);
+                    out.insert(name);
+                }
+                self.expr(source, false, None, out);
+                if let Some(filter) = filter {
+                    self.expr(filter, false, None, out);
+                }
+                if let Some(order) = order {
+                    self.expr(&order.key, false, None, out);
+                }
+                self.block_bound(body, out);
+            }
+            StmtKind::RepeatUntil { condition, body } => {
+                self.expr(condition, false, None, out);
+                self.block_bound(body, out);
+            }
+            StmtKind::RunConcurrently { within, body } => {
+                if let Some(within) = within {
+                    self.expr(within, false, None, out);
+                }
+                self.block_bound(body, out);
+            }
+            StmtKind::Return(value) | StmtKind::Fail(value) => {
+                if let Some(value) = value {
+                    self.expr(value, false, None, out);
+                }
+            }
+            StmtKind::Crash(value)
+            | StmtKind::Ignore(value)
+            | StmtKind::Check(value)
+            | StmtKind::Expression(value) => self.expr(value, false, None, out),
+            StmtKind::Break | StmtKind::Continue => {}
+        }
+    }
+
+    /// Every name a pattern binds.
+    fn pattern_bound(&mut self, pattern: &'a Pattern, out: &mut Bits) {
+        match pattern {
+            Pattern::Binding(name) | Pattern::Typed { name, .. } => {
+                let name = self.intern(&name.text);
+                out.insert(name);
+            }
+            Pattern::Nothing(_) | Pattern::Literal(_) => {}
+            Pattern::Some(inner, _) | Pattern::Success(inner, _) | Pattern::Failure(inner, _) => {
+                self.pattern_bound(inner, out)
+            }
+            Pattern::Variant { fields, .. } => {
+                for field in fields {
+                    match &field.pattern {
+                        Some(inner) => self.pattern_bound(inner, out),
+                        None => {
+                            let name = self.intern(&field.field.text);
+                            out.insert(name);
+                        }
+                    }
+                }
             }
         }
-        after.extend(own.iter().map(|mention| mention.name));
-        after.extend(bound);
-        after.extend(nested);
     }
-    after
 }
 
 /// Whether a block never falls through: its last statement leaves the
@@ -91,514 +573,4 @@ fn leaves(block: &Block) -> bool {
         block.statements.last().map(|s| &s.kind),
         Some(StmtKind::Return(_) | StmtKind::Fail(_) | StmtKind::Crash(_))
     )
-}
-
-/// The blocks nested in a statement, each walked with the statement's
-/// frame around it (what is mentioned after the statement, and for a loop
-/// what its repeating part binds), or with no frame at all when the block
-/// never falls through; the names they mention come back.
-fn walk_nested<'a>(
-    statement: &'a Stmt,
-    after: &HashSet<&'a str>,
-    frames: &mut Vec<Frame<'a>>,
-    out: &mut HashSet<usize>,
-) -> HashSet<&'a str> {
-    let mut names = HashSet::new();
-    let mut walk = |frames: &mut Vec<Frame<'a>>, body: &'a Block| {
-        if leaves(body) {
-            names.extend(walk_block(body, &mut Vec::new(), out));
-        } else {
-            names.extend(walk_block(body, frames, out));
-        }
-    };
-    let mut plain = |frames: &mut Vec<Frame<'a>>, bodies: Vec<&'a Block>| {
-        frames.push(Frame {
-            later: after.clone(),
-            bound_by_loop: None,
-        });
-        for body in bodies {
-            walk(frames, body);
-        }
-        frames.pop();
-    };
-    match &statement.kind {
-        StmtKind::If {
-            branches,
-            otherwise,
-        } => {
-            let mut bodies: Vec<&Block> = branches.iter().map(|(_, body)| body).collect();
-            bodies.extend(otherwise.iter());
-            plain(frames, bodies);
-        }
-        StmtKind::Match {
-            arms, otherwise, ..
-        } => {
-            let mut bodies: Vec<&Block> = arms.iter().map(|arm| &arm.body).collect();
-            bodies.extend(otherwise.iter());
-            plain(frames, bodies);
-        }
-        StmtKind::RunConcurrently { body, .. } => plain(frames, vec![body]),
-        StmtKind::ForEach { bindings, body, .. } => {
-            let mut bound: HashSet<&str> = bindings.iter().map(|b| b.text.as_str()).collect();
-            block_bound(body, &mut bound);
-            frames.push(Frame {
-                later: after.clone(),
-                bound_by_loop: Some(bound),
-            });
-            walk(frames, body);
-            frames.pop();
-        }
-        StmtKind::RepeatUntil { body, .. } => {
-            let mut bound = HashSet::new();
-            block_bound(body, &mut bound);
-            frames.push(Frame {
-                later: after.clone(),
-                bound_by_loop: Some(bound),
-            });
-            walk(frames, body);
-            frames.pop();
-        }
-        _ => {}
-    }
-    names
-}
-
-/// A statement's own level, its nested blocks left out: the reads
-/// (candidates outside a query and outside a part that runs more than
-/// once), and the names bound there (its own binding, a loop's, a
-/// pattern's, a query's).
-fn own_level<'a>(
-    statement: &'a Stmt,
-    mentions: &mut Vec<Mention<'a>>,
-    bound: &mut HashSet<&'a str>,
-) {
-    let expr =
-        |e: &'a Expr, own: bool, mentions: &mut Vec<Mention<'a>>, bound: &mut HashSet<&'a str>| {
-            expr_mentions(e, own, mentions);
-            expr_bound(e, bound);
-        };
-    match &statement.kind {
-        StmtKind::Let { name, value, .. } => {
-            bound.insert(&name.text);
-            expr(value, true, mentions, bound);
-        }
-        // a write is not a mention: it reads nothing from the slot, and a
-        // read after it sees what it stored
-        StmtKind::Change { value, .. } => expr(value, true, mentions, bound),
-        StmtKind::If { branches, .. } => {
-            for (condition, _) in branches {
-                expr(condition, true, mentions, bound);
-            }
-        }
-        StmtKind::Match { subject, arms, .. } => {
-            expr(subject, true, mentions, bound);
-            for arm in arms {
-                pattern_bound(&arm.pattern, bound);
-                if let Some(guard) = &arm.guard {
-                    expr(guard, true, mentions, bound);
-                }
-            }
-        }
-        StmtKind::ForEach {
-            bindings,
-            source,
-            filter,
-            order,
-            ..
-        } => {
-            bound.extend(bindings.iter().map(|b| b.text.as_str()));
-            expr(source, true, mentions, bound);
-            if let Some(filter) = filter {
-                expr(filter, false, mentions, bound);
-            }
-            if let Some(order) = order {
-                expr(&order.key, false, mentions, bound);
-            }
-        }
-        StmtKind::RepeatUntil { condition, .. } => expr(condition, false, mentions, bound),
-        StmtKind::RunConcurrently { within, .. } => {
-            if let Some(within) = within {
-                expr(within, true, mentions, bound);
-            }
-        }
-        StmtKind::Return(value) | StmtKind::Fail(value) => {
-            if let Some(value) = value {
-                expr(value, true, mentions, bound);
-            }
-        }
-        StmtKind::Crash(value)
-        | StmtKind::Ignore(value)
-        | StmtKind::Check(value)
-        | StmtKind::Expression(value) => expr(value, true, mentions, bound),
-        StmtKind::Break | StmtKind::Continue => {}
-    }
-}
-
-// ------------------------------------------------------------ mentions
-
-fn expr_mentions<'a>(expr: &'a Expr, own: bool, out: &mut Vec<Mention<'a>>) {
-    let outcome = |outcome: &'a Outcome, out: &mut Vec<Mention<'a>>| match outcome {
-        Outcome::Value(e) | Outcome::Crash(e, _) => expr_mentions(e, own, out),
-        Outcome::Fail(e, _) | Outcome::Return(e, _) => {
-            if let Some(e) = e {
-                expr_mentions(e, own, out);
-            }
-        }
-        Outcome::Break(_) | Outcome::Continue(_) => {}
-    };
-    match &expr.kind {
-        ExprKind::Name(name) => out.push(Mention {
-            name: &name.text,
-            start: name.span.start,
-            candidate: own,
-        }),
-        ExprKind::Integer(_)
-        | ExprKind::Decimal(_)
-        | ExprKind::RawText(_)
-        | ExprKind::Boolean(_)
-        | ExprKind::Nothing
-        | ExprKind::SelfValue
-        | ExprKind::TypeName(_) => {}
-        ExprKind::Text { pieces, .. } => {
-            for piece in pieces {
-                if let TextPiece::Hole(e) = piece {
-                    expr_mentions(e, own, out);
-                }
-            }
-        }
-        ExprKind::Member { base, .. } => expr_mentions(base, own, out),
-        ExprKind::Call { callee, args } => {
-            expr_mentions(callee, own, out);
-            for arg in args {
-                expr_mentions(&arg.value, own, out);
-            }
-        }
-        ExprKind::Construct { args, .. } => {
-            for arg in args {
-                expr_mentions(&arg.value, own, out);
-            }
-        }
-        ExprKind::List(items) => {
-            for item in items {
-                expr_mentions(item, own, out);
-            }
-        }
-        ExprKind::Map(entries) => {
-            for (key, value) in entries {
-                expr_mentions(key, own, out);
-                expr_mentions(value, own, out);
-            }
-        }
-        ExprKind::Range { from, to, by } => {
-            expr_mentions(from, own, out);
-            expr_mentions(to, own, out);
-            if let Some(by) = by {
-                expr_mentions(by, own, out);
-            }
-        }
-        ExprKind::Not(inner) | ExprKind::Paren(inner) => expr_mentions(inner, own, out),
-        ExprKind::Binary { left, right, .. } => {
-            expr_mentions(left, own, out);
-            expr_mentions(right, own, out);
-        }
-        ExprKind::With { base, updates } => {
-            expr_mentions(base, own, out);
-            for update in updates {
-                expr_mentions(&update.value, own, out);
-            }
-        }
-        ExprKind::Otherwise { value, fallback } => {
-            expr_mentions(value, own, out);
-            outcome(fallback, out);
-        }
-        ExprKind::If {
-            branches,
-            otherwise,
-        } => {
-            for (condition, result) in branches {
-                expr_mentions(condition, own, out);
-                outcome(result, out);
-            }
-            outcome(otherwise, out);
-        }
-        ExprKind::Match {
-            subject,
-            arms,
-            otherwise,
-        } => {
-            expr_mentions(subject, own, out);
-            for arm in arms {
-                if let Some(guard) = &arm.guard {
-                    expr_mentions(guard, own, out);
-                }
-                outcome(&arm.body, out);
-            }
-            if let Some(fallback) = otherwise {
-                outcome(fallback, out);
-            }
-        }
-        // every part of a query runs once per item, or before the loop
-        // with a binding of the query's own in scope: never a last read
-        ExprKind::Query(query) => query_mentions(query, out),
-    }
-}
-
-fn query_mentions<'a>(query: &'a Query, out: &mut Vec<Mention<'a>>) {
-    for source in &query.sources {
-        expr_mentions(&source.source, false, out);
-    }
-    if let Some(within) = &query.within {
-        expr_mentions(within, false, out);
-    }
-    if let Some(filter) = &query.filter {
-        expr_mentions(filter, false, out);
-    }
-    if let Some(order) = &query.order {
-        expr_mentions(&order.key, false, out);
-    }
-    if let Some(key) = &query.group_by {
-        expr_mentions(key, false, out);
-    }
-    match &query.terminal {
-        QueryTerminal::Collect(e)
-        | QueryTerminal::Sum(e)
-        | QueryTerminal::Any(e)
-        | QueryTerminal::All(e) => expr_mentions(e, false, out),
-        QueryTerminal::Count | QueryTerminal::First | QueryTerminal::None => {}
-    }
-}
-
-// ------------------------------------------------------------ names
-
-/// Every name a block binds, at any depth.
-fn block_bound<'a>(block: &'a Block, out: &mut HashSet<&'a str>) {
-    for statement in &block.statements {
-        statement_bound(statement, out);
-    }
-}
-
-fn statement_bound<'a>(statement: &'a Stmt, out: &mut HashSet<&'a str>) {
-    match &statement.kind {
-        StmtKind::Let { name, value, .. } => {
-            out.insert(&name.text);
-            expr_bound(value, out);
-        }
-        StmtKind::Change { value, .. } => expr_bound(value, out),
-        StmtKind::If {
-            branches,
-            otherwise,
-        } => {
-            for (condition, body) in branches {
-                expr_bound(condition, out);
-                block_bound(body, out);
-            }
-            if let Some(body) = otherwise {
-                block_bound(body, out);
-            }
-        }
-        StmtKind::Match {
-            subject,
-            arms,
-            otherwise,
-        } => {
-            expr_bound(subject, out);
-            for arm in arms {
-                pattern_bound(&arm.pattern, out);
-                if let Some(guard) = &arm.guard {
-                    expr_bound(guard, out);
-                }
-                block_bound(&arm.body, out);
-            }
-            if let Some(body) = otherwise {
-                block_bound(body, out);
-            }
-        }
-        StmtKind::ForEach {
-            bindings,
-            source,
-            filter,
-            order,
-            body,
-        } => {
-            out.extend(bindings.iter().map(|b| b.text.as_str()));
-            expr_bound(source, out);
-            if let Some(filter) = filter {
-                expr_bound(filter, out);
-            }
-            if let Some(order) = order {
-                expr_bound(&order.key, out);
-            }
-            block_bound(body, out);
-        }
-        StmtKind::RepeatUntil { condition, body } => {
-            expr_bound(condition, out);
-            block_bound(body, out);
-        }
-        StmtKind::RunConcurrently { within, body } => {
-            if let Some(within) = within {
-                expr_bound(within, out);
-            }
-            block_bound(body, out);
-        }
-        StmtKind::Return(value) | StmtKind::Fail(value) => {
-            if let Some(value) = value {
-                expr_bound(value, out);
-            }
-        }
-        StmtKind::Crash(value)
-        | StmtKind::Ignore(value)
-        | StmtKind::Check(value)
-        | StmtKind::Expression(value) => expr_bound(value, out),
-        StmtKind::Break | StmtKind::Continue => {}
-    }
-}
-
-/// Every name an expression binds: a match arm's pattern, a query's.
-fn expr_bound<'a>(expr: &'a Expr, out: &mut HashSet<&'a str>) {
-    let outcome = |outcome: &'a Outcome, out: &mut HashSet<&'a str>| match outcome {
-        Outcome::Value(e) | Outcome::Crash(e, _) => expr_bound(e, out),
-        Outcome::Fail(e, _) | Outcome::Return(e, _) => {
-            if let Some(e) = e {
-                expr_bound(e, out);
-            }
-        }
-        Outcome::Break(_) | Outcome::Continue(_) => {}
-    };
-    match &expr.kind {
-        ExprKind::Name(_)
-        | ExprKind::Integer(_)
-        | ExprKind::Decimal(_)
-        | ExprKind::RawText(_)
-        | ExprKind::Boolean(_)
-        | ExprKind::Nothing
-        | ExprKind::SelfValue
-        | ExprKind::TypeName(_) => {}
-        ExprKind::Text { pieces, .. } => {
-            for piece in pieces {
-                if let TextPiece::Hole(e) = piece {
-                    expr_bound(e, out);
-                }
-            }
-        }
-        ExprKind::Member { base, .. } => expr_bound(base, out),
-        ExprKind::Call { callee, args } => {
-            expr_bound(callee, out);
-            for arg in args {
-                expr_bound(&arg.value, out);
-            }
-        }
-        ExprKind::Construct { args, .. } => {
-            for arg in args {
-                expr_bound(&arg.value, out);
-            }
-        }
-        ExprKind::List(items) => {
-            for item in items {
-                expr_bound(item, out);
-            }
-        }
-        ExprKind::Map(entries) => {
-            for (key, value) in entries {
-                expr_bound(key, out);
-                expr_bound(value, out);
-            }
-        }
-        ExprKind::Range { from, to, by } => {
-            expr_bound(from, out);
-            expr_bound(to, out);
-            if let Some(by) = by {
-                expr_bound(by, out);
-            }
-        }
-        ExprKind::Not(inner) | ExprKind::Paren(inner) => expr_bound(inner, out),
-        ExprKind::Binary { left, right, .. } => {
-            expr_bound(left, out);
-            expr_bound(right, out);
-        }
-        ExprKind::With { base, updates } => {
-            expr_bound(base, out);
-            for update in updates {
-                expr_bound(&update.value, out);
-            }
-        }
-        ExprKind::Otherwise { value, fallback } => {
-            expr_bound(value, out);
-            outcome(fallback, out);
-        }
-        ExprKind::If {
-            branches,
-            otherwise,
-        } => {
-            for (condition, result) in branches {
-                expr_bound(condition, out);
-                outcome(result, out);
-            }
-            outcome(otherwise, out);
-        }
-        ExprKind::Match {
-            subject,
-            arms,
-            otherwise,
-        } => {
-            expr_bound(subject, out);
-            for arm in arms {
-                pattern_bound(&arm.pattern, out);
-                if let Some(guard) = &arm.guard {
-                    expr_bound(guard, out);
-                }
-                outcome(&arm.body, out);
-            }
-            if let Some(fallback) = otherwise {
-                outcome(fallback, out);
-            }
-        }
-        ExprKind::Query(query) => {
-            for source in &query.sources {
-                out.extend(source.bindings.iter().map(|b| b.text.as_str()));
-                expr_bound(&source.source, out);
-            }
-            if let Some(within) = &query.within {
-                expr_bound(within, out);
-            }
-            if let Some(filter) = &query.filter {
-                expr_bound(filter, out);
-            }
-            if let Some(order) = &query.order {
-                expr_bound(&order.key, out);
-            }
-            if let Some(key) = &query.group_by {
-                expr_bound(key, out);
-            }
-            match &query.terminal {
-                QueryTerminal::Collect(e)
-                | QueryTerminal::Sum(e)
-                | QueryTerminal::Any(e)
-                | QueryTerminal::All(e) => expr_bound(e, out),
-                QueryTerminal::Count | QueryTerminal::First | QueryTerminal::None => {}
-            }
-        }
-    }
-}
-
-/// Every name a pattern binds.
-fn pattern_bound<'a>(pattern: &'a Pattern, out: &mut HashSet<&'a str>) {
-    match pattern {
-        Pattern::Binding(name) | Pattern::Typed { name, .. } => {
-            out.insert(&name.text);
-        }
-        Pattern::Nothing(_) | Pattern::Literal(_) => {}
-        Pattern::Some(inner, _) | Pattern::Success(inner, _) | Pattern::Failure(inner, _) => {
-            pattern_bound(inner, out)
-        }
-        Pattern::Variant { fields, .. } => {
-            for field in fields {
-                match &field.pattern {
-                    Some(inner) => pattern_bound(inner, out),
-                    None => {
-                        out.insert(&field.field.text);
-                    }
-                }
-            }
-        }
-    }
 }

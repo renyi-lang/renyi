@@ -2357,6 +2357,12 @@ type Walked
   has names: Set of Text
 end
 
+type Noted
+  purpose: What one pass over an expression gathers (decision AW67): the reads at the statement's own level, and the names bound there.
+  has mentions: List of Mention
+  has bound: Set of Text
+end
+
 function last_uses(body: Block) returns Set of Integer
   purpose: The starts of the name tokens whose read is the last of their local (decision AU55): the only mention of the local in its statement, with the local mentioned nowhere after that statement in its block or in the blocks around it, and bound anew by every loop around it.
 
@@ -2373,8 +2379,9 @@ function walk_block(block: Block, frames: List of Frame, found: Set of Integer) 
   let mutable index be block.statements.length() - 1
   repeat until index is less than 0
     let statement be block.statements.at(index) otherwise crash with "a statement"
-    let own be own_mentions(statement: statement, out: [])
-    let bound be own_bound(statement: statement, out: empty)
+    let noted be own_level(statement: statement, noted: Noted(mentions: [], bound: empty))
+    let own be noted.mentions
+    let bound be noted.bound
     let nested be walk_nested(statement: statement, after: after, frames: frames, found: out)
     change out to nested.found
     for each mention in own
@@ -2508,215 +2515,205 @@ function walk_fallback(fallback: maybe Block, frames: List of Frame, walked: Wal
   return walk_more(block: block, frames: frames, walked: walked)
 end
 
-function own_mentions(statement: Statement, out: List of Mention) returns List of Mention
-  purpose: The reads at a statement's own level, its nested blocks left out, candidates outside a part that runs more than once; a write is no mention, since a read after it sees what it stored.
+function own_level(statement: Statement, noted: Noted) returns Noted
+  purpose: A statement's own level, its nested blocks left out (decision AW67): the reads, candidates outside a part that runs more than once (a write is no mention, since a read after it sees what it stored), and the names bound there, in one pass over each expression.
 
   match statement
-    when Let(value) then return expr_mentions(expr: value, own: true, out: out)
-    when Change(value) then return expr_mentions(expr: value, own: true, out: out)
+    when Let(name, value) then
+      return expr_noted(expr: value, own: true, noted: bind(noted: noted, name: name.text))
+    when Change(value) then return expr_noted(expr: value, own: true, noted: noted)
     when If(branches) then
-      let mutable noted be out
+      let mutable found be noted
       for each branch in branches
-        change noted to expr_mentions(expr: branch.condition, own: true, out: noted)
+        change found to expr_noted(expr: branch.condition, own: true, noted: found)
       end
-      return noted
+      return found
     when Match(subject, arms) then
-      let mutable noted be expr_mentions(expr: subject, own: true, out: out)
+      let mutable found be expr_noted(expr: subject, own: true, noted: noted)
       for each arm in arms
-        change noted to maybe_mentions(expr: arm.guard, own: true, out: noted)
+        change found to bind_pattern(noted: found, pattern: arm.pattern)
+        change found to maybe_noted(expr: arm.guard, own: true, noted: found)
       end
-      return noted
-    when ForEach(source, filter, order) then
-      let mutable noted be expr_mentions(expr: source, own: true, out: out)
-      change noted to maybe_mentions(expr: filter, own: false, out: noted)
-      return maybe_mentions(expr: order_key(order), own: false, out: noted)
-    when RepeatUntil(condition) then return expr_mentions(expr: condition, own: false, out: out)
-    when RunConcurrently(deadline) then return maybe_mentions(expr: deadline, own: true, out: out)
-    when Return(value) then return maybe_mentions(expr: value, own: true, out: out)
-    when Fail(value) then return maybe_mentions(expr: value, own: true, out: out)
-    when Crash(message) then return expr_mentions(expr: message, own: true, out: out)
-    when Ignore(value) then return expr_mentions(expr: value, own: true, out: out)
-    when Check(value) then return expr_mentions(expr: value, own: true, out: out)
-    when Expression(value) then return expr_mentions(expr: value, own: true, out: out)
-    otherwise return out
+      return found
+    when ForEach(bindings, source, filter, order) then
+      let mutable found be bind_all(noted: noted, bindings: bindings)
+      change found to expr_noted(expr: source, own: true, noted: found)
+      change found to maybe_noted(expr: filter, own: false, noted: found)
+      return maybe_noted(expr: order_key(order), own: false, noted: found)
+    when RepeatUntil(condition) then return expr_noted(expr: condition, own: false, noted: noted)
+    when RunConcurrently(deadline) then return maybe_noted(expr: deadline, own: true, noted: noted)
+    when Return(value) then return maybe_noted(expr: value, own: true, noted: noted)
+    when Fail(value) then return maybe_noted(expr: value, own: true, noted: noted)
+    when Crash(message) then return expr_noted(expr: message, own: true, noted: noted)
+    when Ignore(value) then return expr_noted(expr: value, own: true, noted: noted)
+    when Check(value) then return expr_noted(expr: value, own: true, noted: noted)
+    when Expression(value) then return expr_noted(expr: value, own: true, noted: noted)
+    otherwise return noted
   end
 end
 
-function maybe_mentions(expr: maybe Expr, own: Boolean, out: List of Mention)
-  returns List of Mention
-  purpose: The mentions in an optional expression.
+function bind(noted: Noted, name: Text) returns Noted
+  purpose: One name bound, the set taken out of the record so that it grows in place.
 
-  let found be expr otherwise return out
-  return expr_mentions(expr: found, own: own, out: out)
+  return noted with bound: noted.bound.add(name)
 end
 
-function expr_mentions(expr: Expr, own: Boolean, out: List of Mention) returns List of Mention
-  purpose: The mentions of names in an expression, candidates when `own`; a query's are never candidates.
+function bind_all(noted: Noted, bindings: List of Name) returns Noted
+  purpose: A loop's or a query source's bindings bound, the set taken out of the record so that it grows in place.
+
+  let mentions be noted.mentions
+  let mutable bound be noted.bound
+  for each binding in bindings
+    change bound to bound.add(binding.text)
+  end
+  return Noted(mentions: mentions, bound: bound)
+end
+
+function bind_pattern(noted: Noted, pattern: Pattern) returns Noted
+  purpose: A pattern's names bound, the set taken out of the record so that it grows in place.
+
+  let mentions be noted.mentions
+  let bound be noted.bound
+  return Noted(mentions: mentions, bound: pattern_bound(pattern: pattern, out: bound))
+end
+
+function maybe_noted(expr: maybe Expr, own: Boolean, noted: Noted) returns Noted
+  purpose: One pass over an optional expression.
+
+  let found be expr otherwise return noted
+  return expr_noted(expr: found, own: own, noted: noted)
+end
+
+function expr_noted(expr: Expr, own: Boolean, noted: Noted) returns Noted
+  purpose: One pass over an expression (decision AW67): the mentions of names, candidates when `own`, and the names it binds (a match arm's pattern, a query's bindings, at any depth); a query's mentions are never candidates.
 
   match expr
     when NameExpr(name) then
-      return out.append(Mention(name: name.text, start: name.span.start, candidate: own))
+      return noted
+        with mentions: noted.mentions.append(
+          Mention(name: name.text, start: name.span.start, candidate: own)
+        )
     when TextLiteral(pieces) then
-      let mutable noted be out
+      let mutable found be noted
       for each piece in pieces
         match piece
           when Hole(expression) then
-            change noted to expr_mentions(expr: expression, own: own, out: noted)
+            change found to expr_noted(expr: expression, own: own, noted: found)
           when Literal then continue
         end
       end
-      return noted
-    when Member(base) then return expr_mentions(expr: base, own: own, out: out)
+      return found
+    when Member(base) then return expr_noted(expr: base, own: own, noted: noted)
     when Call(callee, args) then
-      let noted be expr_mentions(expr: callee, own: own, out: out)
-      return args_mentions(args: args, own: own, out: noted)
-    when Construct(args) then return args_mentions(args: args, own: own, out: out)
-    when ListLiteral(items) then return items_mentions(items: items, own: own, out: out)
+      let found be expr_noted(expr: callee, own: own, noted: noted)
+      return args_noted(args: args, own: own, noted: found)
+    when Construct(args) then return args_noted(args: args, own: own, noted: noted)
+    when ListLiteral(items) then return items_noted(items: items, own: own, noted: noted)
     when MapLiteral(entries) then
-      let mutable noted be out
+      let mutable found be noted
       for each entry in entries
-        change noted to expr_mentions(expr: entry.key, own: own, out: noted)
-        change noted to expr_mentions(expr: entry.value, own: own, out: noted)
+        change found to expr_noted(expr: entry.key, own: own, noted: found)
+        change found to expr_noted(expr: entry.value, own: own, noted: found)
       end
-      return noted
+      return found
     when RangeLiteral(lower, upper, step) then
-      let mutable noted be expr_mentions(expr: lower, own: own, out: out)
-      change noted to expr_mentions(expr: upper, own: own, out: noted)
-      return maybe_mentions(expr: step, own: own, out: noted)
-    when Not(value) then return expr_mentions(expr: value, own: own, out: out)
-    when Paren(value) then return expr_mentions(expr: value, own: own, out: out)
+      let mutable found be expr_noted(expr: lower, own: own, noted: noted)
+      change found to expr_noted(expr: upper, own: own, noted: found)
+      return maybe_noted(expr: step, own: own, noted: found)
+    when Not(value) then return expr_noted(expr: value, own: own, noted: noted)
+    when Paren(value) then return expr_noted(expr: value, own: own, noted: noted)
     when Binary(left, right) then
-      let noted be expr_mentions(expr: left, own: own, out: out)
-      return expr_mentions(expr: right, own: own, out: noted)
+      let found be expr_noted(expr: left, own: own, noted: noted)
+      return expr_noted(expr: right, own: own, noted: found)
     when With(base, updates) then
-      let noted be expr_mentions(expr: base, own: own, out: out)
-      return args_mentions(args: updates, own: own, out: noted)
-    otherwise return branching_mentions(expr: expr, own: own, out: out)
+      let found be expr_noted(expr: base, own: own, noted: noted)
+      return args_noted(args: updates, own: own, noted: found)
+    otherwise return branching_noted(expr: expr, own: own, noted: noted)
   end
 end
 
-function branching_mentions(expr: Expr, own: Boolean, out: List of Mention) returns List of Mention
-  purpose: The mentions in a branching expression or a query.
+function branching_noted(expr: Expr, own: Boolean, noted: Noted) returns Noted
+  purpose: One pass over a branching expression or a query.
 
   match expr
     when Otherwise(value, fallback) then
-      let noted be expr_mentions(expr: value, own: own, out: out)
-      return outcome_mentions(outcome: fallback, own: own, out: noted)
+      let found be expr_noted(expr: value, own: own, noted: noted)
+      return outcome_noted(outcome: fallback, own: own, noted: found)
     when IfExpr(branches, fallback) then
-      let mutable noted be out
+      let mutable found be noted
       for each branch in branches
-        change noted to expr_mentions(expr: branch.condition, own: own, out: noted)
-        change noted to outcome_mentions(outcome: branch.outcome, own: own, out: noted)
+        change found to expr_noted(expr: branch.condition, own: own, noted: found)
+        change found to outcome_noted(outcome: branch.outcome, own: own, noted: found)
       end
-      return outcome_mentions(outcome: fallback, own: own, out: noted)
+      return outcome_noted(outcome: fallback, own: own, noted: found)
     when MatchExpr(subject, arms, fallback) then
-      let mutable noted be expr_mentions(expr: subject, own: own, out: out)
+      let mutable found be expr_noted(expr: subject, own: own, noted: noted)
       for each arm in arms
-        change noted to maybe_mentions(expr: arm.guard, own: own, out: noted)
-        change noted to outcome_mentions(outcome: arm.body, own: own, out: noted)
+        change found to bind_pattern(noted: found, pattern: arm.pattern)
+        change found to maybe_noted(expr: arm.guard, own: own, noted: found)
+        change found to outcome_noted(outcome: arm.body, own: own, noted: found)
       end
       match fallback
-        when some(outcome) then return outcome_mentions(outcome: outcome, own: own, out: noted)
-        when nothing then return noted
+        when some(outcome) then return outcome_noted(outcome: outcome, own: own, noted: found)
+        when nothing then return found
       end
     when QueryExpr(sources, deadline, filter, order, group_by, terminal) then
-      let mutable noted be out
+      let mutable found be noted
       for each source in sources
-        change noted to expr_mentions(expr: source.source, own: false, out: noted)
+        change found to bind_all(noted: found, bindings: source.bindings)
+        change found to expr_noted(expr: source.source, own: false, noted: found)
       end
-      change noted to maybe_mentions(expr: deadline, own: false, out: noted)
-      change noted to maybe_mentions(expr: filter, own: false, out: noted)
-      change noted to maybe_mentions(expr: order_key(order), own: false, out: noted)
-      change noted to maybe_mentions(expr: group_by, own: false, out: noted)
-      return terminal_mentions(terminal: terminal, out: noted)
-    otherwise return out
+      change found to maybe_noted(expr: deadline, own: false, noted: found)
+      change found to maybe_noted(expr: filter, own: false, noted: found)
+      change found to maybe_noted(expr: order_key(order), own: false, noted: found)
+      change found to maybe_noted(expr: group_by, own: false, noted: found)
+      return terminal_noted(terminal: terminal, noted: found)
+    otherwise return noted
   end
 end
 
-function terminal_mentions(terminal: QueryTerminal, out: List of Mention) returns List of Mention
-  purpose: The mentions in a query's terminal, none of them candidates.
+function terminal_noted(terminal: QueryTerminal, noted: Noted) returns Noted
+  purpose: One pass over a query's terminal, none of its mentions candidates.
 
   match terminal
-    when Collect(value) then return expr_mentions(expr: value, own: false, out: out)
-    when Sum(value) then return expr_mentions(expr: value, own: false, out: out)
-    when Any(condition) then return expr_mentions(expr: condition, own: false, out: out)
-    when All(condition) then return expr_mentions(expr: condition, own: false, out: out)
-    otherwise return out
+    when Collect(value) then return expr_noted(expr: value, own: false, noted: noted)
+    when Sum(value) then return expr_noted(expr: value, own: false, noted: noted)
+    when Any(condition) then return expr_noted(expr: condition, own: false, noted: noted)
+    when All(condition) then return expr_noted(expr: condition, own: false, noted: noted)
+    otherwise return noted
   end
 end
 
-function outcome_mentions(outcome: Outcome, own: Boolean, out: List of Mention)
-  returns List of Mention
-  purpose: The mentions in an outcome.
+function outcome_noted(outcome: Outcome, own: Boolean, noted: Noted) returns Noted
+  purpose: One pass over an outcome.
 
   match outcome
-    when ValueOutcome(value) then return expr_mentions(expr: value, own: own, out: out)
-    when CrashOutcome(message) then return expr_mentions(expr: message, own: own, out: out)
-    when FailOutcome(value) then return maybe_mentions(expr: value, own: own, out: out)
-    when ReturnOutcome(value) then return maybe_mentions(expr: value, own: own, out: out)
-    otherwise return out
+    when ValueOutcome(value) then return expr_noted(expr: value, own: own, noted: noted)
+    when CrashOutcome(message) then return expr_noted(expr: message, own: own, noted: noted)
+    when FailOutcome(value) then return maybe_noted(expr: value, own: own, noted: noted)
+    when ReturnOutcome(value) then return maybe_noted(expr: value, own: own, noted: noted)
+    otherwise return noted
   end
 end
 
-function items_mentions(items: List of Expr, own: Boolean, out: List of Mention)
-  returns List of Mention
-  purpose: The mentions in each of the expressions.
+function items_noted(items: List of Expr, own: Boolean, noted: Noted) returns Noted
+  purpose: One pass over each of the expressions.
 
-  let mutable noted be out
+  let mutable found be noted
   for each item in items
-    change noted to expr_mentions(expr: item, own: own, out: noted)
+    change found to expr_noted(expr: item, own: own, noted: found)
   end
-  return noted
+  return found
 end
 
-function args_mentions(args: List of Arg, own: Boolean, out: List of Mention)
-  returns List of Mention
-  purpose: The mentions in each argument's value.
+function args_noted(args: List of Arg, own: Boolean, noted: Noted) returns Noted
+  purpose: One pass over each argument's value.
 
-  let mutable noted be out
+  let mutable found be noted
   for each arg in args
-    change noted to expr_mentions(expr: arg.value, own: own, out: noted)
+    change found to expr_noted(expr: arg.value, own: own, noted: found)
   end
-  return noted
-end
-
-function own_bound(statement: Statement, out: Set of Text) returns Set of Text
-  purpose: The names bound at a statement's own level, its nested blocks left out: its own binding, a loop's, a pattern's, a query's.
-
-  match statement
-    when Let(name, value) then return expr_bound(expr: value, out: out.add(name.text))
-    when Change(value) then return expr_bound(expr: value, out: out)
-    when If(branches) then
-      let mutable names be out
-      for each branch in branches
-        change names to expr_bound(expr: branch.condition, out: names)
-      end
-      return names
-    when Match(subject, arms) then
-      let mutable names be expr_bound(expr: subject, out: out)
-      for each arm in arms
-        change names to pattern_bound(pattern: arm.pattern, out: names)
-        change names to maybe_bound(expr: arm.guard, out: names)
-      end
-      return names
-    when ForEach(bindings, source, filter, order) then
-      let mutable names be out
-      for each binding in bindings
-        change names to names.add(binding.text)
-      end
-      change names to expr_bound(expr: source, out: names)
-      change names to maybe_bound(expr: filter, out: names)
-      return maybe_bound(expr: order_key(order), out: names)
-    when RepeatUntil(condition) then return expr_bound(expr: condition, out: out)
-    when RunConcurrently(deadline) then return maybe_bound(expr: deadline, out: out)
-    when Return(value) then return maybe_bound(expr: value, out: out)
-    when Fail(value) then return maybe_bound(expr: value, out: out)
-    when Crash(message) then return expr_bound(expr: message, out: out)
-    when Ignore(value) then return expr_bound(expr: value, out: out)
-    when Check(value) then return expr_bound(expr: value, out: out)
-    when Expression(value) then return expr_bound(expr: value, out: out)
-    otherwise return out
-  end
+  return found
 end
 
 function block_bound(block: Block, out: Set of Text) returns Set of Text

@@ -838,6 +838,18 @@ where one decided, the status. The dates are those of the decisions.
     million (-0.01%), json_round_trip 783.0 million (-0.08%), hello
     5.24 million (-0.06%): within the noise, nothing paid. The stage
     closed.
+46. **The liveness walk's residue on both sides** (session 15,
+    2026-10-15 night; the handoff's section "Stage 46"). The two items
+    the roadmap had not scheduled, built as one stage on the owner's
+    order toward the stable version (AW67): the Rust front end's name
+    sets as bits (the analysis of AU55 with the names interned once and
+    every set a row of bits, the mentions and the bound names in one
+    pass; the Rust compile row on `compiler/bodies.ry` 467.9 to 461.0
+    million instructions, -1.5%, the check and parse rows unchanged) and
+    the emitter's single pass (`own_level` and the `_noted` family over
+    a `Noted` pair in place of the two walks; the compile row 1,926.4 to
+    1,916.6 million, -0.5%, the bytecode byte for byte the same, the
+    judge passing). The stage closed.
 
 ## 3. The tracks
 
@@ -852,11 +864,13 @@ state of each line.
   then the reference, the grammar, the cheat sheet, the formatter and
   the conformance suite in one commit. Open: R3-1 (`Iterable`), section
   6 of `docs/GAPS.md`.
-- **B. The toolchain in Rust**: stages 3, 4, 5, 7, 10, 13, 14, 22, 25.
+- **B. The toolchain in Rust**: stages 3, 4, 5, 7, 10, 13, 14, 22, 25,
+  46 (the name sets of the liveness analysis as bits, AW67).
   Complete for the language as designed; the Rust front end is the
   binary's until the switch of track C.
 - **C. The compiler written in Renyi (self-hosting)**: stages 11, 12,
-  14, 15 (AD1), 27, 28. The lexer, the parser, the checker and the
+  14, 15 (AD1), 27, 28, 42, 46 (the emitter's own round and the
+  liveness walk's single pass). The lexer, the parser, the checker and the
   emitter exist and are judged byte-equal; the speed round's list
   (AU36) is done: the lexer's rewrite (AU46), the parser's (AU47,
   AU48), the variant test in place (AU49) and the expansion of small
@@ -1031,8 +1045,11 @@ Stage 43, gap 1.11, closed (AW60, AW61) the same evening, and stage
 3.6 (AW64, AW65: the memory budget in the grant), after that; its
 second part, 45b, built (AW66: the budget kept by the generated code
 at a body's entry and a loop's back edge, under a budget only, the
-image recording it, measured). The article waits for a stable version
-(the
-owner's word of 2026-10-15 evening), then its arXiv submission. Not
-scheduled: the Rust front end's name sets as bits, the liveness walk's
-residue.
+image recording it, measured). The owner's order of 2026-10-15 night
+("加速收尾项目，稳定版本"): the stable version is 0.4.0, tagged once the
+roadmap's remaining work is done; stage 46 (AW67) built the two
+items that were not scheduled, the Rust front end's name sets as bits
+and the liveness walk's residue. Before the tag: the C archive's
+static library without the bitcode of fat LTO (`docs/RELEASE.md`
+section 9's open item); after it, the article's numbers brought to
+0.4.0 and the arXiv endorsement request written for the owner.
