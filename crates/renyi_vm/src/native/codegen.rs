@@ -160,6 +160,7 @@ pub(crate) const STATE_LIST_ITEMS: i32 = std::mem::offset_of!(NativeState, list_
 pub(crate) const STATE_LIST_LEN: i32 = std::mem::offset_of!(NativeState, list_len) as i32;
 pub(crate) const STATE_GLOBALS: i32 = std::mem::offset_of!(NativeState, globals) as i32;
 pub(crate) const STATE_IN_PLACE: i32 = std::mem::offset_of!(NativeState, in_place) as i32;
+pub(crate) const STATE_OVER_MEMORY: i32 = std::mem::offset_of!(NativeState, over_memory) as i32;
 /// The node of the innermost compiled frame (decision AW24).
 const STATE_HEAD: i32 = std::mem::offset_of!(NativeState, head) as i32;
 /// The node a body keeps in its machine frame for its record (decision
@@ -281,6 +282,7 @@ pub const SIGNATURES: &[(&str, &str, char)] = &[
     ("rt_top_is_absent", "p", 'b'),
     ("rt_top_is_failure", "p", 'b'),
     ("rt_osr", "pzzw", 'i'),
+    ("rt_over_memory", "pw", 'i'),
     ("rt_finish_frame", "p", 'i'),
     ("rt_abandon_frame", "p", 'i'),
     ("rt_promote", "pz", 'v'),
@@ -519,6 +521,9 @@ struct Gen<'a, 'b> {
     /// Per slot, the cell of the frame past the code object's locals that
     /// holds the second field of a pair slot (decision AW9).
     pair_cells: Vec<Option<usize>>,
+    /// Whether the body tests the memory budget (decision AW66): under a
+    /// budget only.
+    guard_memory: bool,
     /// The frame's locals: the code object's and a cell per pair slot.
     frame_locals: usize,
     /// The loop headers the interpreter may hand a frame over at: the
@@ -1030,6 +1035,7 @@ pub fn compile(
     isa: &dyn TargetIsa,
     ctx: &mut Context,
     fctx: &mut FunctionBuilderContext,
+    guard_memory: bool,
 ) -> Result<Compiled, Skipped> {
     let code = body;
     let original_len = program.codes[code_id].ops().len();
@@ -1184,6 +1190,7 @@ pub fn compile(
             pair_result: returns_pair,
             pairs,
             pair_cells,
+            guard_memory,
             frame_locals,
             headers: headers.clone(),
             positions: Vec::new(),
@@ -3261,10 +3268,43 @@ impl Gen<'_, '_> {
 
     // ------------------------------------------------------------ the body
 
+    /// The memory budget at a body's entry and at a loop's back edge
+    /// (decision AW66): the byte the allocator sets, read in place; set,
+    /// the helper parks the interrupt and the body leaves. Any run that
+    /// allocates without bound passes here without bound. Nothing for a
+    /// run under no budget.
+    fn memory_guard(&mut self, pc: usize) {
+        if !self.guard_memory {
+            return;
+        }
+        let flags = MemFlagsData::trusted();
+        let state = self.native_state();
+        let flag = self
+            .b
+            .ins()
+            .load(self.pointer, flags, state, STATE_OVER_MEMORY);
+        let over = self.b.ins().load(types::I8, flags, flag, 0);
+        let cold = self.b.create_block();
+        let cont = self.b.create_block();
+        self.b.ins().brif(over, cold, &[], cont, &[]);
+        self.b.set_cold_block(cold);
+        self.b.seal_block(cold);
+        self.switch_to(cold);
+        let pc_value = self.u32(pc as u32);
+        let status = self
+            .call("rt_over_memory", &[self.vm, pc_value])
+            .expect("a status");
+        self.check_status(status, pc, false);
+        self.b.ins().jump(cont, &[]);
+        self.b.seal_block(cont);
+        self.switch_to(cont);
+    }
+
     fn prologue(&mut self) {
         // the frame's node into the VM's chain first (decision AW24):
         // every way out of the body unlinks it
         self.link_node();
+        self.memory_guard(0);
         // room on the stack for the frame's locals and its deepest operand
         // stack, checked once (decision AR4): every push of the body then
         // has it, and a frame handed over at a loop header has at most
@@ -4736,7 +4776,12 @@ impl Gen<'_, '_> {
                 self.push_boxed();
                 self.check_status(status, pc, false);
             }
-            Op::Jump(target) => self.jump_to(*target as usize),
+            Op::Jump(target) => {
+                if *target as usize <= pc {
+                    self.memory_guard(pc);
+                }
+                self.jump_to(*target as usize)
+            }
             Op::JumpByTag { slot, table } => {
                 // a `match` by a table (decision AW15): a variant in the slot
                 // picks the arm's block by its tag through a jump table;
@@ -4792,14 +4837,23 @@ impl Gen<'_, '_> {
                 }
             }
             Op::JumpIfFalse(target) => {
+                if *target as usize <= pc {
+                    self.memory_guard(pc);
+                }
                 let condition = self.pop_condition(pc);
                 self.branch(condition, pc + 1, *target as usize);
             }
             Op::JumpIfTrue(target) => {
+                if *target as usize <= pc {
+                    self.memory_guard(pc);
+                }
                 let condition = self.pop_condition(pc);
                 self.branch(condition, *target as usize, pc + 1);
             }
             Op::JumpIfAbsent(target) | Op::JumpIfFailure(target) => {
+                if *target as usize <= pc {
+                    self.memory_guard(pc);
+                }
                 let depth = self.state.len() - 1;
                 if handler_only(self.code, &self.analysis.entry, pc) {
                     // reached through its handler alone (decision AW9): a

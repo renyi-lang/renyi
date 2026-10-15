@@ -135,8 +135,9 @@ pub struct Options {
     pub listener: Option<TcpListener>,
     /// The memory budget of the run in bytes (decision AP1): the bytes it
     /// may hold above the level at its start, counted by the allocator
-    /// of `memory`, checked at every call, primitive and loop turning;
-    /// a budgeted run stays on the interpreter.
+    /// of `memory`, checked at every call, primitive and loop turning,
+    /// on the interpreter and in the generated code alike (decision
+    /// AW66).
     pub memory: Option<u64>,
     /// The host that draws the frames of `screen.present` (decision
     /// AW31); without one the call crashes. A host that may answer
@@ -276,6 +277,12 @@ pub(crate) struct NativeState {
     /// the innermost frame's pc locates a crash, and every helper that
     /// raises an interrupt syncs it first.
     pub(crate) head_pc: usize,
+    /// The address of the byte the allocator sets when the memory budget
+    /// is spent (`memory::over_flag`, decision AW66): the generated code
+    /// of both tiers reads the pointer, then the byte, at a body's entry
+    /// and at a loop's back edge, and calls `rt_over_memory` when it is
+    /// set. A static's address, so that a VM may move.
+    pub(crate) over_memory: *const std::sync::atomic::AtomicU8,
 }
 
 /// A module constant as the generated code reads it (decision AU53): the
@@ -303,6 +310,7 @@ impl Default for NativeState {
             in_place: std::ptr::null(),
             head: std::ptr::null_mut(),
             head_pc: 0,
+            over_memory: memory::over_flag(),
         }
     }
 }
@@ -688,18 +696,6 @@ pub(crate) fn plain_variant_type(program: &Program, ty: TypeId) -> bool {
     program.types.meta(ty).refinements.is_empty()
 }
 
-/// Whether `main` or a test declares a memory budget (decision AW64),
-/// which keeps the run on the interpreter as a host's budget does.
-fn declares_memory(program: &Program) -> bool {
-    program
-        .main
-        .is_some_and(|main| grant::memory_of(&program.function_metas[main].needs).is_some())
-        || program
-            .tests
-            .iter()
-            .any(|test| grant::memory_of(&test.needs).is_some())
-}
-
 impl<'p> Vm<'p> {
     pub fn new(program: &'p Program, options: Options) -> Vm<'p> {
         // the image's loading writes to the streams (decision AS1)
@@ -707,15 +703,14 @@ impl<'p> Vm<'p> {
         let mut options = options;
         let tables = tables_of(program, &options.registry);
         let seed = crate::clock::seed_entropy() | 1;
-        // a narrated, profiled or budgeted run is the interpreter's
-        // (decisions AG3 and AP1), and so is one whose host may suspend
-        // it, since only the interpreter resumes a frame at its pc
-        // (decision AW31)
+        // a narrated or profiled run is the interpreter's (decision AG3),
+        // and so is one whose host may suspend it, since only the
+        // interpreter resumes a frame at its pc (decision AW31); a
+        // budgeted run is not since decision AW66: its generated code
+        // tests the budget, under the host's budget or the program's own
         let native = if options.interpret
             || options.explain
             || options.profile
-            || options.memory.is_some()
-            || declares_memory(program)
             || options
                 .screen
                 .as_ref()
@@ -723,7 +718,14 @@ impl<'p> Vm<'p> {
         {
             None
         } else {
-            Jit::new(program, None, tables.calls, &tables.in_place).map(Box::new)
+            Jit::new(
+                program,
+                None,
+                tables.calls,
+                &tables.in_place,
+                options.memory.is_some() || grant::declares_memory(program),
+            )
+            .map(Box::new)
         };
         #[cfg(feature = "jit")]
         let mut native = native;

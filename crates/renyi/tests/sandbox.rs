@@ -373,6 +373,54 @@ fn the_program_and_the_sandbox_tighten_the_memory_budget_to_the_smaller() {
 }
 
 #[test]
+fn a_memory_budget_holds_on_every_tier() {
+    // decision AW66: the generated code of both tiers reads the flag at a
+    // body's entry and at a loop's back edge, so a loop that pushes, a
+    // recursion that only calls and a recursion that only builds records
+    // are each stopped, compiled at their first call
+    let dir = scratch("tiers");
+    let programs = [
+        ("recurse", "module recurse\n  purpose: Recurse without end under a budget.\n\nimport std.console\n\nfunction down(depth: Integer) returns Integer\n  if depth is 0 then\n    return 0\n  end\n  return 1 + down(depth + 1)\nend\n\npublic function main() needs console, memory at most 64 megabytes\n  purpose: Print what the recursion returns.\n\n  console.print(\"{down(1)}\")\nend\n"),
+        ("tree", "module tree\n  purpose: Build a tree of plain records without end under a budget.\n\nimport std.console\n\ntype Node\n  has left: maybe Node\n  has right: maybe Node\nend\n\nfunction build(depth: Integer) returns Node\n  if depth is 0 then\n    return Node(left: nothing, right: nothing)\n  end\n  return Node(left: build(depth - 1), right: build(depth - 1))\nend\n\nfunction size(node: Node) returns Integer\n  let left be match node.left\n    when some(found) then size(found)\n    when nothing then 0\n  end\n  let right be match node.right\n    when some(found) then size(found)\n    when nothing then 0\n  end\n  return 1 + left + right\nend\n\npublic function main() needs console, memory at most 32 megabytes\n  purpose: Print the size of a tree too big for the budget.\n\n  console.print(\"{size(build(40))}\")\nend\n"),
+    ];
+    let mut paths = vec![root()
+        .join("tests/conformance/programs/memory_budget_over.ry")
+        .to_str()
+        .expect("a path")
+        .replace('\\', "/")];
+    for (name, source) in programs {
+        let path = format!("{dir}/{name}/{name}.ry");
+        std::fs::create_dir_all(format!("{dir}/{name}")).expect("the program's directory");
+        std::fs::write(&path, source).expect("the program");
+        paths.push(path);
+    }
+    for path in &paths {
+        for tier in [
+            vec![("RENYI_NATIVE_HOT", "0"), ("RENYI_NATIVE_SYNC", "1")],
+            vec![("RENYI_NATIVE_TIER", "template")],
+        ] {
+            let mut command = Command::new(env!("CARGO_BIN_EXE_renyi"));
+            command.current_dir(root()).args(["run", path]);
+            for (name, value) in &tier {
+                command.env(name, value);
+            }
+            let out = command.output().expect("the renyi binary runs");
+            assert_eq!(
+                out.status.code(),
+                Some(2),
+                "{path} {tier:?}: {}",
+                text(&out.stderr)
+            );
+            assert!(
+                text(&out.stderr).contains("the memory budget of "),
+                "{path} {tier:?}: {}",
+                text(&out.stderr)
+            );
+        }
+    }
+}
+
+#[test]
 fn run_takes_a_sandbox_grant_from_a_file() {
     let dir = scratch("cli");
     let wide = format!("{dir}/wide.json");

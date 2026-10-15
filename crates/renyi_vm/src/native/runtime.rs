@@ -1147,6 +1147,14 @@ pub(crate) fn over_memory(vm: &mut Vm, pc: u32) -> i32 {
     typed_over_memory(vm, pc)
 }
 
+/// The memory budget found spent at a body's entry or at a loop's back
+/// edge (decision AW66): the generated code of both tiers reads
+/// `NativeState::over_memory` in place and calls this only when it is
+/// set; the interrupt is parked and the body leaves.
+pub(crate) unsafe extern "C" fn rt_over_memory(vm: VmPtr, pc: u32) -> i32 {
+    typed_over_memory(vm!(vm), pc)
+}
+
 /// A typed entry's value answer: the arguments consumed, the value in
 /// their place on the stack.
 #[inline(never)]
@@ -2438,6 +2446,7 @@ pub(crate) unsafe extern "C" fn rt_clear_slots(at: *mut Value, count: usize) {
 pub const HELPERS: &[(&str, *const u8)] = &[
     ("rt_clear_slots", rt_clear_slots as *const u8),
     ("rt_osr", rt_osr as *const u8),
+    ("rt_over_memory", rt_over_memory as *const u8),
     ("rt_finish_frame", rt_finish_frame as *const u8),
     ("rt_abandon_frame", rt_abandon_frame as *const u8),
     ("rt_promote", rt_promote as *const u8),

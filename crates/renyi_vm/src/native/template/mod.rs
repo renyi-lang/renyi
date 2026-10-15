@@ -36,7 +36,7 @@ use crate::native::codegen::{
     FRAME_HANDLER_BASE, FRAME_PC, FRAME_SIZE, GLOBAL_READY, GLOBAL_SIZE, GLOBAL_VALUE, SIGNATURES,
     SITE_INDEX, SITE_SIZE, SITE_TAG, SITE_TY, STACK_SAFE, STATE_CONSTANTS, STATE_DEPTH,
     STATE_ENTRIES, STATE_GLOBALS, STATE_HELPERS, STATE_HOTNESS, STATE_IN_PLACE, STATE_LIST_ITEMS,
-    STATE_LIST_LEN,
+    STATE_LIST_LEN, STATE_OVER_MEMORY,
 };
 use crate::native::infer::{
     abs_of_constant, abs_of_result, analyse, is_integer, is_text, sum_compared, update_by_index,
@@ -149,6 +149,14 @@ enum Cold {
     },
     /// A direct call whose callee left a failure.
     Failed { label: Label, pc: usize },
+    /// The memory budget found spent at the body's entry or at a loop's
+    /// back edge (decision AW66): through `rt_over_memory`, which parks
+    /// the interrupt.
+    OverMemory {
+        label: Label,
+        done: Label,
+        pc: usize,
+    },
     /// A value to retain whose tag is an Integer's (decision AU29): a big
     /// one raises the count of its block, a small one holds none.
     Retain {
@@ -222,6 +230,7 @@ pub fn compile(
     calls: &[CallKind],
     hot_factor: u32,
     promotion: bool,
+    guard_memory: bool,
 ) -> Result<Template, Skipped> {
     let started = Instant::now();
     let code = &program.codes[code_id];
@@ -276,6 +285,7 @@ pub fn compile(
         threshold,
         counts,
         cold: Vec::new(),
+        guard_memory,
     };
     let headers = gen.headers();
     gen.prologue(&headers);
@@ -323,6 +333,9 @@ struct Gen<'a> {
     edges: Vec<(usize, Label)>,
     /// The count a back edge promotes at; `None` counts nothing.
     threshold: Option<u32>,
+    /// Whether the body tests the memory budget (decision AW66): under a
+    /// budget only.
+    guard_memory: bool,
     /// Per op that starts a basic block, the block's length in ops, which
     /// the code adds to the count as the block starts.
     counts: Vec<Option<u32>>,
@@ -550,6 +563,28 @@ impl Gen<'_> {
         let label = self.asm.label();
         self.landings.push((handler, label));
         label
+    }
+
+    /// The memory budget at the body's entry and at a loop's back edge
+    /// (decision AW66): the byte the allocator sets, tested in place; set,
+    /// the cold path calls `rt_over_memory` and the body leaves. Emitted
+    /// before the test an op's own jump reads, since it sets the flags.
+    /// Nothing for a run under no budget.
+    fn memory_guard(&mut self, pc: usize) {
+        if !self.guard_memory {
+            return;
+        }
+        let label = self.asm.label();
+        let done = self.asm.label();
+        self.asm.mov_rm(
+            SCRATCH,
+            VM,
+            native_state_offset() as i32 + STATE_OVER_MEMORY,
+        );
+        self.asm.cmp_m8i(SCRATCH, 0, 0);
+        self.asm.jcc(Cond::Ne, label);
+        self.asm.bind(done);
+        self.cold.push(Cold::OverMemory { label, done, pc });
     }
 
     /// A jump to a pc: through the block that checks the count when it
@@ -852,6 +887,7 @@ impl Gen<'_> {
         self.asm.jcc(Cond::Ae, fits);
         self.call("rt_room", &[Arg::Vm, Arg::Addr(BASE, room)]);
         self.asm.bind(fits);
+        self.memory_guard(0);
         // the address of the count of ops run, which every block adds to
         if self.threshold.is_some() {
             self.asm
@@ -1377,6 +1413,12 @@ impl Gen<'_> {
                 self.asm.bind(label);
                 self.asm.mov_ri32(Reg::Rax, FAILURE as u32);
                 self.check(pc);
+            }
+            Cold::OverMemory { label, done, pc } => {
+                self.asm.bind(label);
+                self.call("rt_over_memory", &[Arg::Vm, Arg::Imm(pc as u64)]);
+                self.leave_on_interrupt();
+                self.asm.jmp(done);
             }
             Cold::Guarded { label, done, tag } => {
                 self.asm.bind(label);
@@ -1950,15 +1992,24 @@ impl Gen<'_> {
                 self.pushes("rt_concat", &[Arg::Vm, Arg::Imm(n as u64), pc_arg], n, 1);
             }
             Op::Jump(target) => {
+                if *target as usize <= pc {
+                    self.memory_guard(pc);
+                }
                 self.jump_to(*target as usize, pc, None);
                 self.terminated = true;
             }
             Op::JumpIfFalse(target) => {
+                if *target as usize <= pc {
+                    self.memory_guard(pc);
+                }
                 self.pop_condition(pc);
                 self.asm.test_rr32(Reg::Rax, Reg::Rax);
                 self.jump_to(*target as usize, pc, Some(Cond::E));
             }
             Op::JumpIfTrue(target) => {
+                if *target as usize <= pc {
+                    self.memory_guard(pc);
+                }
                 self.pop_condition(pc);
                 self.asm.test_rr32(Reg::Rax, Reg::Rax);
                 self.jump_to(*target as usize, pc, Some(Cond::Ne));
@@ -1981,6 +2032,9 @@ impl Gen<'_> {
                 self.asm.bind(through);
             }
             Op::JumpIfAbsent(target) | Op::JumpIfFailure(target) => {
+                if *target as usize <= pc {
+                    self.memory_guard(pc);
+                }
                 let at = self.operand(self.depth - 1);
                 self.asm.movzx_rm8(SCRATCH, at.0, at.1);
                 self.asm.cmp_r32i(SCRATCH, TAG_FAILURE as i32);

@@ -640,3 +640,73 @@ fn a_recording_from_the_cache_keyed_by_the_sources_carries_the_manifest_and_repr
         "{message}"
     );
 }
+
+#[test]
+fn an_image_carries_the_memory_guard_only_for_a_program_that_declares_a_budget() {
+    // decision AW66: the guard is generated for a run under a budget; an
+    // image records whether its code has it, and a run loads the code only
+    // when its need agrees, compiling its own otherwise
+    let directory = scratch("guard");
+    let declared = path(&directory.join("declared.ryi"));
+    let built = renyi(&[
+        "build",
+        "--to",
+        &declared,
+        "tests/conformance/programs/memory_budget_over.ry",
+    ]);
+    assert!(built.status.success(), "{}", text(&built.stderr));
+    let image = renyi_vm::native::image::Image::read(&std::fs::read(&declared).expect("the image"))
+        .expect("the image reads");
+    assert!(image.header.guarded);
+    // the image's code stops at the budget the program declares
+    let run = renyi(&["run", &declared]);
+    assert_eq!(run.status.code(), Some(2), "{}", text(&run.stderr));
+    assert!(
+        text(&run.stderr).contains("the memory budget of 16 megabytes"),
+        "{}",
+        text(&run.stderr)
+    );
+    assert!(
+        !text(&run.stderr).contains("was not loaded"),
+        "{}",
+        text(&run.stderr)
+    );
+    // a program without a clause: no guard in its image
+    let source = directory.join("grow.ry");
+    std::fs::write(
+        &source,
+        "module grow\n  purpose: Append without a budget of its own.\n\nimport std.console\n\npublic function main() needs console\n  purpose: Append until a host's budget stops the run.\n\n  let mutable items: List of Integer be []\n  for each step from 1 to 100000000\n    change items to items.append(step)\n  end\n  console.print(\"{items.length()}\")\nend\n",
+    )
+    .expect("grow.ry");
+    let plain = path(&directory.join("grow.ryi"));
+    let built = renyi(&["build", "--to", &plain, &path(&source)]);
+    assert!(built.status.success(), "{}", text(&built.stderr));
+    let image = renyi_vm::native::image::Image::read(&std::fs::read(&plain).expect("the image"))
+        .expect("the image reads");
+    assert!(!image.header.guarded);
+    // under a host's budget the image's code is left and the run's own
+    // code, with the guard, stops at the budget
+    let grant = directory.join("grant.json");
+    std::fs::write(
+        &grant,
+        "{\"grant\": \"console\", \"memory\": \"16 megabytes\"}\n",
+    )
+    .expect("grant.json");
+    let run = Command::new(env!("CARGO_BIN_EXE_renyi"))
+        .current_dir(root())
+        .env("RENYI_NATIVE_HOT", "0")
+        .env("RENYI_NATIVE_SYNC", "1")
+        .args(["run", "--sandbox", &path(&grant), &plain])
+        .output()
+        .expect("the renyi binary runs");
+    assert_eq!(run.status.code(), Some(2), "{}", text(&run.stderr));
+    let message = text(&run.stderr);
+    assert!(
+        message.contains("the image's code carries no memory guard"),
+        "{message}"
+    );
+    assert!(
+        message.contains("the memory budget of 16 megabytes"),
+        "{message}"
+    );
+}

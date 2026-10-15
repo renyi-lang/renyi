@@ -1084,9 +1084,10 @@ and `run` (the whole program); budgets apply to `network`, `process` and
 at its start, counted by the allocator and read at every call, primitive
 and loop turning; a run that exceeds it ends as a crash does, with exit
 status 2, naming the budget and the peak. `memory` is a budget, not an
-effect: no function needs it, it stands only with its `at most`, and a
-run under a memory budget stays on the interpreter. `only to SINK or
-SINK` is a guard
+effect: no function needs it and it stands only with its `at most`; the
+generated code of a run under a budget keeps it as the interpreter does,
+and a run under none pays nothing for it (decision AW66). `only to SINK
+or SINK` is a guard
 (decision P3): every value that entered the program through the capability
 carries that origin, as does every value computed from it, and it may
 leave the program only through the listed sinks.
@@ -1659,7 +1660,7 @@ Python scripts under `tools/` are development aids.
 | `renyi reproduce <recording> [<file>]` | replay a recording under its manifest and compare the outcome and the output; the code hash and the dependencies must be the manifest's, a different toolchain or extension list is a warning | 1 when they differ |
 | `renyi test [--strict] [--refresh <name> [--redact <name>]] [--explain] [--interpret] [--no-cache] <file>...` | run every `example:` and `test` | 1 when any fails |
 | `renyi compile [--to <file.ryc>] <file>` | check, then write the program as a bytecode file (default `<name>.ryc`); `run`, `record`, `test` and `reproduce` take a `.ryc` file in place of a source | 1 when any error |
-| `renyi build [--exe] [--to <file>] [--opt speed\|none] <file>`, `renyi build --cache <file>` | check, then compile every function to machine code for this machine (Cranelift's `speed` level unless `--opt none`, decision AS3) and write the image, the program (in a binary encoding, with the hash of its bytecode file, decision AT3) with the code (default `<name>.ryi`; decision AS1); `run`, `record`, `test` and `reproduce` take a `.ryi` file in place of a source and compile nothing; an image built by another `renyi`, for another code format or another CPU is refused, the fix being to build again; with `--exe`, a self-contained executable instead (default `<name>`, `<name>.exe` on Windows; decision AS4): the `renyi` binary with the image appended, which runs the program with its whole command line as the arguments and takes no command of its own; with `--cache`, the image into the image cache instead (decision AU10), where `run`, `record`, `test` and `reproduce` of the same program find it | 1 when any error, or when the machine generates no code |
+| `renyi build [--exe] [--to <file>] [--opt speed\|none] <file>`, `renyi build --cache <file>` | check, then compile every function to machine code for this machine (Cranelift's `speed` level unless `--opt none`, decision AS3) and write the image, the program (in a binary encoding, with the hash of its bytecode file, decision AT3) with the code (default `<name>.ryi`; decision AS1); `run`, `record`, `test` and `reproduce` take a `.ryi` file in place of a source and compile nothing; an image built by another `renyi`, for another code format or another CPU is refused, the fix being to build again; the code of a program that declares a memory budget tests it (decision AW66) and the image says so, and a run under `--sandbox` with a memory budget of a program that declares none leaves the image's code and compiles its own; with `--exe`, a self-contained executable instead (default `<name>`, `<name>.exe` on Windows; decision AS4): the `renyi` binary with the image appended, which runs the program with its whole command line as the arguments and takes no command of its own; with `--cache`, the image into the image cache instead (decision AU10), where `run`, `record`, `test` and `reproduce` of the same program find it | 1 when any error, or when the machine generates no code |
 | `renyi add <name> [<version>]` | a dependency (decision AC1): the versions chosen for every requirement (the same major, at least the version required, the highest the registry has, the chosen packages' own requirements included), every package fetched and verified, the effects of the package added printed, `renyi.json` and `renyi.lock.json` written | 1 when refused |
 | `renyi update [--accept-effects]` | every dependency to the highest version its requirement allows; a version whose effects widen is refused without the flag, and with it when a `main` that reaches the package does not declare the new capability | 1 when refused |
 | `renyi audit` | every locked dependency's effects against each `main` that reaches it, and the capabilities of a `main` no dependency uses | 1 when a `main` does not cover a dependency it reaches |
@@ -1681,8 +1682,8 @@ clause is, intersected with `main`'s, its budgets and guards added, and
 its `memory` (`256 megabytes`) a budget on the bytes the run holds above
 its start, the smaller of it and the program's own (section 11) in
 force, which ends the run as a crash does when exceeded; `main` must
-need nothing the grant does not cover, and a budgeted run stays on the
-interpreter (the same grant through the embedding API: `embedding.md`);
+need nothing the grant does not cover (the same grant through the
+embedding API: `embedding.md`);
 `--redact <name>` keeps a
 secret out of a recording; `--profile` counts every operation, call and
 primitive call, samples where the time goes, and prints the report on the

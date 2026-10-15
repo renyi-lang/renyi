@@ -169,6 +169,7 @@ impl Worker {
         opt_level: &str,
         calls: Vec<CallKind>,
         inline: bool,
+        guard_memory: bool,
     ) -> Option<Worker> {
         let (requests, inbox) = mpsc::channel::<(CodeId, Vec<Option<i64>>)>();
         let (outbox, results) = mpsc::channel();
@@ -192,9 +193,21 @@ impl Worker {
                     if stopped.load(Ordering::Relaxed) {
                         break;
                     }
-                    let result = compile_with_inlining(
-                        program, code, &calls, &globals, &*isa, &mut ctx, &mut fctx, inline,
-                    );
+                    // the compilation's memory is not the run's (decision
+                    // AW66)
+                    let result = crate::memory::exempt(|| {
+                        compile_with_inlining(
+                            program,
+                            code,
+                            &calls,
+                            &globals,
+                            &*isa,
+                            &mut ctx,
+                            &mut fctx,
+                            inline,
+                            guard_memory,
+                        )
+                    });
                     if outbox.send((code, result)).is_err() {
                         break;
                     }
@@ -283,6 +296,11 @@ pub struct Jit {
     /// AU50): off unless `RENYI_NATIVE_INLINE=1`, since the measure found
     /// the expanded code slower than the calls it replaces.
     inline: bool,
+    /// Whether the generated code tests the memory budget at a body's
+    /// entry and at a loop's back edge (decision AW66): for a run under
+    /// a budget, the program's own or the host's, and for the image of a
+    /// program that declares one; the test costs the others nothing.
+    guard_memory: bool,
     /// Per module constant, its value once the VM has built it (decision
     /// AU53), which the generated code copies in place through
     /// `NativeState::globals`; a compilation reads one built to a small
@@ -520,6 +538,7 @@ impl Jit {
         opt_level: Option<&str>,
         calls: Vec<CallKind>,
         in_place: &[Option<crate::extension::InPlace>],
+        guard_memory: bool,
     ) -> Option<Jit> {
         // no optimisation unless asked (`renyi build --opt speed`, or
         // `RENYI_NATIVE_OPT=speed` as a development aid): the generated
@@ -598,6 +617,7 @@ impl Jit {
             code: CodeArena::default(),
             calls,
             opt_level: level,
+            guard_memory,
             loaded: 0,
             mapped: false,
             unmapped: None,
@@ -671,6 +691,12 @@ impl Jit {
         image::target_of(&*self.isa)
     }
 
+    /// Whether the code carries the memory guard (decision AW66), which
+    /// an image records.
+    pub fn guards_memory(&self) -> bool {
+        self.guard_memory
+    }
+
     pub fn opt_level(&self) -> &str {
         &self.opt_level
     }
@@ -708,6 +734,17 @@ impl Jit {
                 image.codes.len(),
                 self.states.len()
             ));
+        }
+        // the guard of decision AW66 is in the code or not: a run under
+        // a host's budget (`--sandbox`) of a program without its own
+        // compiles its own code, and a run without a budget does not pay
+        // for an image built with the guard
+        if image.header.guarded != self.guard_memory {
+            return Err(if self.guard_memory {
+                "the image's code carries no memory guard and this run is under a memory budget; the run compiles its own code".to_string()
+            } else {
+                "the image's code carries the memory guard and this run is under no memory budget; the run compiles its own code".to_string()
+            });
         }
         let started = std::time::Instant::now();
         // the section mapped from the file (decision AT5), or placed as
@@ -906,7 +943,17 @@ native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops han
             return None;
         }
         let started = std::time::Instant::now();
-        let made = template::compile(program, code, &self.calls, self.hot_factor, self.promotion);
+        // the template's memory is not the run's (decision AW66)
+        let made = crate::memory::exempt(|| {
+            template::compile(
+                program,
+                code,
+                &self.calls,
+                self.hot_factor,
+                self.promotion,
+                self.guard_memory,
+            )
+        });
         let template = match made {
             Ok(template) => template,
             Err(reason) => {
@@ -1038,16 +1085,20 @@ native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops han
         code: CodeId,
     ) -> Result<codegen::Compiled, codegen::Skipped> {
         let globals = self.small_globals();
-        compile_with_inlining(
-            program,
-            code,
-            &self.calls,
-            &globals,
-            &*self.isa,
-            &mut self.ctx,
-            &mut self.fctx,
-            self.inline,
-        )
+        // the compilation's memory is not the run's (decision AW66)
+        crate::memory::exempt(|| {
+            compile_with_inlining(
+                program,
+                code,
+                &self.calls,
+                &globals,
+                &*self.isa,
+                &mut self.ctx,
+                &mut self.fctx,
+                self.inline,
+                self.guard_memory,
+            )
+        })
     }
 
     /// A module constant the VM has just built (decision AU53): its value
@@ -1121,7 +1172,13 @@ native: {} code objects on templates ({} ops, {} bytes) in {} ms{}; {} loops han
     /// placed on the way. Without a thread, compiled here.
     fn queue(&mut self, program: &Program, code: CodeId) {
         if self.worker.is_none() {
-            self.worker = Worker::start(program, &self.opt_level, self.calls.clone(), self.inline);
+            self.worker = Worker::start(
+                program,
+                &self.opt_level,
+                self.calls.clone(),
+                self.inline,
+                self.guard_memory,
+            );
         }
         let handed = self
             .worker
@@ -1219,6 +1276,7 @@ pub(crate) fn compile_with_inlining(
     ctx: &mut Context,
     fctx: &mut FunctionBuilderContext,
     inline: bool,
+    guard_memory: bool,
 ) -> Result<codegen::Compiled, codegen::Skipped> {
     let expansion = if inline {
         inline::expand(program, code)
@@ -1229,7 +1287,17 @@ pub(crate) fn compile_with_inlining(
         Some(expansion) => (&expansion.code, expansion.regions.clone()),
         None => (&program.codes[code], Vec::new()),
     };
-    let mut compiled = codegen::compile(program, code, body, calls, globals, isa, ctx, fctx)?;
+    let mut compiled = codegen::compile(
+        program,
+        code,
+        body,
+        calls,
+        globals,
+        isa,
+        ctx,
+        fctx,
+        guard_memory,
+    )?;
     if !regions.is_empty() && std::env::var_os("RENYI_NATIVE_INLINE_DUMP").is_some() {
         // the kinds the analysis settled on for the regions' slots, a
         // development aid: an argument that arrives boxed keeps the
@@ -1300,6 +1368,7 @@ impl Jit {
         _: Option<&str>,
         _: Vec<CallKind>,
         _: &[Option<crate::extension::InPlace>],
+        _: bool,
     ) -> Option<Jit> {
         None
     }

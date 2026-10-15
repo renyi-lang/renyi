@@ -820,9 +820,24 @@ where one decided, the status. The dates are those of the decisions.
     program's, the recording's spelling, five conformance cases, the
     binary driven through the tightening, the reference, the cheat
     sheet at 2,996 tokens, the sketch, the system design, the
-    embedding guide, GAPS 3.6 closed. Open: 45b, the budget kept by the
-    generated code so that a budgeted run need not stay on the
-    interpreter.
+    embedding guide, GAPS 3.6 closed. 45b built (AW66): the allocator's
+    flag a byte whose address the VM's native state holds, tested by
+    the generated code of both tiers at a body's entry and before every
+    backward jump, `rt_over_memory` when set; the JIT's compilations
+    left out of the count; the guard generated only under a budget (the
+    host's or the program's own), the image recording it; a budgeted
+    run on the JIT. The measure, every program guarded: the check
+    row from the image 1,278.2 to 1,294.6 million instructions
+    (+1.3%); primes 266.7 to 298.5 million (+11.9%), strings 445.8
+    to 453.7 million (+1.8%), records 154.2 to 157.2 million
+    (+1.9%), json_round_trip 783.6 to 784.0 million (+0.04%), hello
+    unchanged; the
+    guard under a budget only: the check row 1,277.4 million
+    instructions against the base's 1,278.2 (-0.06%); primes 266.7
+    million (-0.01%), strings 445.9 million (+0.02%), records 154.2
+    million (-0.01%), json_round_trip 783.0 million (-0.08%), hello
+    5.24 million (-0.06%): within the noise, nothing paid. The stage
+    closed.
 
 ## 3. The tracks
 
@@ -1014,8 +1029,10 @@ own part halved; the liveness walk's residue (about 30 million) left.
 Stage 43, gap 1.11, closed (AW60, AW61) the same evening, and stage
 44, its residue GAPS 1.19 (AW62, AW63), after it, and stage 45, GAPS
 3.6 (AW64, AW65: the memory budget in the grant), after that; its
-second part, 45b, is open: the budget kept by the generated code,
-measured under AU1's rule. The article waits for a stable version (the
+second part, 45b, built (AW66: the budget kept by the generated code
+at a body's entry and a loop's back edge, under a budget only, the
+image recording it, measured). The article waits for a stable version
+(the
 owner's word of 2026-10-15 evening), then its arXiv submission. Not
 scheduled: the Rust front end's name sets as bits, the liveness walk's
 residue.

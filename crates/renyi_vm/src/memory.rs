@@ -7,7 +7,8 @@
 //! and a host runs one sandboxed call at a time.
 
 use std::alloc::{GlobalAlloc, Layout};
-use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
+use std::cell::Cell;
+use std::sync::atomic::{AtomicBool, AtomicI64, AtomicU8, Ordering};
 
 /// Set by the first allocation through `Counting`: whether the process's
 /// allocator counts at all.
@@ -20,8 +21,20 @@ static NET: AtomicI64 = AtomicI64::new(0);
 /// The highest `NET` since `begin`.
 static PEAK: AtomicI64 = AtomicI64::new(0);
 static LIMIT: AtomicI64 = AtomicI64::new(0);
-/// Whether `NET` went over `LIMIT` since `begin`.
-static OVER: AtomicBool = AtomicBool::new(false);
+/// Whether `NET` went over `LIMIT` since `begin`: a byte, which the
+/// generated code tests in place at a body's entry and at a loop's back
+/// edge through the address `NativeState::over_memory` holds (decision
+/// AW66).
+static OVER: AtomicU8 = AtomicU8::new(0);
+
+thread_local! {
+    /// Whether this thread's allocations are left out of the count: the
+    /// JIT's compilations (decision AW66), so that the machine code made
+    /// for a run is not the run's memory. A `const` initializer of a type
+    /// without `Drop` is native thread-local storage, which registers
+    /// nothing and allocates nothing, so the allocator may read it.
+    static EXEMPT: Cell<bool> = const { Cell::new(false) };
+}
 
 /// A global allocator that counts for the memory budget, around any
 /// other: `#[global_allocator] static ALLOCATOR: Counting<System> =
@@ -66,20 +79,29 @@ fn noted(size: i64) {
     if !INSTALLED.load(Ordering::Relaxed) {
         INSTALLED.store(true, Ordering::Relaxed);
     }
-    if ACTIVE.load(Ordering::Relaxed) {
+    if ACTIVE.load(Ordering::Relaxed) && !EXEMPT.with(Cell::get) {
         let net = NET.fetch_add(size, Ordering::Relaxed) + size;
         PEAK.fetch_max(net, Ordering::Relaxed);
         if net > LIMIT.load(Ordering::Relaxed) {
-            OVER.store(true, Ordering::Relaxed);
+            OVER.store(1, Ordering::Relaxed);
         }
     }
 }
 
 #[inline]
 fn freed(size: i64) {
-    if ACTIVE.load(Ordering::Relaxed) {
+    if ACTIVE.load(Ordering::Relaxed) && !EXEMPT.with(Cell::get) {
         NET.fetch_sub(size, Ordering::Relaxed);
     }
+}
+
+/// Run `work` with this thread's allocations left out of the count
+/// (decision AW66): the JIT's compilations.
+pub(crate) fn exempt<T>(work: impl FnOnce() -> T) -> T {
+    let was = EXEMPT.with(|exempt| exempt.replace(true));
+    let out = work();
+    EXEMPT.with(|exempt| exempt.set(was));
+    out
 }
 
 /// Whether the process allocates through `Counting`: a budget is
@@ -96,7 +118,7 @@ pub(crate) fn begin(limit: u64) -> bool {
     }
     NET.store(0, Ordering::Relaxed);
     PEAK.store(0, Ordering::Relaxed);
-    OVER.store(false, Ordering::Relaxed);
+    OVER.store(0, Ordering::Relaxed);
     LIMIT.store(limit.min(i64::MAX as u64) as i64, Ordering::Relaxed);
     ACTIVE
         .compare_exchange(false, true, Ordering::Relaxed, Ordering::Relaxed)
@@ -109,10 +131,16 @@ pub(crate) fn end() -> u64 {
     peak()
 }
 
+/// The address of the byte `over` reads, for the generated code
+/// (decision AW66): a static, so that it holds wherever the VM moves.
+pub(crate) fn over_flag() -> *const AtomicU8 {
+    &OVER
+}
+
 /// Whether the budget was exceeded since `begin`.
 #[inline]
 pub(crate) fn over() -> bool {
-    OVER.load(Ordering::Relaxed)
+    OVER.load(Ordering::Relaxed) != 0
 }
 
 /// The most bytes held above the level at `begin`.

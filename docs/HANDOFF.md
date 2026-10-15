@@ -247,13 +247,14 @@ residue, GAPS 1.19 (AW62, AW63: a type may be written in parentheses,
 a returned function type is written so; the handoff's section "Stage
 44"). Stage 45 closed GAPS 3.6 the same evening (AW64, AW65: `memory
 at most 256 megabytes` in the grant of `main`, the sandbox's setting
-tightening it; the handoff's section "Stage 45"); its second part,
-45b, is open: the budget kept by the generated code at its allocating
-helpers, measured under AU1's rule, so that a program with a memory
-clause need not run interpreted. The work next is the owner's call at
-the next session: 45b, the roadmap's remaining candidates (the Rust
-front end's name sets as bits, the liveness walk's residue) or
-something new. The watch rounds
+tightening it; the handoff's section "Stage 45"), and its second part,
+45b, the same evening (AW66: the budget kept by the generated code of
+both tiers at a body's entry and a loop's back edge, the JIT's
+compilations left out of the count, the guard generated only under a
+budget after the first measure's cost, the image recording it, a
+budgeted run on the JIT). The work next is the owner's call at the
+next session: the roadmap's remaining candidates (the Rust front end's
+name sets as bits, the liveness walk's residue) or something new. The watch rounds
 (Gmail, the notifications, the ten list pull requests, the Glama
 badge) were a cron of session 15, stopped on the owner's word of
 2026-10-15 evening ("如果有回复或者更新我通知你": the owner reports
@@ -4418,9 +4419,49 @@ VM; the five conformance cases `memory_budget_*.ry`; the tests in
 `grant.rs` and `sandbox.rs`; the reference, the cheat sheet (2,996
 tokens), the sketch, the system design, the embedding guide, GAPS 3.6.
 The probes are in the lane `D:/Projects/.worktrees/Renyi/gap36/`.
-Gates: fmt, clippy, cargo test 67 suites ok, format check of compiler/ and bench/, lint, tokens, wasm, all exit 0 (gates45.log, 20:30:43); the parse and check judges equal on the probes. Open: 45b, the budget kept by the generated code (the
-helpers of `runtime.rs` read the flag already; `rt_list_push` and the
-loop turning do not), measured on the benchmarks under AU1's rule.
+Gates: fmt, clippy, cargo test 67 suites ok, format check of compiler/
+and bench/, lint, tokens, wasm, all exit 0 (gates45.log, 20:30:43); the
+parse and check judges equal on the probes.
+
+**45b, the budget kept by the generated code (the same evening,
+decision AW66).** The study's plan was a flag read in the allocating
+helpers; the plain constructors answer no status, so a recursion
+building a tree of plain records would have escaped, and the design
+built instead tests the allocator's byte (`memory::OVER`, its address
+in `NativeState::over_memory`) at a body's entry and before every
+backward jump on both tiers (`memory_guard` in `codegen.rs` and in
+`template/mod.rs`, the cold path through `rt_over_memory`), which
+covers any unbounded allocation with one straight line's overshoot.
+The JIT's compilations are exempt from the count (`memory::exempt`, a
+thread-local). A budgeted run is on the JIT: the `memory` arm of the
+tier decision in `vm.rs` is gone. Caught on the way: a stale image in
+the image cache carried the old machine code, so a probe must run with
+`--no-cache` after a change to the generated code; and a byte kept
+inside the VM and registered with the allocator dangled once the
+sandbox's `vm_for` returned its VM by value, which the old test
+`a_memory_budget_stops_a_call_that_grows_past_it` caught, so the byte
+is a static and the state holds its address. The first measure, the
+guard in every program (the lane's `measure_45b.sh`; `renyi_45base`
+0cfaf08 built from the base worktree, `renyi_45b` the stage): the check
+row from the image 1,278.2 to 1,294.6 million instructions (+1.3%);
+primes 266.7 to 298.5 million (+11.9%), strings 445.8 to 453.7 million
+(+1.8%), records 154.2 to 157.2 million (+1.9%), json_round_trip 783.6
+to 784.0 million (+0.04%), hello unchanged,
+over AU1's one percent. The owner chose the guard only under a budget:
+`Jit::guard_memory` from `Vm::new` (the host's `Options::memory` or
+`grant::declares_memory`) and from `image::build` (the program's
+clause), `Header::guarded` in the image (format 11), `Jit::load_image`
+leaving code whose flag disagrees, `consult_cache` in `lib.rs` skipping
+the image cache for a run under a host's budget of a program without
+its own. The second measure (`measure_45c.sh`, `renyi_45c`): the check
+row 1,277.4 million instructions against the base's 1,278.2 (-0.06%);
+primes 266.7 million (-0.01%), strings 445.9 million (+0.02%), records
+154.2 million (-0.01%), json_round_trip 783.0 million (-0.08%), hello
+5.24 million (-0.06%): within the noise, nothing paid.
+Tests: `a_memory_budget_holds_on_every_tier` in `sandbox.rs` (three
+programs, two tiers, compiled at the first call) and
+`an_image_carries_the_memory_guard_only_for_a_program_that_declares_a_budget`
+in `build.rs`. Gates: fmt, clippy, cargo test 67 suites ok, format check of compiler/ and bench/, lint, tokens, all exit 0 (gates45c.log, 21:27:39); the wasm build failed there on the arity of the stub Jit::new, fixed and built clean, fmt and clippy clean after.
 
 ## Stage 44, the clauses after a returned function type (GAPS 1.19, sketch R3-3): the design study (session 15)
 

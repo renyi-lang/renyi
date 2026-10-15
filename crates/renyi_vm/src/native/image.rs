@@ -9,7 +9,8 @@
 //!
 //! The file: the magic `RYI` and a zero byte, the image format, the
 //! header (the renyi version, the code format, the target, the
-//! optimisation level), the hash of the program's bytecode file, the
+//! optimisation level, whether the code carries the memory guard of
+//! decision AW66), the hash of the program's bytecode file, the
 //! program in the binary encoding of `binary.rs` (decision AT3), then
 //! per code object a presence byte and, when present, where its body and
 //! its trampoline lie in the code section, the loop headers and the
@@ -46,7 +47,7 @@ pub const MAGIC: &[u8; 4] = b"RYI\0";
 /// the read-only flags of a code object's parameters in the program's
 /// encoding (decision AW5); 10: a held operand's kind in a deopt point
 /// (decision AW22).
-pub const IMAGE_FORMAT: u32 = 10;
+pub const IMAGE_FORMAT: u32 = 11;
 
 /// The alignment of the code section in the file: a multiple of every
 /// page size the toolchain runs on (16 KB on Apple silicon), so that the
@@ -150,11 +151,14 @@ pub fn build(
     // read as before, the same values by the purity; a constant whose
     // build fails is left to the run, which crashes on its first read
     let evaluable = pure_constants(prepared, &tables.calls);
+    // the memory guard of decision AW66 in the code when the program
+    // declares a budget: every run of it is under one
     let mut jit = Jit::new(
         prepared,
         Some(opt_level.unwrap_or("speed")),
         tables.calls,
         &tables.in_place,
+        crate::grant::declares_memory(prepared),
     )
     .ok_or_else(|| "this machine generates no machine code".to_string())?;
     if !evaluable.is_empty() {
@@ -209,6 +213,7 @@ pub fn build(
             code_format: CODE_FORMAT,
             target: jit.target(),
             opt_level: jit.opt_level().to_string(),
+            guarded: jit.guards_memory(),
         },
         code_hash: crate::recording::sha256_of(crate::file::render(program).as_bytes()),
         program: crate::binary::encode(prepared).into(),
@@ -285,6 +290,10 @@ pub struct Header {
     pub code_format: u32,
     pub target: String,
     pub opt_level: String,
+    /// Whether the code tests the memory budget at a body's entry and at
+    /// a loop's back edge (decision AW66): built so for a program that
+    /// declares one. A run loads the code only when its need agrees.
+    pub guarded: bool,
 }
 
 impl Header {
@@ -445,6 +454,7 @@ impl Image {
         out.u32(self.header.code_format);
         out.text(&self.header.target);
         out.text(&self.header.opt_level);
+        out.u8(self.header.guarded as u8);
         out.text(&self.code_hash);
         out.block(&self.program);
         out.u32(self.codes.len() as u32);
@@ -545,6 +555,7 @@ impl Image {
             code_format: input.u32()?,
             target: input.text()?,
             opt_level: input.text()?,
+            guarded: input.u8()? != 0,
         };
         let code_hash = input.text()?;
         let program: Arc<[u8]> = Arc::from(input.block()?);
@@ -762,6 +773,7 @@ mod tests {
                 code_format: CODE_FORMAT,
                 target: "x86_64 [a=1]".to_string(),
                 opt_level: "none".to_string(),
+                guarded: true,
             },
             code_hash: "abc".to_string(),
             program: vec![1, 0].into(),
@@ -830,6 +842,7 @@ mod tests {
             code_format: CODE_FORMAT,
             target: "x86_64 [a=1]".to_string(),
             opt_level: "speed".to_string(),
+            guarded: false,
         };
         assert_eq!(here.mismatch("x86_64 [a=1]"), None);
         assert!(here.mismatch("x86_64 [a=2]").is_some());

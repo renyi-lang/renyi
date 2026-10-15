@@ -10399,3 +10399,85 @@ clippy, cargo test 67 suites ok, format check of compiler/ and bench/,
 lint, tokens, wasm, all exit 0 (gates45.log, 20:30:43); the parse and
 check judges equal on the probes. 45b, the budget kept by the generated
 code, is open. (Claude)
+
+**AW66. Stage 45b built: the memory budget kept by the generated code,
+under a budget only (2026-10-15 evening).** A budgeted run no longer
+stays on the interpreter: the sentence of AP2 ("a budgeted run stays on
+the interpreter, as a narrated or profiled one does") is superseded,
+AG3's rule for narrated and profiled runs stands. The mechanism: the
+allocator's flag is a byte of the memory module (`memory::OVER`), whose
+address the VM's `NativeState` holds (`over_memory`, from
+`memory::over_flag`); the generated code of both tiers reads the pointer
+and then the byte at a body's entry (the prologue, after the node is
+linked) and before every backward jump (`Jump`, `JumpIfFalse`,
+`JumpIfTrue`, `JumpIfAbsent`, `JumpIfFailure` with a target at or before
+the op), and when it is set calls `rt_over_memory`, which parks the
+interrupt as the typed entries' `typed_over_memory` does, and the body
+leaves. Why these two points: a run that allocates without bound runs
+ops without bound, so it passes a back edge or a body's entry without
+bound; a straight line of ops allocates a bounded amount; so the
+overshoot past the budget is one body's straight line, as on the
+interpreter, whose checks are at the calls, the returns and the backward
+jumps. The alternative, a check inside every allocating helper, left the
+plain constructors (`rt_construct_plain`, `rt_make_list`,
+`rt_record_copy`), which answer no status, uncovered: a recursion
+building a tree of plain records escaped it. The first build kept the
+byte inside the VM's own state, registered with the allocator at
+`begin_run`; the sandbox's `vm_for` returns its VM by value after
+`begin_run`, so the registered address dangled and the test
+`a_memory_budget_stops_a_call_that_grows_past_it` found the budget
+ignored: a static's address, read through the state, holds wherever a VM
+moves, at one more load per test. The JIT's compilations are left out of
+the count (`memory::exempt`, a thread-local the allocator reads only
+while a budget is in force): the compile thread's work and the templates
+made on the run's own thread, so that the machine code made for a run is
+not the run's memory; a template or a code object freed after its exempt
+making lowers the count by a few kilobytes, which only loosens the
+budget.
+The first measure, with the guard in every program's code, by `perf
+stat` user-space instructions on the Linux release build (the lane's
+`measure_45b.sh`; `renyi_45base` is 0cfaf08): the check row from the
+image 1,278.2 to 1,294.6 million instructions (+1.3%); primes 266.7 to
+298.5 million (+11.9%), strings 445.8 to 453.7 million (+1.8%), records
+154.2 to 157.2 million (+1.9%), json_round_trip 783.6 to 784.0 million
+(+0.04%), hello unchanged. The check row and three of the four
+benchmarks over AU1's one percent, `primes` far over it: a loop of a few
+ops pays the two loads and the branch at every turn. The owner's choice,
+asked with the measure (keep it, generate the guard only under a budget,
+or leave a budgeted run interpreted): the guard only under a budget. So
+`Jit::guard_memory` says whether the generated code tests the budget:
+set by `Vm::new` when the host gives a budget (`Options::memory`, from
+`--sandbox` or the embedding API) or the program declares one
+(`grant::declares_memory`: `main` or any test), and by `image::build`
+when the program declares one, every run of such a program being under a
+budget; `codegen::compile` and `template::compile` take it and
+`memory_guard` emits nothing without it. The image's header records it
+(`Header::guarded`, image format 11), and `Jit::load_image` leaves an
+image's code whose flag disagrees with the run's need, the run compiling
+its own with the message "the image's code carries no memory guard and
+this run is under a memory budget; the run compiles its own code"; the
+image cache (decision AU10) is not consulted and not written by a run
+under a host's budget of a program that declares none (`consult_cache`),
+since the cached image of such a program carries no guard. The second
+measure, the same way (`measure_45c.sh`, `renyi_45c` the stage): the
+check row 1,277.4 million instructions against the base's 1,278.2
+(-0.06%); primes 266.7 million (-0.01%), strings 445.9 million (+0.02%),
+records 154.2 million (-0.01%), json_round_trip 783.0 million (-0.08%),
+hello 5.24 million (-0.06%): within the noise, nothing paid; a program
+under a budget pays the first measure's cost and runs on the JIT, where
+before it ran interpreted. The test
+`a_memory_budget_holds_on_every_tier` drives the binary through a loop
+that pushes, a recursion that only calls and a recursion that only
+builds plain records, each compiled at its first call on the Cranelift
+tier and on the template tier, each stopped with the budget's message; `
+an_image_carries_the_memory_guard_only_for_a_program_that_declares_a_bud
+get` builds the image of a program with the clause (guarded, stopped by
+its own code) and of one without (unguarded; under `--sandbox` with a
+memory budget its code is left and the run's own stops), and the
+conformance suite runs the memory cases on the JIT as every `run` case.
+The reference's section 11 and appendix B and the embedding guide's
+section 4 no longer say a budgeted run is interpreted. Gates: fmt,
+clippy, cargo test 67 suites ok, format check of compiler/ and bench/,
+lint, tokens, all exit 0 (gates45c.log, 21:27:39); the wasm build failed
+there on the arity of the stub Jit::new, fixed and built clean, fmt and
+clippy clean after. (Claude)

@@ -132,9 +132,11 @@ assert_eq!(text, r#"{"across":11,"down":12}"#);
 its start (a function other than `main` carries no budget of its own, so
 the host's is the one in force for a call). The VM reads the count at every call, every primitive and
 every loop turning, and a call over the budget ends as a whole with
-`OverMemory { limit, used }`; the next call starts afresh. A budgeted
-call runs on the interpreter, as a narrated or profiled one does
-(decision AG3), so that every safe point is the interpreter's.
+`OverMemory { limit, used }`; the next call starts afresh. The machine
+code the VM generates for a sandbox with a memory budget keeps the
+budget as the interpreter does, at a body's entry and at a loop's back
+edge (decision AW66), and the memory of its compilations is not
+counted; a sandbox without one pays nothing for the test.
 
 The count comes from the process's allocator, which must be the counting
 one. The official `renyi` binary declares it; a host declares it in one

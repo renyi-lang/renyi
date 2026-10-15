@@ -1389,7 +1389,13 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
         Ok(loaded) => loaded,
         Err(code) => return code,
     };
-    let (image, entry) = consult_cache(&loaded.program, loaded.image, loaded.encoding, &flags);
+    let (image, entry) = consult_cache(
+        &loaded.program,
+        loaded.image,
+        loaded.encoding,
+        &flags,
+        memory,
+    );
     run_loaded(
         path,
         loaded.program,
@@ -1407,16 +1413,21 @@ fn run_command(args: &[String], record: bool) -> ExitCode {
 /// program's entry there when the run may leave an image for the next:
 /// neither for a program loaded from an image nor for a run on the
 /// interpreter (`--interpret`, `--explain`, `--profile`) or under
-/// `--no-cache`. `encoding` is the program's binary encoding when the
-/// caller holds it (decision AU43).
+/// `--no-cache`, nor for a run under a host's memory budget (`memory`,
+/// from `--sandbox`) of a program that declares none, since a cached
+/// image carries the guard of decision AW66 only for a program that
+/// does. `encoding` is the program's binary encoding when the caller
+/// holds it (decision AU43).
 fn consult_cache(
     program: &renyi_vm::Program,
     image: Option<Image>,
     encoding: Option<Vec<u8>>,
     flags: &Flags,
+    memory: Option<u64>,
 ) -> (Option<Image>, Option<cache::Entry>) {
     let interpreted = flags.interpret || flags.explain || flags.profile;
-    if image.is_some() || interpreted || flags.no_cache {
+    let host_budget = memory.is_some() && !renyi_vm::grant::declares_memory(program);
+    if image.is_some() || interpreted || flags.no_cache || host_budget {
         return (image, None);
     }
     let Some(entry) = cache::directory().and_then(|directory| match encoding {
@@ -1638,7 +1649,7 @@ fn test_command(args: &[String]) -> ExitCode {
             Ok(loaded) => loaded,
             Err(code) => return code,
         };
-        let (image, entry) = consult_cache(&program, image, encoding, &flags);
+        let (image, entry) = consult_cache(&program, image, encoding, &flags, None);
         let options = renyi_vm::Options {
             explain: flags.explain,
             interpret: flags.interpret,
@@ -1729,7 +1740,7 @@ fn reproduce_command(args: &[String]) -> ExitCode {
             describe_extensions(&extensions)
         );
     }
-    let (image, _) = consult_cache(&program, image, None, &Flags::default());
+    let (image, _) = consult_cache(&program, image, None, &Flags::default(), None);
     let options = renyi_vm::Options {
         image,
         registry: registry().clone(),

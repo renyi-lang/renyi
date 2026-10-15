@@ -424,6 +424,19 @@ pub fn spell(capability: &Capability) -> String {
     spelled
 }
 
+/// Whether `main` or a test of the program declares a memory budget
+/// (decision AW64): the generated code then carries the guard of
+/// decision AW66, as it does under a host's budget.
+pub fn declares_memory(program: &crate::Program) -> bool {
+    program
+        .main
+        .is_some_and(|main| memory_of(&program.function_metas[main].needs).is_some())
+        || program
+            .tests
+            .iter()
+            .any(|test| memory_of(&test.needs).is_some())
+}
+
 /// The memory budget a grant declares (decision AW64): the smallest
 /// `memory at most COUNT UNIT` among its capabilities, in bytes.
 pub fn memory_of(declared: &[Capability]) -> Option<u64> {
