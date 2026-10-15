@@ -249,8 +249,9 @@ the next session: GAPS 1.19, the roadmap's remaining candidates (the
 Rust front end's name sets as bits, the liveness walk's residue) or
 something new. The watch rounds
 (Gmail, the notifications, the ten list pull requests, the Glama
-badge, the blocked awesome-claude-code form) were a cron of session
-15 and stop with it; a new session runs one on "巡检一轮". The open
+badge) were a cron of session 15, stopped on the owner's word of
+2026-10-15 evening ("如果有回复或者更新我通知你": the owner reports
+replies); a new session runs one on "巡检一轮". The open
 items of AW45 stand
 beside it (the verified domain, the article's submission, now that
 0.3.0 is out).
@@ -10938,8 +10939,17 @@ on a fresh clone).
   three-sentence description), but on 2026-10-15 the repository had
   limited issue creation to collaborators (GitHub's interaction
   limit, a day to a week), so the form could not be opened; the
-  contributing rules allow the web form only, no `gh`, no pull
-  request: try the form again in a later round. Meanwhile (the owner's
+  contributing rules allow the web form only, filled in by a person,
+  no `gh`, no pull request. Since the owner's question of 2026-10-15
+  evening ("要是我关会话或者关机怎么办"), a workflow of the cc-tree
+  repository watches instead of a session:
+  `.github/workflows/watch-awesome-claude-code.yml` runs daily, looks
+  for an issue opened there by a non-collaborator after the limit
+  (`author_association` NONE), and then opens one issue in
+  skymanbp/cc-tree, "awesome-claude-code accepts recommendations
+  again", with the form's text to paste, which GitHub mails to the
+  owner; the owner fills the form by hand, deletes the workflow and
+  closes the issue. Meanwhile (the owner's
   order of 2026-10-15, "有的话就开") `cc-tree` was submitted to two lists
   that merge entries of a few stars, by one-line pull requests from
   forks under `D:\Projects\.worktrees\cc-tree\lists\`, no AI
@@ -10976,9 +10986,9 @@ on a fresh clone).
   CONTRIBUTING.md says "Tools that heavily rely on external AI systems
   are not allowed" (the fork under
   `D:\Projects\.worktreesutoshade\lists\` has no branch);
-  CodeEraser to analysis-tools-dev/static-analysis, which needs six
-  months since the repository's creation (2026-08-07, so from
-  2027-02-07) and a second human contributor. Already merged:
+  CodeEraser to analysis-tools-dev/static-analysis, dropped by the
+  owner's word of 2026-10-15 evening ("static analysis就不投了").
+  Already merged:
   rust-unofficial/awesome-rust#2926 (autoshade, 2026-10-15); open:
   ai-for-developers/awesome-ai-coding-tools#963 (CodeEraser),
   awesome-mcp-servers 16459, 16488, 16489, winget 452920;
