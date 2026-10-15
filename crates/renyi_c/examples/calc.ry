@@ -1,0 +1,41 @@
+module calc
+  purpose: The module the C example loads.
+
+import std.console
+
+type Point
+  purpose: A point on the grid.
+  has across: Integer
+  has down: Integer
+end
+
+type Oops
+  purpose: A failure for the example.
+  has value: Integer
+end
+
+public function add(left: Integer, right: Integer) returns Integer
+  purpose: Add two numbers.
+
+  return left + right
+end
+
+public function shout(text: Text) returns Text needs console
+  purpose: Print the text and return it in capitals.
+
+  console.print(text)
+  return text.to_upper()
+end
+
+public function shift(point: Point, step: Integer) returns Point
+  purpose: Move the point along both axes.
+
+  return Point(across: point.across + step, down: point.down + step)
+end
+
+public function risky(number: Integer) returns Integer or fails with Oops
+  purpose: Fail below zero.
+
+  if number is at least 0 then return number end
+  fail with Oops(value: number)
+end

@@ -168,10 +168,21 @@ on it (reproduction five of five across Windows and Linux; the
 first-run rate one, one, one, three and two attempts on five tasks),
 the repository `renyi-lang/renyi-games` was made (four games over
 `std.screen` with their page) and the article `paper/renyi.tex` was
-written; the work next is the C API of decision A5 by AW28's
-order, its design study first, when the owner opens it, with the open
-items of AW45 beside it (`renyi-tools`, the verified domain, the
-namespace claim, the article's submission).
+written. Session 15 (2026-10-15) opened the C API of decision A5 by
+AW28's order as stage 40: the design study is the section "Stage 40,
+the C API: the design study (session 15)" below, the owner's four
+answers are decision AW46 (JSON texts both ways, the crate `renyi_c`
+with a hand-written header, C and Python first, a library archive per
+target), and 40a is done (decision AW47; the paragraph "Stage 40a as
+built" at the end of the study's section): `Sandbox::call_json`, the
+crate `renyi_c` with `include/renyi.h`, seven tests, the C example
+`examples/host.c` compiled and run in CI. The work next is 40b: the
+Python binding through `ctypes` in `bindings/python/renyi.py` and its
+run in CI, the fourth release artifact per target in
+`release.yml`, the crate on crates.io at the next release
+(`docs/RELEASE.md`'s crate list), the measure the study names (the
+load and a call from Python against Rust). The open items of AW45
+stand beside it (the verified domain, the article's submission).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -658,8 +669,8 @@ and push there directly.
    extension published to Open VSX through the lane's
    `ovsx_publish.py` with the token read from the owner's mailbox and
    never printed, `cargo install` and `install.sh` checked). The work
-   next: the C API of decision A5 by AW28's order, its design study
-   first, when the owner opens it; the owner's step of
+   next: stage 40b of the C API (the study and AW46, AW47 are in this
+   file's head and the roadmap); the owner's step of
    `docs/RELEASE.md` section 6 (the announcements from the lane's
    `announcements_0.2.0.md`; the Marketplace publisher, the extension
    there and the social preview were done through the owner's browser
@@ -4365,6 +4376,44 @@ or C, Python and Node through `koffi`; (4) the packaging: a fourth
 release artifact per target with the libraries, the header, the
 binding and the example, and the crate on crates.io (recommended), or
 the crate on crates.io alone.
+
+**Stage 40a as built (decision AW47, 2026-10-15).** The owner took
+every recommended answer (AW46). `crates/renyi/src/sandbox.rs`:
+`Function.callable`, `Sandbox::call_json(name, arguments, guards)`,
+the VM made by the free function `vm_for` over the sandbox's fields
+(the borrow of `self` split so `call` and `call_json` share it),
+`ended`, `rendered` and `interrupted` as free functions; the codec is
+`renyi_vm::natives::json::{decode, encode}` with `Naming::Exact`, the
+parameter's type `program.result_types[param_type_indices[i]]`, the
+decode failure rendered through `text_for_console` as the module
+would see it (`Mismatch(path: "argument 1 (`left`)", expected:
+"Integer", found: "a string")`). `crates/renyi_c/`: `Cargo.toml`
+(`cdylib`, `staticlib`, `rlib`), `src/lib.rs` (the allocator, the
+statuses, `Handle`, the thread-local last error, the twenty-one
+exports), `include/renyi.h`, `tests/api.rs` (the module `SHAPES` in
+a text; seven tests, the last reading every `renyi_<name>(` of the
+header and comparing the set with the exports), `examples/host.c`,
+`examples/calc.ry` (checks clean under `--strict`, canonical) and
+`examples/host.expected`. The workspace's `Cargo.toml` lists the
+crate and `renyi = { path = "crates/renyi", version = "0.2.1" }`
+among the workspace dependencies. CI's `checks` job gained the step
+"The C API": `cargo build -q -p renyi_c`, `cc` on the example with
+`-Wl,-rpath` to the debug directory, the output diffed against
+`host.expected`. On Windows the example was compiled with
+Strawberry's gcc (`gcc host.c -I../include -L../../../target/debug
+-l:renyi_c.dll`) and run with the debug directory on the PATH; the
+expected file's line endings are LF (the C side's `printf` wrote
+CRLF on Windows, normalised once). The C side flushes standard output
+before each call, or the module's `console.print` lands before the
+host's buffered lines. The documents: `docs/embedding.md` section 7
+and its intro, section 2's `callable` and section 3's `call_json`;
+`07-system-design.md` 4.2's bullet "From C" and 4.3's sentence; the
+README's embedding line; the roadmap's stage 40, track F and section
+4; `CLAUDE.md`'s row `crates/renyi_c/`. Not done in 40a: the Python
+binding, the artifact, crates.io (40b), the screen callback and the
+value handles (40c). The gates of this commit: `cargo fmt --check`,
+`cargo clippy --all-targets -- -D warnings`, `cargo test` (the
+judges among them) on the owner's machine.
 
 ## Stage 37, the map for retrieval by embedding: the design study (session 14)
 

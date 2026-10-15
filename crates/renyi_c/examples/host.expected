@@ -1,0 +1,10 @@
+renyi 0.2.1, API 1
+module: calc
+grant: console
+functions: [{"name":"add","signature":"add(left: Integer, right: Integer) returns Integer","purpose":"Add two numbers.","parameters":2,"needs":[],"exposed_as_tool":false,"input_schema":null,"callable":true},{"name":"shout","signature":"shout(text: Text) returns Text needs console","purpose":"Print the text and return it in capitals.","parameters":1,"needs":["console"],"exposed_as_tool":false,"input_schema":null,"callable":true},{"name":"shift","signature":"shift(point: Point, step: Integer) returns Point","purpose":"Move the point along both axes.","parameters":2,"needs":[],"exposed_as_tool":false,"input_schema":null,"callable":true},{"name":"risky","signature":"risky(number: Integer) returns Integer or fails with Oops","purpose":"Fail below zero.","parameters":1,"needs":[],"exposed_as_tool":false,"input_schema":null,"callable":true}]
+add[2, 3] -> status 0: 5
+hello
+shout["hello"] -> status 0: "HELLO"
+shift[{"across": 1, "down": 2}, 10] -> status 0: {"across":11,"down":12}
+add["two", 3] -> status 4: argument 1 (`left`) does not decode as `Integer`: Mismatch(path: "argument 1 (`left`)", expected: "Integer", found: "a string")
+risky[-1] -> status 1: Oops(value: -1)

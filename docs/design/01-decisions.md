@@ -9794,3 +9794,76 @@ cheat sheet, token-budgeted, is unchanged. Claim 1, the review time,
 is a person's measure and is the owner's; pending. The lane:
 `measure02/` (the recordings `rec/`, the tasks and the programs
 `firstrun/tasks/`, the results `firstrun/results.md`).
+
+**AW46. The owner's answers after the design study of stage 40, the C
+API: JSON across the boundary, a crate of its own with a hand-written
+header, C and Python first, a library archive per target.** Asked on
+2026-10-15 after the study (the handoff's section "Stage 40, the C
+API: the design study (session 15)": the Rust API of AP1 and AP2 as
+the layer below, the web crate's C ABI by hand as the pattern, the
+JSON codec of `std.json` as the way a value crosses, the `cdylib`'s
+own allocator as the count the memory budget means; AskUserQuestion,
+one batch of four). (1) Values across the boundary: JSON texts both
+ways (recommended), the arguments as one JSON array decoded against
+the declared parameter types before anything runs and the answer as
+one JSON text in the codec's rules, over a value handle API of thirty
+functions with an ownership rule each, and over JSON first with the
+handles scheduled as 40c; a function whose parameter or result the
+codec cannot carry is listed as not callable and refused with the
+reason. (2) The library: a new crate `renyi_c`, `cdylib` and
+`staticlib` over `renyi::Sandbox`, with `include/renyi.h` written by
+hand and held equal to the exports by a test (recommended), over
+`cbindgen` in the build and over the `renyi` crate itself made a
+`cdylib`; the crate declares `renyi::Allocator`, so a host gets the
+memory budget with no declaration of its own. (3) The first stage's
+hosts: C and Python through `ctypes`, one file of the standard
+library (recommended), over C alone and over C, Python and Node
+through `koffi`. (4) The packaging: a fourth release artifact per
+target with the shared and static libraries, the header, the Python
+binding, the C example and a README, and the crate on crates.io with
+the others (recommended), over crates.io alone. The stages the
+answers set: 40a the crate, the header, the handles, `load`,
+`load_source`, `functions`, `module`, `warnings`, `grant`, `call` and
+`call_guarded`, the texts and the statuses, the Rust tests over the
+exports, the header held equal, the C example compiled and run in
+CI; 40b the Python binding and its run in CI, the fourth artifact,
+the crate on crates.io at the next release, the documents, the
+measure; 40c when a host asks: the screen callback, the value handles
+beside the JSON path. (user)
+
+**AW47. Stage 40a built: the crate `renyi_c`, the header, the C
+example in CI.** Done on 2026-10-15 as AW46 set it. `Sandbox::call_json`
+in the `renyi` crate (the arguments as one JSON array text, each item
+decoded through the codec of `std.json` against the type the program's
+type table holds for the parameter, `FunctionMeta::param_type_indices`
+into `Program::result_types`; a parameter the table has no type for
+makes the function not `callable`, a new field of `Function`, and a
+call to it is refused with the parameter named; the guards applied
+through `guarded`; the value encoded and rendered as one text), with
+the VM made by a free function over the sandbox's fields so that
+`call` and `call_json` share it. The crate `renyi_c`: `cdylib`,
+`staticlib` and `rlib`, the counting allocator declared, the handle
+`Handle` holding the sandbox, the text of the last call, the exit
+code and the memory limit and peak; the exports `renyi_api_version`,
+`renyi_version` and `_len`, `renyi_load`, `renyi_load_source`,
+`renyi_free_sandbox`, `renyi_last_error` and `_len` (per thread),
+`renyi_text` and `_len`, `renyi_call`, `renyi_call_guarded`,
+`renyi_exit_code`, `renyi_memory_limit`, `renyi_memory_used`,
+`renyi_module`, `renyi_grant`, `renyi_warnings`, `renyi_functions`;
+the statuses 0 to 5 as AW46's study listed them; the header
+`include/renyi.h` by hand, with a test that reads every
+`renyi_<name>(` of the header and holds the set equal to the exports.
+Seven tests over the exports: the description and the calls (a record
+in and out, a variant, a text, the failure, the crash and the memory
+budget at 8 megabytes), the refusals (the wrong shape, the arity, an
+unknown function, bad JSON, an argument text that is not an array, an
+uncovered need), the guards, two handles with budgets of their own,
+the load failures, the version. The C example `examples/host.c` over
+`calc.ry`, which CI compiles with `cc` against the debug library and
+runs, its output compared with `host.expected`; standard output
+flushed before each call so the module's console lines come in order.
+The codec's failure is rendered as the module would see it
+(`Mismatch(path: ..., expected: ..., found: ...)` of `std.json`), not
+reworded. Not in this stage: the Python binding, the release artifact
+and the crate on crates.io (40b), the screen callback and the value
+handles (40c). (Claude)

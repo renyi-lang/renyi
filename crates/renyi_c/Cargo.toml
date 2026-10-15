@@ -1,0 +1,18 @@
+[package]
+name = "renyi_c"
+description = "The Renyi embedding API for C hosts and the languages that call C: a shared and a static library over renyi::Sandbox with a header (decision AW46)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[lib]
+# the shared library a C, Python or other host loads (`cdylib`), the
+# static library a C program links (`staticlib`), and the library the
+# tests link (`rlib`)
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[dependencies]
+renyi.workspace = true
+renyi_vm.workspace = true
+renyi_json.workspace = true

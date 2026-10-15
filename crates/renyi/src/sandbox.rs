@@ -14,7 +14,7 @@ use renyi_index::{index_files_in, tools_of_in, Header, Kind};
 use renyi_syntax::diagnostics::render_text;
 use renyi_syntax::{parse_grant, SourceFile};
 use renyi_vm::grant::{self, Counter};
-use renyi_vm::natives::json::{read_json, Json};
+use renyi_vm::natives::json::{self, read_json, write_json, Json};
 use renyi_vm::screen::SharedScreen;
 use renyi_vm::{file, memory, Interrupt, Narrowing, Options, Program, Value, Vm};
 
@@ -188,6 +188,10 @@ pub struct Function {
     /// For a function with `expose as tool`: the JSON Schema of its
     /// parameters as a JSON text, as `renyi tools` writes it.
     pub input_schema: Option<String>,
+    /// Whether `call_json` can decode every parameter: false for one
+    /// whose declared type the program's type table does not hold
+    /// (decision AW46).
+    pub callable: bool,
 }
 
 /// How a call ended, other than with its value.
@@ -299,24 +303,24 @@ impl Sandbox {
                     && definition.public
                     && matches!(definition.kind, Kind::Function)
             })
-            .map(|definition| Function {
-                name: definition.name.clone(),
-                signature: definition.signature.clone(),
-                purpose: definition.purpose.clone(),
-                parameters: compiled
-                    .program
-                    .function_metas
-                    .iter()
-                    .find(|meta| {
-                        meta.module == module && meta.name == definition.name && !meta.is_method
-                    })
-                    .map_or(0, |meta| meta.params.len()),
-                needs: definition.effects_declared.clone(),
-                exposed_as_tool: definition.exposed_as_tool,
-                input_schema: tools
-                    .iter()
-                    .find(|tool| tool.module == module && tool.function == definition.name)
-                    .map(|tool| tool.input_schema.render()),
+            .map(|definition| {
+                let meta = compiled.program.function_metas.iter().find(|meta| {
+                    meta.module == module && meta.name == definition.name && !meta.is_method
+                });
+                Function {
+                    name: definition.name.clone(),
+                    signature: definition.signature.clone(),
+                    purpose: definition.purpose.clone(),
+                    parameters: meta.map_or(0, |meta| meta.params.len()),
+                    needs: definition.effects_declared.clone(),
+                    exposed_as_tool: definition.exposed_as_tool,
+                    input_schema: tools
+                        .iter()
+                        .find(|tool| tool.module == module && tool.function == definition.name)
+                        .map(|tool| tool.input_schema.render()),
+                    callable: meta
+                        .is_some_and(|meta| meta.param_type_indices.iter().all(Option::is_some)),
+                }
             })
             .collect();
         Ok(Sandbox {
@@ -366,6 +370,103 @@ impl Sandbox {
     /// otherwise, and a primitive outside what the function was given
     /// fails at the boundary as under `renyi run`.
     pub fn call(&mut self, name: &str, args: Vec<Value>) -> Result<Value, CallError> {
+        let id = self.function_id(name, args.len())?;
+        let mut vm = vm_for(
+            &self.program,
+            &self.module,
+            &self.grant,
+            &self.screen,
+            &mut self.budgets,
+            id,
+        )?;
+        let result = vm.call_function(id, args);
+        self.budgets = Some(vm.budgets());
+        ended(&mut vm, result)
+    }
+
+    /// Call a public function with its arguments as one JSON array text
+    /// and the value answered as one JSON text, both in the codec of
+    /// `std.json` (decision AW46; the C API is this call): each argument
+    /// is decoded against the declared type of its parameter before
+    /// anything runs, and one that does not fit is refused with the
+    /// parameter named; `guards` gives, per argument, the capability of
+    /// the grant whose guard the argument carries (`guarded`), or `None`.
+    /// A value the codec cannot carry (a function, a native value, a
+    /// range) crashes the call as `std.json` would.
+    pub fn call_json(
+        &mut self,
+        name: &str,
+        arguments: &str,
+        guards: &[Option<&str>],
+    ) -> Result<String, CallError> {
+        let items = match read_json(arguments) {
+            Ok(Json::Array(items)) => items,
+            Ok(_) => {
+                return Err(CallError::Refused(
+                    "the arguments are a JSON array, one item per parameter".to_string(),
+                ))
+            }
+            Err((detail, at)) => {
+                return Err(CallError::Refused(format!(
+                    "the arguments do not parse as JSON: {detail} (at {at})"
+                )))
+            }
+        };
+        let id = self.function_id(name, items.len())?;
+        let mut vm = vm_for(
+            &self.program,
+            &self.module,
+            &self.grant,
+            &self.screen,
+            &mut self.budgets,
+            id,
+        )?;
+        let meta = &self.program.function_metas[id];
+        let mut args = Vec::with_capacity(items.len());
+        for (index, item) in items.iter().enumerate() {
+            let parameter = &meta.params[index];
+            let Some(ty) = meta.param_type_indices[index]
+                .map(|index| &self.program.result_types[index as usize])
+            else {
+                return Err(CallError::Refused(format!(
+                    "argument {} (`{parameter}`) has a type the codec cannot decode into, `{}`",
+                    index + 1,
+                    meta.param_types[index]
+                )));
+            };
+            let path = format!("argument {} (`{parameter}`)", index + 1);
+            let value = match json::decode(&mut vm, item, ty, &path, json::Naming::Exact)
+                .map_err(interrupted)?
+            {
+                Ok(value) => value,
+                Err(error) => {
+                    return Err(CallError::Refused(format!(
+                        "{path} does not decode as `{}`: {}",
+                        meta.param_types[index],
+                        rendered(&mut vm, &error)
+                    )))
+                }
+            };
+            let value = match guards.get(index).copied().flatten() {
+                Some(capability) => self
+                    .guarded(value, capability)
+                    .map_err(CallError::Refused)?,
+                None => value,
+            };
+            args.push(value);
+        }
+        let result = vm.call_function(id, args);
+        self.budgets = Some(vm.budgets());
+        let value = ended(&mut vm, result)?;
+        let json = json::encode(&mut vm, &value, json::Naming::Exact).map_err(interrupted)?;
+        let mut text = String::new();
+        write_json(&json, &mut text, None, 0);
+        Ok(text)
+    }
+
+    /// The function's id in the program, once it is public, takes this
+    /// many arguments and needs nothing the grant does not cover.
+    fn function_id(&self, name: &str, arguments: usize) -> Result<usize, CallError> {
         if !self.functions.iter().any(|function| function.name == name) {
             return Err(CallError::Refused(format!(
                 "`{}` has no public function `{name}`",
@@ -379,12 +480,12 @@ impl Sandbox {
             .position(|meta| meta.module == self.module && meta.name == name && !meta.is_method)
             .expect("a public function of the module is in the program");
         let meta = &self.program.function_metas[id];
-        if args.len() != meta.params.len() {
+        if arguments != meta.params.len() {
             return Err(CallError::Refused(format!(
                 "`{name}` takes {} argument{}, not {}",
                 meta.params.len(),
                 if meta.params.len() == 1 { "" } else { "s" },
-                args.len()
+                arguments
             )));
         }
         for need in &meta.needs {
@@ -395,47 +496,7 @@ impl Sandbox {
                 )));
             }
         }
-        let needs = meta.needs.clone();
-        let options = Options {
-            narrowing: Narrowing {
-                sandbox: Some(self.grant.capabilities.clone()),
-                ..Narrowing::default()
-            },
-            memory: self.grant.memory,
-            registry: registry().clone(),
-            screen: self.screen.clone(),
-            ..Options::default()
-        };
-        let mut vm = Vm::new(&self.program, options);
-        vm.begin_run(&needs, &self.module)
-            .map_err(CallError::Refused)?;
-        if let Some((counters, started)) = self.budgets.take() {
-            vm.resume_budgets(counters, started);
-        }
-        let result = vm.call_function(id, args);
-        self.budgets = Some(vm.budgets());
-        match result {
-            Ok(Value::Failure(error)) => Err(CallError::Failed(
-                vm.text_for_console(&error, "the failure")
-                    .unwrap_or_else(|_| vm.describe(&error)),
-            )),
-            Ok(value) => Ok(value),
-            Err(Interrupt::Crash { message, location }) => {
-                Err(CallError::Crashed { message, location })
-            }
-            Err(Interrupt::Exit(code)) => Err(CallError::Exited(code)),
-            Err(Interrupt::OverMemory { limit, used }) => {
-                Err(CallError::OverMemory { limit, used })
-            }
-            Err(Interrupt::Reload) => Err(CallError::Crashed {
-                message: "stopped for a new version".to_string(),
-                location: None,
-            }),
-            Err(Interrupt::Suspended) => Err(CallError::Crashed {
-                message: "suspended at `screen.present`: the host answers later, which a sandbox call cannot wait for".to_string(),
-                location: None,
-            }),
-        }
+        Ok(id)
     }
 
     /// A value the host hands in under a guard of the grant (decision
@@ -460,6 +521,70 @@ impl Sandbox {
                 )
             })?;
         Ok(value.guarded(1u64 << index))
+    }
+}
+
+/// A VM for one call of a function of the module: under the grant, with
+/// the memory budget, the screen and the budgets the previous call left.
+/// It borrows the program alone, so that the sandbox's other fields stay
+/// free while the call runs.
+fn vm_for<'p>(
+    program: &'p Program,
+    module: &str,
+    grant: &Grant,
+    screen: &Option<SharedScreen>,
+    budgets: &mut Option<(Vec<Counter>, i64)>,
+    id: usize,
+) -> Result<Vm<'p>, CallError> {
+    let needs = &program.function_metas[id].needs;
+    let options = Options {
+        narrowing: Narrowing {
+            sandbox: Some(grant.capabilities.clone()),
+            ..Narrowing::default()
+        },
+        memory: grant.memory,
+        registry: registry().clone(),
+        screen: screen.clone(),
+        ..Options::default()
+    };
+    let mut vm = Vm::new(program, options);
+    vm.begin_run(needs, module).map_err(CallError::Refused)?;
+    if let Some((counters, started)) = budgets.take() {
+        vm.resume_budgets(counters, started);
+    }
+    Ok(vm)
+}
+
+/// How a call ended: its value, the failure it answered rendered, or
+/// the interrupt as the error it is.
+fn ended(vm: &mut Vm, result: Result<Value, Interrupt>) -> Result<Value, CallError> {
+    match result {
+        Ok(Value::Failure(error)) => Err(CallError::Failed(rendered(vm, &error))),
+        Ok(value) => Ok(value),
+        Err(interrupt) => Err(interrupted(interrupt)),
+    }
+}
+
+/// A failure's error as the console would show it.
+fn rendered(vm: &mut Vm, error: &Value) -> String {
+    vm.text_for_console(error, "the failure")
+        .unwrap_or_else(|_| vm.describe(error))
+}
+
+/// The interrupt that ended a call, as the host's error.
+fn interrupted(interrupt: Interrupt) -> CallError {
+    match interrupt {
+        Interrupt::Crash { message, location } => CallError::Crashed { message, location },
+        Interrupt::Exit(code) => CallError::Exited(code),
+        Interrupt::OverMemory { limit, used } => CallError::OverMemory { limit, used },
+        Interrupt::Reload => CallError::Crashed {
+            message: "stopped for a new version".to_string(),
+            location: None,
+        },
+        Interrupt::Suspended => CallError::Crashed {
+            message: "suspended at `screen.present`: the host answers later, which a sandbox call cannot wait for".to_string(),
+            location: None,
+        },
     }
 }
 

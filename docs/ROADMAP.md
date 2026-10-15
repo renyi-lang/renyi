@@ -690,6 +690,22 @@ where one decided, the status. The dates are those of the decisions.
     which waits for the record's name and text from the publisher's
     page in the owner's browser), the Open VSX namespace claim (the
     text in the measure lane, to be opened from the owner's account).
+40. **The C API** (session 15, opened 2026-10-15; the design study in
+    the handoff, its four questions answered, decision AW46). The
+    embedding API of AP1 and AP2 for C hosts and the languages that
+    call C. 40a done (decision AW47, 2026-10-15): the crate `renyi_c`,
+    a shared and a static library over `renyi::Sandbox` with the
+    hand-written header `include/renyi.h` held equal to the exports
+    by a test, the values as JSON texts both ways through
+    `Sandbox::call_json` (each argument decoded against its parameter's
+    declared type before anything runs), the statuses 0 to 5, the
+    module described (`renyi_module`, `renyi_grant`, `renyi_warnings`,
+    `renyi_functions`), the counting allocator declared by the library;
+    seven Rust tests over the exports, the C example `examples/host.c`
+    compiled and run in CI against `host.expected`. Next, 40b: the
+    Python binding through `ctypes`, the library in the release
+    archives, the crate on crates.io, the measure; 40c when a host
+    asks: the screen callback, the value handles beside JSON.
 
 ## 3. The tracks
 
@@ -742,8 +758,10 @@ state of each line.
   language server; done), 37 (the map for retrieval by
   embedding, opened 2026-10-13, its study done and its questions
   answered, AW40; 37a the measure done, AW41; 37b the export done,
-  AW42; 37c the extras done, AW43; the stage closed).
-  Candidate not decided: the C API of decision A5.
+  AW42; 37c the extras done, AW43; the stage closed), 40 (the C API
+  of decision A5, opened 2026-10-15, AW46; 40a the crate, the header
+  and the C example done, AW47; 40b the Python binding and the
+  packaging next).
 - **G. Release and the ecosystem**: stages 17, 30, 38, 39. Releases
   0.1.0 (2026-10-07) and 0.2.0 (2026-10-13) are out, the extension on
   the Marketplace and Open VSX since 0.2.0; every release follows
@@ -855,7 +873,12 @@ VSX verified; `docs/RELEASE.md` section 8), the article went through
 the de-AI pass, and the namespace claim is done. Open from AW45: the
 Marketplace's verified domain (not before 2027-04-13), the article's
 submission by the owner, the awesome list's Glama step.
-Next, by AW28's order, the C API of decision A5, its design
-study first, when the owner opens it. Not scheduled: the
+The C API of decision A5 is stage 40, opened on 2026-10-15 by AW28's
+order (AW46: JSON texts across the boundary, the crate `renyi_c` with
+a hand-written header, C and Python first, a library archive per
+target); 40a is done (AW47: the crate, the header, the C example in
+CI), and 40b follows: the Python binding through `ctypes`, the fourth
+release artifact, the crate on crates.io at the next release, the
+measure. Not scheduled: the
 Python binder's items of track E, the Rust front end's name sets as
 bits, the emitter's own round for the compile row.

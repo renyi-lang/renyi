@@ -161,6 +161,14 @@ runtime; Renyi's effect system is the boundary itself.
   declared grant intersected with the file's, the file's budgets, guards
   and memory budget added; `main` must need nothing the grant does not
   cover (E3's `--deny` generalized).
+- **From C.** The crate `renyi_c` is the same API as a shared and a
+  static library with a hand-written header (decision AW46): a module
+  loaded with the grant as a JSON text, a call with its arguments as one
+  JSON array text decoded against the declared parameter types before
+  anything runs, the value back as one JSON text in the codec of
+  `std.json`, and the outcome a status with the text as its detail. The
+  library declares the counting allocator, so the memory budget holds
+  for a host in any language.
 
 ### 4.3 What it does and does not promise
 
@@ -172,8 +180,9 @@ process's streams. The document says so.
 Done 2026-10-08 (decisions AP1 and AP2), after the half of the API that
 faces the host, natives registered under declaration files and built
 into the binary (decisions AJ1 and AK1 to AK4; the guide is
-`extensions.md`). The C API of A5 is a layer over the Rust one, for
-later.
+`extensions.md`). The C API of A5 is a layer over the Rust one, built
+on 2026-10-15 (decisions AW46 and AW47, stage 40a; `embedding.md`
+section 7).
 
 ## 5. Checked live update (decisions Q4 and AO1)
 

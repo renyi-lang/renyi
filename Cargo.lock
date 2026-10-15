@@ -640,6 +640,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "renyi_c"
+version = "0.2.1"
+dependencies = [
+ "renyi",
+ "renyi_json",
+ "renyi_vm",
+]
+
+[[package]]
 name = "renyi_check"
 version = "0.2.1"
 dependencies = [

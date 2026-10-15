@@ -6,7 +6,8 @@ no ambient I/O, no reflection and no native call without `foreign`, so
 the effect system is the sandbox, with no process, container or Wasm
 runtime around it (decisions Q3, AP1 and AP2; `design/07-system-design.md`
 section 4). The API is Rust, in the `renyi` crate; the C API of decision
-A5, for Python, JS and C hosts, is a layer over it and follows later.
+AW46, for C hosts and the languages that call C, is a layer over it in
+the crate `renyi_c` (section 7).
 
 ## 1. The grant
 
@@ -54,9 +55,10 @@ visibility.
 
 `functions()` lists the public functions of the module in source order:
 the name, the signature as the project map spells it, the purpose, the
-number of parameters, the `needs` clause, and for a function with
-`expose as tool` the JSON Schema of its parameters as a text, as `renyi
-tools` writes it (decision D6).
+number of parameters, the `needs` clause, for a function with `expose
+as tool` the JSON Schema of its parameters as a text, as `renyi tools`
+writes it (decision D6), and whether `call_json` can decode every
+parameter (`callable`, section 7).
 
 ## 3. Calling
 
@@ -105,6 +107,22 @@ module.call("sign", vec![secret, Value::text(payload)])?;
 value, and whatever the module computes from it, may leave the module
 only through those sinks, and any other outgoing primitive fails with
 `Guarded`.
+
+A host that keeps its values as JSON calls through `call_json` instead
+(decision AW46): the arguments as one JSON array text, the value back
+as one JSON text, both in the codec of `std.json` (a record an object
+by its field names, a variant an object with `kind`, a list an array, a
+map an object, Bytes base64, an Instant ISO 8601). Each argument is
+decoded against the declared type of its parameter before anything
+runs; one that does not fit is refused with the parameter named
+(`` argument 1 (`left`) does not decode as `Integer`: Mismatch(...) ``).
+The guards come as a slice with, per argument, the capability whose
+guard the argument carries, or `None`.
+
+```rust
+let text = module.call_json("shift", r#"[{"across": 1, "down": 2}, 10]"#, &[])?;
+assert_eq!(text, r#"{"across":11,"down":12}"#);
+```
 
 ## 4. The memory budget
 
@@ -165,3 +183,59 @@ guarantee, as `extensions.md` and `python.md` say; and the module's
 console output goes to the process's standard streams in this version.
 A module's calls run one after the other (decision S2), each on its own
 VM.
+
+## 7. From C and the languages that call C
+
+The crate `renyi_c` builds the same API as a shared library
+(`librenyi_c.so`, `librenyi_c.dylib`, `renyi_c.dll`) and a static one
+(`librenyi_c.a`), with the header `crates/renyi_c/include/renyi.h`
+(decision AW46, stage 40a). The library declares the counting
+allocator, so a grant with `memory` works with no declaration of the
+host's. Values cross as JSON texts, as `call_json` takes and answers
+them.
+
+```sh
+cargo build --release -p renyi_c
+cc host.c -Icrates/renyi_c/include -Ltarget/release -lrenyi_c -o host
+```
+
+Every text crosses as a pointer and a length, UTF-8, not
+NUL-terminated. A text the library answers belongs to the handle it
+came from and is valid until the next call on that handle; a handle is
+for one thread at a time.
+
+- `renyi_load(path, len, grant, len)` and `renyi_load_source(name, len,
+  text, len, grant, len)` load a module with a grant, the JSON object
+  of section 1 as a text (`{"grant": "console", "memory": "16
+  megabytes"}`) or the empty text for a grant of nothing, and answer an
+  opaque `renyi_sandbox *`, or null with the reason in
+  `renyi_last_error` (and `renyi_last_error_len`), kept per thread.
+  `renyi_free_sandbox` frees it.
+- `renyi_call(sandbox, name, len, arguments, len)` calls a public
+  function with its arguments as one JSON array text and answers a
+  status: `RENYI_OK` (0) with the value as JSON in the handle's text
+  (`renyi_text`, `renyi_text_len`), `RENYI_FAILED` (1) with the failure
+  rendered, `RENYI_CRASHED` (2) with the message and the location,
+  `RENYI_EXITED` (3) with the code in `renyi_exit_code`,
+  `RENYI_REFUSED` (4) with the reason and nothing run, or
+  `RENYI_OVER_MEMORY` (5) with the budget in `renyi_memory_limit` and
+  the peak in `renyi_memory_used`. `renyi_call_guarded` takes a third
+  text, a JSON array with, per argument, the capability whose guard the
+  argument carries, or `null`.
+- `renyi_module`, `renyi_grant`, `renyi_warnings` and `renyi_functions`
+  describe the module into the handle's text: its name, the grant's
+  capabilities as a `needs` clause spells them, the checker's warnings
+  one per line, and the public functions as a JSON array of objects
+  with the fields of `Function` (`name`, `signature`, `purpose`,
+  `parameters`, `needs`, `exposed_as_tool`, `input_schema`,
+  `callable`).
+- `renyi_api_version` is `RENYI_API_VERSION`, 1; additive changes keep
+  it. `renyi_version` (and `renyi_version_len`) is the toolchain's
+  version.
+
+`crates/renyi_c/examples/host.c` is a host of fifty lines over
+`calc.ry` beside it; CI compiles it with the system's compiler, runs it
+and compares its output with `host.expected`. A test of the crate holds
+the header's functions equal to the library's exports. The Python
+binding through `ctypes`, the library in the release archives and the
+crate on crates.io are stage 40b.
