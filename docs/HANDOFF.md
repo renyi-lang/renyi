@@ -4126,6 +4126,132 @@ Then the first stage the owner confirms. Done in session 14: the study is
 the section "Stage 29, the new backend: the design study (session 14)"
 below, and the owner's answers are decision AW1.
 
+## Stage 41, the Python bridge's items: the design study (session 15)
+
+**What the owner ordered (2026-10-15, after stage 40).** "按顺序推1到3":
+release 0.3.0 first (done, `docs/RELEASE.md` section 9), then the
+Python binder's items of track E, then the emitter's own round for the
+compile row, each with a design study first. The items are the
+candidates listed since session 8 ("Next steps" item 1 below, and
+`docs/ROADMAP.md` track E, "candidates not decided"): record types
+from dataclasses and `TypedDict`s in the binder, a deadline per Python
+call, one worker across the tests of a `renyi test` run. The fourth
+candidate of that list, keyword arguments by parameter name, is not
+in the order and stays a candidate.
+
+**What exists.** The bridge (decisions AJ2, AJ3, AL1 to AL4;
+`crates/renyi_vm/src/natives/python.rs`, `python_worker.py`): a
+`Worker` is the child process with its standard input and output
+piped and a call counter; `vm.python: Option<Worker>` is started at
+the first call of a `Vm` (`run`) and killed when the `Vm` is dropped;
+`Worker::call` writes one JSON line and blocks in `read_line` on the
+worker's output with no timeout, so a Python function that never
+returns holds the run for ever; a worker that stops answering is
+dropped and the call fails with `Unavailable`. The worker imports a
+module once, calls by position, checks the result dumps as JSON and
+answers `result` or `error {where, kind, message}`. `std.python`
+declares `PythonError` with `Raised`, `NotCarried`, `Unavailable` and
+`PermissionDenied`. The VM's deadlines (decisions J12 and S2):
+`Op::Deadline` keeps `Native::Deadline(expiry, limit)` in a slot of a
+`concurrently within` block and `Op::CheckDeadline` tests it between
+the tasks, failing with the built-in `TimedOut(limit)`; no native call
+reads it. The binder (decisions AM1 and AM2; `crates/renyi/src/bind/
+python.rs`, `python_inspect.py`): the inspect script reports every
+function's parameters and result as annotation trees (`class`,
+`generic` with `args`, `union`, `none`, `other`); the binder maps them
+to Renyi types and writes a class of any kind, a dataclass, a
+`NamedTuple` or a `TypedDict` among them, as `JsonValue` with a note
+above the function. The JSON codec (`natives/json.rs`) already
+decodes a JSON object into a record of the declared type
+(`decode_at`, `TypeShape::Record`) and encodes a record by its field
+names: the C API's `shift` crosses a record each way (AW48). The
+runner: `run_tests` makes one `Vm` for every test and example of a
+program; `renyi test a.ry b.ry` compiles and runs each file as a
+program of its own.
+
+**The experiment (item 3, one worker across a test run).** The lane
+`D:\Projects\.worktrees\Renyi\pybridge\exp\` holds the conformance
+fixture's `analysis.ry` and `analysis.py` with a line printed to
+standard error at import, and `many.ry`, two tests that each call
+`analysis.shout`. `renyi test many.ry` prints the import line once:
+one worker already serves every test of a file, because the tests
+share the `Vm`. Across files each program's `Vm` starts its own, and
+the interpreter's start is about 245 ms on the owner's machine
+(`python -I -c "import json,sys,importlib"`), paid once per file that
+calls Python. The files of one `renyi test` run may belong to
+different projects, with different roots and interpreters, so a
+worker shared across them would be keyed by the manifest; the saving
+is a quarter second per file. The study's reading: the item is done
+as far as it was meant (the tests of a run, not the files), to be
+closed in the roadmap; sharing across files is a choice for the owner.
+
+**Item 2, a deadline per call.** The mechanism, whichever source the
+limit has: the worker's output read on a thread of its own, the lines
+handed through a channel, `Worker::call` waiting with `recv_timeout`;
+at expiry the worker is killed and the call fails. Python cannot be
+interrupted from outside portably (`signal.alarm` is Unix-only and
+does not interrupt a call into C), so the kill is the only sure stop;
+the module's state is lost with it and the next call starts a new
+worker, as after any worker that stopped answering. The time measured
+is the whole round trip; a replay never starts the worker (AL2), and a
+recorded timeout is a failure value like any other. Two choices.
+*Where the limit comes from*: (1) the manifest, a `deadline` of the
+`python` section and of a module's entry, a Duration spelt as the
+grants spell theirs (`"5 seconds"`), none meaning unbounded as today;
+(2) the enclosing `concurrently within` deadline, read from the
+block's slot at the call, which bounds only the calls inside such a
+block and only by what remains of it; (3) both, the nearer of the two.
+The study recommends (1): a project knows what its Python is allowed
+to take, the setting reads in one place, every call is covered, and
+(3) can follow when a program asks for it. *What the failure is*: a
+new variant `TimedOut(after: Duration)` of `PythonError` (a library
+addition, not a surface change; the fixture's matches end with
+`otherwise` or `when failure(other)`, so no exhaustive match breaks),
+or `Unavailable(detail)` with the time in the text. The study
+recommends the variant: a program can tell a slow call from a missing
+interpreter and retry one and not the other.
+
+**Item 1, record types from Python classes.** The inspect script
+reports, beside the functions, a table of the classes the annotations
+name, by qualified name: a dataclass by `dataclasses.fields` (name and
+annotation tree each), a `NamedTuple` by `_fields` and
+`__annotations__`, a `TypedDict` by `__annotations__` and
+`__required_keys__`; a class of another kind, a generic dataclass and
+a class whose fields the mapping cannot reach stay `JsonValue` with
+the note. The binder writes each as `public type <Name>` with a `has`
+line per field, the field types by the same mapping as the
+parameters (a `TypedDict`'s optional key as `maybe`), the purpose
+from the class's docstring, before the functions that name it, and
+the functions' parameters and results by the type's name; two
+classes with one bare name keep the first and note the second. A
+dataclass's field defaults are not carried, as a parameter's are not:
+the Renyi caller gives every field. The bridge: the worker converts
+at the boundary by the function's own annotations, read once with
+the module, an argument's JSON object into the class (`cls(**fields)`,
+recursively through the fields' annotations) where the parameter is a
+dataclass or a `NamedTuple`, and a result of such a class back
+through `dataclasses.asdict` or `_asdict()` (a `NamedTuple` would
+otherwise dump as a list, which no record decodes from); a
+`TypedDict` is a dict already and crosses as it does today. The VM
+side is unchanged: the record decodes and encodes by the declared
+type as any record does. The fixture gains a dataclass in
+`analysis.py`, a function taking and returning it, and the binder's
+test the generated type. One choice, *which classes*: (1) dataclasses,
+`NamedTuple`s and `TypedDict`s, the three kinds whose fields Python
+states; (2) dataclasses only; (3) also a plain class with annotated
+attributes, built by its `__init__` with the fields as keywords, which
+holds for some classes and not others and cannot be told apart.
+The study recommends (1).
+
+**The stages.** 41a the deadline (the manifest's `deadline`, the
+reader thread, the variant, a conformance case with a sleeping
+function, the reference's `std.python` entry, the bridge's and the
+embedding's documents); 41b the record types (the inspect script's
+table, the binder, the worker's conversions, the fixture, the binder's
+tests); 41c the roadmap's item closed, with cross-file sharing if the
+owner chooses it. 41a first, the smaller stage and the one that
+removes a way to hang; the owner's order may differ.
+
 ## Stage 40, the C API: the design study (session 15)
 
 **What the owner ordered (AW28, opened 2026-10-15).** The C API of
