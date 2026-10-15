@@ -848,10 +848,13 @@ Release 0.2.0 is out (stage 38, 2026-10-13: the crates, the tag, the
 release page, the extension on Open VSX and the Marketplace, the social
 preview; the announcements are the owner's step, the texts written), and
 stage 39 followed it (AW45, 2026-10-14: the measures, the games
-repository, the article). Open from AW45: `renyi-tools`, the verified
-domain, the namespace claim, the article's submission by the owner;
-`renyi-tools` exists too, and the scope of the current directory is
-fixed for the next release.
+repository, the article; `renyi-tools` the same day). Release 0.2.1
+followed (2026-10-14: the scope of the current directory fixed, the
+toolchain on the official MCP registry as `org.renyi-lang/renyi`, Open
+VSX verified; `docs/RELEASE.md` section 8), the article went through
+the de-AI pass, and the namespace claim is done. Open from AW45: the
+Marketplace's verified domain (not before 2027-04-13), the article's
+submission by the owner, the awesome list's Glama step.
 Next, by AW28's order, the C API of decision A5, its design
 study first, when the owner opens it. Not scheduled: the
 Python binder's items of track E, the Rust front end's name sets as

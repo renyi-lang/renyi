@@ -300,3 +300,57 @@ the scripts. What the procedure did not say:
    through Playwright's headless Chromium by `game_shot.py` (the keys
    held for a few hundred milliseconds: the game reads them per frame,
    and a press shorter than a frame is lost); the owner posts them.
+
+## 8. Release 0.2.1, as it went (2026-10-14)
+
+A patch release the day after 0.2.0: the scope of the current directory
+(`filesystem.read(".")` refused every relative path at 0.2.0), the
+skill file's bullet from the first-run measure, and the toolchain listed
+on the official MCP registry. Section 3 ran in order; the lane is
+`D:\Projects\.worktrees\Renyi\wasm\release021\`. What was new:
+
+1. The bump as section 7 item 1 says, with one line more:
+   `readme = "../../README.md"` in `crates/renyi/Cargo.toml`. The crate
+   `renyi` had no README on crates.io, and the registry verifies a
+   Cargo package by a visible `mcp-name: <server name>` line in the
+   crate's README as crates.io renders it (an HTML comment is
+   stripped), so the repository's README carries that line under
+   Install. `server.json`, the registry's manifest (validated first by
+   `POST /v0.1/validate`, which holds the description to 100
+   characters), and a `Dockerfile` (the released binary through
+   `install.sh`, `renyi mcp /work`; what Glama's listing check starts)
+   came with the commit (9d8c382). The gates: 64 suites, 454 tests, the
+   lint and the token budget at the first run; CI green in six minutes.
+2. The crates: the lane's `publish_crates.sh`, eight in two minutes
+   (01:20 to 01:22 UTC on the 15th), no rate limit.
+3. The tag after the last crate; the Release workflow eight minutes
+   (01:23 to 01:31 UTC): the three archives (5.8 to 7.5 MB), their
+   `.sha256` files, `renyi-v0.2.1.vsix` (128 KB). The installer's
+   check came from `renyi-tools`' CI, which installs the latest release
+   through `install.sh` and passed on 0.2.1 (item 7).
+4. The MCP registry, by DNS authentication and without the publisher
+   binary: the lane's `mcp_registry.py` (requests and cryptography)
+   makes an Ed25519 key, kept in the lane, and prints the TXT record for
+   the apex, `v=MCPv1; k=ed25519; p=<public key>`, which `cf.py txt`
+   adds at `renyi-lang.org` (the apex, not a selector: the registry
+   looks only there); the login signs an RFC 3339 timestamp and
+   exchanges it at `/v0.1/auth/dns` for a registry token, held in
+   memory for the one `POST /v0.1/publish`. `org.renyi-lang/renyi`
+   0.2.1 was active at 01:23 UTC. The domain's namespace is
+   `org.renyi-lang/*`; the GitHub route (`io.github.renyi-lang/*`)
+   would have needed the owner's device-code login in a browser.
+5. Open VSX with the lane's `ovsx_publish.py`: "Published
+   renyi-lang.renyi v0.2.1". The namespace `renyi-lang` is verified
+   since the foundation closed the claim (issue 14214) on the 14th.
+6. The Marketplace's verified domain cannot be applied for before
+   2027-04-13: the Marketplace requires an extension listed for six
+   months and a domain registered for six months. The upload of the
+   `.vsix` goes through the publisher's page as section 7 item 5 says.
+7. `renyi-tools`: sitegen and bills declare `filesystem.read(".")` and
+   `filesystem.write(".")` on every function with effects and on their
+   tests (a function's scoped grant does not cover a callee's unscoped
+   need, so the scope goes all the way down), the gate script writes
+   its outputs inside each tool's `.check/` (an absolute output path is
+   outside the scope), and the READMEs say so; the two test names were
+   shortened to keep their heads under the line width. CI green on
+   843d1f7.

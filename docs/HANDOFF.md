@@ -1,6 +1,6 @@
 # Handoff
 
-Last updated: 2026-10-13, session 14, on the owner's machine. Its work:
+Last updated: 2026-10-14, session 14, on the owner's machine. Its work:
 the design study of stage 29, the new backend for the VM (the section
 "Stage 29, the new backend: the design study (session 14)" below: the
 checker's image run attributed by category under callgrind, eleven
@@ -864,11 +864,14 @@ layout, decisions AR2 to AR4, the tiering AR5) and `renyi build`
 writes the image a run loads in place of compiling and, with `--exe`,
 the self-contained executable (decisions AS1 to AS4).
 Releases 0.1.0 (2026-10-07, the section "Release 0.1 engineering"
-below) and 0.2.0 (2026-10-13, `docs/RELEASE.md` section 7) are out:
-the repository is public at `github.com/renyi-lang/renyi`, each
-release page carries the three archives, their checksums and the
-`.vsix`, the eight crates of 0.2.0 are on crates.io (`cargo install
-renyi` builds 0.2.0), the extension is on the Marketplace and Open VSX
+below), 0.2.0 (2026-10-13, `docs/RELEASE.md` section 7) and 0.2.1
+(2026-10-14, section 8: the scope of the current directory, the
+official MCP registry) are out: the repository is public at
+`github.com/renyi-lang/renyi`, each release page carries the three
+archives, their checksums and the `.vsix`, the eight crates of 0.2.1
+are on crates.io (`cargo install renyi` builds 0.2.1), the toolchain
+is on the MCP registry as `org.renyi-lang/renyi`, the extension is on
+the Marketplace (0.2.0, the 0.2.1 upload pending) and Open VSX (0.2.1)
 as `renyi-lang.renyi`, the installers were run against the release, and
 the site is at `renyi-lang.org` (the GitHub Pages address redirects
 there), with the toolchain for the browser behind its play page and
@@ -9882,7 +9885,16 @@ on a fresh clone).
 - **After AW45** (2026-10-14): the review-time measure of the
   positioning's section 5 (a person, a `main` signature, under a
   minute; the owner reported it passed on 2026-10-14, the numbers
-  not yet recorded); the Marketplace's verified domain, which cannot
+  not yet recorded); release 0.2.1 is out (2026-10-14 evening, the
+  15th UTC; `docs/RELEASE.md` section 8: the scope fix, the crate's
+  README on crates.io with the registry's name line, `server.json`,
+  the `Dockerfile`; the eight crates, the tag, the release page, Open
+  VSX, the official MCP registry as `org.renyi-lang/renyi` by DNS
+  authentication with the lane's `mcp_registry.py` and the key in
+  `release021/`; `renyi-tools` narrowed to `"."` and green); the
+  Marketplace upload of `renyi-v0.2.1.vsix` (the lane's `vsix/`) is
+  still to do through the publisher's page (the session's Chrome tab
+  of the manage page hung with an unsaved form); the verified domain, which cannot
   be applied for before 2027-04-13: the Marketplace requires an
   extension listed for six months and a domain registered for six
   months (code.visualstudio.com, "Verify a publisher"; the publisher
@@ -9895,11 +9907,9 @@ on a fresh clone).
   `D:\Projects\.worktrees\Renyi\awesome\`) waits for a Glama
   listing and its score badge, which the list's bot now requires (a
   Glama account and a Dockerfile that starts `renyi mcp`); the
-  official MCP registry lists a crates.io binary (`registryType:
-  cargo`) once the crate's README on crates.io carries a visible
-  `mcp-name: <server name>` line, so it comes with the next release
-  (authentication by DNS gives the namespace `org.renyi-lang/*`
-  through a TXT record, no browser login); the article's author line
+  official MCP registry lists `org.renyi-lang/renyi` 0.2.1 since the
+  release (DNS authentication; a later version is `mcp_registry.py
+  publish` again with the bumped `server.json`); the article's author line
   is set (Renyi-lang, zhezhang.dev@gmail.com, commit 22f1383) and the
   submission to arXiv needs an endorsement for cs (`paper/README.md`;
   the section on how the work was done is one sentence since the
