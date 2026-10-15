@@ -399,6 +399,7 @@ new:
 7. Glama's Auto-Release took the GitHub release: the server's page
    names 0.3.0 and the badge stays "rated A".
 
-Open after it: the static library's size (strip the bitcode, or a
-release profile for the archive without fat LTO) and the Marketplace
-upload of `renyi-v0.3.0.vsix`.
+The Marketplace upload of `renyi-v0.3.0.vsix` was done by the owner
+on 2026-10-15 ("[Succeeded] Extension publish on Visual Studio
+Marketplace", 17:21). Open after it: the static library's size (strip
+the bitcode, or a release profile for the archive without fat LTO).

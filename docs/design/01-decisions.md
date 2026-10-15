@@ -10149,3 +10149,43 @@ it, and the checker's world when `compile_file` leaves them; what the
 study attributed to the exit (`release_last`, 97.5 million) is the
 frees of the run itself. The patch is not kept; the stage closes with
 its measure. (Claude)
+
+**AW59. Stage 42g built, `Set.union` in place, and the round closed
+(2026-10-15).** The liveness walk of AU55's rule (`walk_block`, 181.7
+million instructions after 42f, 8.8% of the compile row) joins the
+names a statement mentions into the set of the names after it twice
+per statement, `after.union(bound).union(nested.names)`, and
+`set_union` built a new set from both every time, the cost of the
+large set for every statement. The native now takes its receiver and
+extends it where it lies when nothing else holds it (`Rc::make_mut`
+and `extend`, as `add` does): the cost of the small set, the order of
+the entries the same, a copy only when the receiver is shared. Every
+program that unions sets takes the same path. The measure
+(`measure_stage.sh 42g`, `bench42d.sh renyi_42d renyi_42g`): the
+compile row 1,958.0 to 1,943.0 million, -0.8%, the ratio against the
+reference 5.36 to 5.31; `walk_block` 181.7 to 159.1; the bench
+programs unchanged (none unions sets). What remains in the walk is
+two passes over every expression of every statement (`expr_mentions`
+31.5 million and `expr_bound` 40.5, the names mentioned and the names
+bound) and the sets of texts they build; merging the passes would
+save about 30 million for a rewrite of two functions of two hundred
+ops each, which the round leaves. Noticed with this measure: 42d's
+writer also cut the parse row, whose program prints the tree as JSON,
+from 631.9 to 540.8 million (-14.4%), which AW57 did not record.
+
+The round's close. The compile row from 2,590.8 (d18ec06) to 1,943.0
+million instructions, -25.0%, the ratio against the reference binary
+7.09 to 5.31 (13.25 at AU58's study); `compile_project`, the emitter's
+own part, 1,098.4 to 548.8, -50.0%; the front end's 1,198.4 as it was;
+the parse row 631.7 to 540.8 through 42d; the check row unchanged
+(1,291.5). Six stages in Renyi and the VM: 42a the tables by map
+(AW53), 42b the references grouped by a query (AW54), 42c the keys as
+records (AW55), 42f `emit`'s `Step` taken apart value first (AW56),
+42d the JSON writer (AW57), 42g the union in place (this entry); 42e
+measured and left off (AW58). The bytecode the Renyi compiler writes
+stayed byte for byte the Rust compiler's at every stage, the four
+derives (`Ty`, `Span`, `BodyLocation`, `BodyKey`) shifting the ids in
+both. The emitter's remaining shape, for whoever reopens the row: the
+liveness walk 159.1 million, `emit` 142.5 (its three appends through
+the `Takes` plan, about 70 of it), `type_index_at` 54.9, the rest
+spread over the rules under 10 million each. (Claude)

@@ -1087,9 +1087,20 @@ fn set_without(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
 }
 
 fn set_union(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {
-    let a = set(arg(args, 0))?;
-    let b = set(arg(args, 1))?;
-    Ok(Value::Set(Rc::new(a.union(b).cloned().collect())))
+    // the receiver extended where it lies when nothing else holds it
+    // (decision AW59): the union of a large set with a small one costs the
+    // small one, not a copy of both
+    let b = set(arg(args, 1))?.clone();
+    match take(args, 0) {
+        Value::Set(mut items) => {
+            Rc::make_mut(&mut items).extend(b.iter().cloned());
+            Ok(Value::Set(items))
+        }
+        other => Err(crash(format!(
+            "`union` needs a Set, found {}",
+            other.kind_name()
+        ))),
+    }
 }
 
 fn set_intersection(_: &mut Vm, args: &mut [Value]) -> Result<Value, Interrupt> {

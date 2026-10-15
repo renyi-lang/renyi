@@ -189,7 +189,8 @@ stage 40: "按顺序推1到3", the release first; `docs/RELEASE.md` section
 9: the nine crates, the tag, the release page with the three
 `renyi_c-v0.3.0-<target>` archives, the registry and Open VSX at
 0.3.0, Glama's auto-release; the Marketplace upload of
-`renyi-v0.3.0.vsix` is the owner's step). Then, by the same order, (2)
+`renyi-v0.3.0.vsix` done by the owner on 2026-10-15, the publish
+succeeded at 17:21). Then, by the same order, (2)
 the Python bridge's items of track E as stage 41: the design study is
 the section "Stage 41, the Python bridge's items: the design study
 (session 15)" below (the experiment: the tests of a file share one
@@ -229,8 +230,16 @@ the scan of a plain text; the compile row to 1,958.0, -4.8%, the ratio
 5.36, `bench/json_round_trip` -6.9%); 42e is measured and left off
 (decision AW58: the values die at their last reads, nothing is held at
 the end, the compile row the same to within 0.1% with the frees
-skipped). The work next: 42g, the liveness walk (`walk_block`, 181.7
-million, 8.8% of the row). The open items of AW45 stand
+skipped); 42g is done (decision AW59: `Set.union` extends its receiver
+in place, the compile row to 1,943.0, -0.8%, the walk 181.7 to 159.1)
+and the round is closed with it: the compile row 2,590.8 to 1,943.0
+million instructions, -25.0%, the ratio 7.09 to 5.31, the emitter's
+own part -50.0%, the parse row -14.4% through 42d. The work next, by
+the owner's order of 2026-10-15 (after the round, "收口 Renyi 的待办项
+后再说"): the article brought to release 0.3.0 (its three "release
+0.2.0" lines, the line count and the benchmark table re-read from
+their sources), then the owner's arXiv submission and the endorsement
+request. The open items of AW45 stand
 beside it (the verified domain, the article's submission, now that
 0.3.0 is out).
 The session's record is "Done in session 14"
@@ -4396,7 +4405,13 @@ million; the Rust `compile` row untouched, its writer being
 runner patched to forget the VM and the program at the end under an
 environment variable, the compile row 1,937.9 against 1,938.4 million
 by `perf stat`, no difference; finding 8 corrected: the values die at
-their last reads, nothing is held at the end.
+their last reads, nothing is held at the end. 42g built (decision
+AW59): `Set.union` extends its receiver in place; the compile row
+1,958.0 to 1,943.0 (-0.8%), the ratio 5.31, `walk_block` 181.7 to
+159.1; the walk's residue (two passes over every expression, about
+30 million for a merge) left. The round closed: 2,590.8 to 1,943.0,
+-25.0%, the ratio 7.09 to 5.31, `compile_project` 1,098.4 to 548.8;
+42d also cut the parse row 631.9 to 540.8, noticed at 42g's measure.
 
 **What the round is for.** The ratio has no consumer (AW27). What the
 stages buy without one: the quadratic copies of finding 3 and the

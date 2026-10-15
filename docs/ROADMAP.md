@@ -771,7 +771,12 @@ where one decided, the status. The dates are those of the decisions.
     per-byte scan; the compile row to 1,958.0, -4.8%, the ratio 5.36,
     `bench/json_round_trip` -6.9%. 42e measured and left off (AW58,
     2026-10-15): the frees at the end cost nothing measurable, the
-    values dying at their last reads.
+    values dying at their last reads. 42g done (AW59, 2026-10-15):
+    `Set.union` in place; the compile row to 1,943.0, -0.8%, the ratio
+    5.31. The round closed with AW59: the compile row 2,590.8 to
+    1,943.0 million instructions, -25.0%, the ratio 7.09 to 5.31, the
+    emitter's own part -50.0%, the parse row -14.4% through 42d; the
+    bytecode byte for byte the Rust compiler's throughout.
 
 ## 3. The tracks
 
@@ -954,7 +959,10 @@ crate, the measure) are done, and the crate goes to crates.io with
 the next release; 40c, the screen callback and the value handles,
 waits for a host that asks. Stage 41, the Python
 bridge's items, is closed (AW49 to AW51). Stage 42, the emitter's own
-round for the compile row, is in progress (AW52 to AW58: 42a to 42d
-and 42f done, 42e measured and left off, the compile row 1,958.0
-million, -24.4%; 42g the liveness walk next). Not
+round for the compile row, closed (AW52 to AW59) on
+2026-10-15, the compile row 2,590.8 to 1,943.0 million instructions,
+-25.0%, the ratio against the reference 7.09 to 5.31, the emitter's
+own part halved; the liveness walk's residue (about 30 million) left.
+Next, by the owner's order: the article brought to release 0.3.0,
+then its arXiv submission. Not
 scheduled: the Rust front end's name sets as bits.
