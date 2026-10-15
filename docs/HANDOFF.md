@@ -9912,7 +9912,8 @@ on a fresh clone).
   through `glama.json` at the root naming the maintainer (commit
   5b1f7b3, `"maintainers": ["skymanbp"]`), took effect at Glama's
   next sync, at 00:36 on the 15th (the admin page opens to the
-  owner's account; Discovery score 33% before any build); Glama does
+  owner's account; Discovery score 33% before any build, 50% after
+  the test build, at 01:10 on the 15th); Glama does
   not take a Dockerfile as a file but generates one from a form on
   the admin page's Dockerfile tab (the base image, build steps and
   CMD arguments as JSON arrays; its own image installs Node and
