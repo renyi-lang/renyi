@@ -9905,11 +9905,17 @@ on a fresh clone).
   awesome-mcp-servers pull request (punkpeye/awesome-mcp-servers
   16459, opened 2026-10-14 from the owner's fork, the lane
   `D:\Projects\.worktrees\Renyi\awesome\`) waits for the Glama
-  listing: submitted for review on 2026-10-14 (the 15th UTC) from the
-  owner's Glama account (name Renyi, the repository's URL, "Runs from
-  source"); Glama answers by email with the Dockerfile step (the
-  repository's `Dockerfile` is that), and once the listing is up the
-  badge `[![renyi-lang/renyi MCP server](https://glama.ai/mcp/servers/renyi-lang/renyi/badges/score.svg)](https://glama.ai/mcp/servers/renyi-lang/renyi)`
+  listing: submitted on 2026-10-14 (the 15th UTC) from the owner's
+  Glama account and approved three minutes later (the page
+  `glama.ai/mcp/servers/renyi-lang/renyi` is up, marked Official);
+  the claim of the page, which a repository of an organization gets
+  through `glama.json` at the root naming the maintainer (commit
+  5b1f7b3, `"maintainers": ["skymanbp"]`), takes effect at Glama's
+  next sync of the repository, which the owner's account cannot
+  trigger before the claim (the admin page says so); after the claim,
+  the Dockerfile goes in through the admin page's "Docker builds"
+  (the repository's `Dockerfile`; Glama runs its checks from it and
+  lists in search only what passes), and then the badge `[![renyi-lang/renyi MCP server](https://glama.ai/mcp/servers/renyi-lang/renyi/badges/score.svg)](https://glama.ai/mcp/servers/renyi-lang/renyi)`
   goes after the line's description in the pull request (the badge
   URL answers "not listed" until then); the owner's GitHub sign-in to
   Glama failed with "Authentication failed" in every browser after the
