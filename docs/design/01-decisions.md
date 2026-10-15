@@ -10089,3 +10089,20 @@ appends copying their lists (the `Step` record that carries the
 emitter is still held by `typed` when `updated.ops` is read, so the
 record is held twice and the field is cloned, not taken); and the
 liveness walk, `walk_block`, 181.7 million (8.5%). (Claude)
+
+**AW56. Stage 42f built: `emit` reads the index before the emitter
+(2026-10-15).** `emit` read `typed.emitter` into `updated` and
+`typed.value` afterwards, inside the `with`; the `Step` record was
+alive through the three appends, so the emitter record was held twice,
+`updated.ops` was cloned rather than taken (the `Takes` plan of AU11
+moves a field out of a record held once), and every append copied its
+list: the quadratic copy of AW55's finding. The index is now read
+first, so the read of `typed.emitter` is the last read of `typed` and
+moves the record out, and the appends work in place. The measure
+(`measure_stage.sh 42f`): the compile row 2,127.8 to 2,056.7 million
+instructions, -3.3%, the ratio against the reference 5.82 to 5.63;
+`emit` 213.9 to 142.5 million inclusive, counts and drops 193.2 to
+168.7, VM other 120.4 to 95.7; `compile_project` 635.3 to 564.0. The
+bytecode of `compiler/bodies.ry` byte for byte the Rust compiler's. A
+lesson for the reader of `compiler/`: a `Step` is taken apart value
+first, emitter last. (Claude)

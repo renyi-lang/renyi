@@ -763,7 +763,10 @@ where one decided, the status. The dates are those of the decisions.
     compile row to 2,300.8, -4.4%, the ratio 6.29. 42c done (AW55,
     2026-10-15): the keys as records, `Span` and `BodyLocation` with
     `Hash` derived; the compile row to 2,127.8, -7.5%, the ratio
-    5.82; the three Renyi stages -17.9% together.
+    5.82; the three Renyi stages -17.9% together. 42f done (AW56,
+    2026-10-15): `emit` reads the `Step`'s value before its emitter,
+    the appends in place; the compile row to 2,056.7, -3.3%, the
+    ratio 5.63.
 
 ## 3. The tracks
 
@@ -946,7 +949,7 @@ crate, the measure) are done, and the crate goes to crates.io with
 the next release; 40c, the screen callback and the value handles,
 waits for a host that asks. Stage 41, the Python
 bridge's items, is closed (AW49 to AW51). Stage 42, the emitter's own
-round for the compile row, is in progress (AW52 to AW55: 42a to 42c
-done, the compile row 2,127.8 million, -17.9%; `emit`'s lists taken,
-then 42d and 42e, the liveness walk after them). Not
+round for the compile row, is in progress (AW52 to AW56: 42a to 42c
+and 42f done, the compile row 2,056.7 million, -20.6%; 42d and 42e
+next, the liveness walk after them). Not
 scheduled: the Rust front end's name sets as bits.

@@ -543,10 +543,11 @@ function emit(emitter: Emitter, op: Op, span: Span) returns Emitter
   purpose: An operation under a span of the tree, with the type the checker noted for the expression there (decision AU1, stage iii).
 
   let typed be type_index_at(emitter: emitter, span: span)
+  let index be typed.value
   let updated be typed.emitter
   return updated
     with ops: updated.ops.append(op), spans: updated.spans.append(span), types: updated.types.append(
-      typed.value
+      index
     )
 end
 
