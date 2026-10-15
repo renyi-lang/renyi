@@ -263,7 +263,10 @@ python tools/bench.py target/debug/renyi              # the benchmarks of bench/
 cargo test
 ```
 
-Release 0.2.1 (2026-10-14) fixes the scope of the current directory,
+Release 0.3.0 (2026-10-15) adds the C API (decisions AW46 to AW48:
+the crate `renyi_c`, the Python binding and a library archive per
+target) and fixes a Windows path in the embedding API. Release 0.2.1
+(2026-10-14) fixes the scope of the current directory,
 `filesystem.read(".")`, which refused every relative path, and lists
 the toolchain on the MCP registry. Release 0.2.0 is out (2026-10-13;
 the procedure in `docs/RELEASE.md`,

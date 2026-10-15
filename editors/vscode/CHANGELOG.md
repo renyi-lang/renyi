@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.0
+
+The binary's release 0.3.0 (the C API and its Python binding); the
+extension is unchanged.
+
 ## 0.2.1
 
 The binary's release 0.2.1; the extension is unchanged.

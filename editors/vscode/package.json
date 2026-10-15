@@ -2,7 +2,7 @@
   "name": "renyi",
   "displayName": "Renyi",
   "description": "Renyi, the scripting language of AI agents: syntax highlighting and the language server (diagnostics, hover, go to definition, references, rename, the outline). The agent writes it, you review it at a glance, and the program can only do what it declares.",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publisher": "renyi-lang",
   "license": "Apache-2.0",
   "icon": "images/icon.png",
