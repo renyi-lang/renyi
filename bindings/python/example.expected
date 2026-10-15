@@ -1,0 +1,13 @@
+renyi 0.2.1, API 1
+module: calc
+grant: console
+  add(left: Integer, right: Integer) returns Integer
+  shout(text: Text) returns Text needs console
+  shift(point: Point, step: Integer) returns Point
+  risky(number: Integer) returns Integer or fails with Oops
+add[2, 3] -> 5
+hello
+shout["hello"] -> "HELLO"
+shift[{"across": 1, "down": 2}, 10] -> {"across": 11, "down": 12}
+add["two", 3] -> Refused: argument 1 (`left`) does not decode as `Integer`: Mismatch(path: "argument 1 (`left`)", expected: "Integer", found: "a string")
+risky[-1] -> Failed: Oops(value: -1)

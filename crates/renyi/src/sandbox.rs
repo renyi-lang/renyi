@@ -287,11 +287,13 @@ impl Sandbox {
             toolchain: toolchain(),
         };
         let index = index_files_in(&library(), &compiled.sources, header);
-        let main_file = &compiled.sources[0].name;
+        // the map spells every file with slashes, whatever the path given
+        // (a Windows path with backslashes loads too, decision AW48)
+        let main_file = compiled.sources[0].name.replace('\\', "/");
         let module = index
             .modules
             .iter()
-            .find(|module| module.file == *main_file)
+            .find(|module| module.file == main_file)
             .map(|module| module.name.clone())
             .ok_or_else(|| format!("{main_file} has no module in the map"))?;
         let tools = tools_of_in(&library(), &compiled.sources);

@@ -197,9 +197,9 @@ checker (M2), the project map (`renyi index`), the VM (M3) and packages
   (decision AO1); `renyi run --sandbox grant.json` runs a program under
   a grant narrower than its `main` declares, with a memory budget, and a
   Rust host loads a module the same way through `renyi::Sandbox` and
-  calls its public functions (decision AP1), and a C host, or one in a
-  language that calls C, through the library `renyi_c` with the values
-  as JSON texts (decision AW46; the guide is
+  calls its public functions (decision AP1), and a C host, or a Python
+  one through `bindings/python/renyi.py`, through the library `renyi_c`
+  with the values as JSON texts (decision AW46; the guide is
   `docs/embedding.md`); the VM generates machine code for the hot code
   objects inside the binary (decision AG1: integer loops run in
   registers, an Integer that leaves the machine word goes back to the

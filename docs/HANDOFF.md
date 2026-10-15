@@ -176,13 +176,17 @@ with a hand-written header, C and Python first, a library archive per
 target), and 40a is done (decision AW47; the paragraph "Stage 40a as
 built" at the end of the study's section): `Sandbox::call_json`, the
 crate `renyi_c` with `include/renyi.h`, seven tests, the C example
-`examples/host.c` compiled and run in CI. The work next is 40b: the
-Python binding through `ctypes` in `bindings/python/renyi.py` and its
-run in CI, the fourth release artifact per target in
-`release.yml`, the crate on crates.io at the next release
-(`docs/RELEASE.md`'s crate list), the measure the study names (the
-load and a call from Python against Rust). The open items of AW45
-stand beside it (the verified domain, the article's submission).
+`examples/host.c` compiled and run in CI; and 40b is done (decision
+AW48; the paragraph "Stage 40b as built" after 40a's): the Python
+binding `bindings/python/renyi.py` with its example run in CI, the
+archive `renyi_c-<version>-<target>` in `release.yml`, `renyi_c` the
+ninth crate of `docs/RELEASE.md`, the measure, and a Windows path
+with backslashes fixed in `Sandbox::load`. Stage 40 is closed but for
+40c, which waits for a host that asks (the screen callback, the value
+handles). The next release (0.3.0, when the owner calls it) publishes
+`renyi_c` to crates.io after `renyi` and carries the archive. The
+open items of AW45 stand beside it (the verified domain, the
+article's submission after 0.3.0).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -4414,6 +4418,35 @@ binding, the artifact, crates.io (40b), the screen callback and the
 value handles (40c). The gates of this commit: `cargo fmt --check`,
 `cargo clippy --all-targets -- -D warnings`, `cargo test` (the
 judges among them) on the owner's machine.
+
+**Stage 40b as built (decision AW48, 2026-10-15).** `bindings/`:
+`python/renyi.py` (the binding, its docstring the guide's short form;
+the library found through `RENYI_C_LIB`, beside the file, under
+`target/release` or `target/debug` of the checkout, or by
+`ctypes.util.find_library`; every export declared with its argtypes
+and restype; texts as `bytes` with their lengths, read back with
+`ctypes.string_at`; the exceptions by status), `python/example.py` and
+`python/example.expected` (the C example in Python; `sys.stdout` is
+flushed before each call for the same reason as in C), `README.md`
+(the archive's README). `.github/workflows/ci.yml`: the step "The C
+API and the Python binding" runs the Python example after the C one.
+`.github/workflows/release.yml`: "Build the C API" per target and the
+second archive in both packaging steps (Unix: `librenyi_c.a` and the
+`.so` or `.dylib` whichever exists; Windows: `renyi_c.dll`,
+`renyi_c.dll.lib`, `renyi_c.lib`), the release notes' line.
+`docs/RELEASE.md` step 5 lists `renyi_c` last. The fix in
+`crates/renyi/src/sandbox.rs` (`Sandbox::of`: the main file's name
+with backslashes replaced by slashes before the map lookup) and the
+test `a_path_with_backslashes_loads` in `crates/renyi/tests/sandbox.rs`.
+The measure: `crates/renyi_c/tests/api.rs` `the_cost_of_a_call_each_way`
+(ignored; `cargo test --release -p renyi_c -- --ignored --nocapture
+the_cost`) and the lane's `D:\Projects\.worktrees\Renyi\capi\measure.py`
+(`RENYI_C_LIB=<release dll> python -X utf8 measure.py`); the numbers
+are in AW48. The documents: `docs/embedding.md` section 7 (the Python
+part and the archive), the README's embedding line, `CLAUDE.md`'s rows
+`crates/renyi_c/` and `bindings/`, the roadmap's stage 40 and track
+F, the decision. Nothing of 40b touches the VM; the gates are the
+same as 40a's.
 
 ## Stage 37, the map for retrieval by embedding: the design study (session 14)
 

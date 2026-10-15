@@ -702,10 +702,15 @@ where one decided, the status. The dates are those of the decisions.
     module described (`renyi_module`, `renyi_grant`, `renyi_warnings`,
     `renyi_functions`), the counting allocator declared by the library;
     seven Rust tests over the exports, the C example `examples/host.c`
-    compiled and run in CI against `host.expected`. Next, 40b: the
-    Python binding through `ctypes`, the library in the release
-    archives, the crate on crates.io, the measure; 40c when a host
-    asks: the screen callback, the value handles beside JSON.
+    compiled and run in CI against `host.expected`. 40b done (decision
+    AW48, 2026-10-15): `bindings/python/renyi.py` over `ctypes` with
+    `example.py` run in CI, the archive `renyi_c-<version>-<target>`
+    per target in the release workflow, `renyi_c` the ninth crate of
+    the release procedure, a Windows path with backslashes fixed in
+    `Sandbox::load`; the measure: a call 36 to 44 us from Rust and
+    through the C API, 51 to 58 us from Python, the load 3 ms and 10
+    ms. 40c when a host asks: the screen callback, the value handles
+    beside JSON.
 
 ## 3. The tracks
 
@@ -760,8 +765,8 @@ state of each line.
   answered, AW40; 37a the measure done, AW41; 37b the export done,
   AW42; 37c the extras done, AW43; the stage closed), 40 (the C API
   of decision A5, opened 2026-10-15, AW46; 40a the crate, the header
-  and the C example done, AW47; 40b the Python binding and the
-  packaging next).
+  and the C example done, AW47; 40b the Python binding, the archive
+  and the measure done, AW48; 40c when a host asks).
 - **G. Release and the ecosystem**: stages 17, 30, 38, 39. Releases
   0.1.0 (2026-10-07) and 0.2.0 (2026-10-13) are out, the extension on
   the Marketplace and Open VSX since 0.2.0; every release follows
@@ -876,9 +881,10 @@ submission by the owner, the awesome list's Glama step.
 The C API of decision A5 is stage 40, opened on 2026-10-15 by AW28's
 order (AW46: JSON texts across the boundary, the crate `renyi_c` with
 a hand-written header, C and Python first, a library archive per
-target); 40a is done (AW47: the crate, the header, the C example in
-CI), and 40b follows: the Python binding through `ctypes`, the fourth
-release artifact, the crate on crates.io at the next release, the
-measure. Not scheduled: the
+target); 40a (AW47: the crate, the header, the C example in CI) and
+40b (AW48: the Python binding, the archive per target, the ninth
+crate, the measure) are done, and the crate goes to crates.io with
+the next release; 40c, the screen callback and the value handles,
+waits for a host that asks. Not scheduled: the
 Python binder's items of track E, the Rust front end's name sets as
 bits, the emitter's own round for the compile row.

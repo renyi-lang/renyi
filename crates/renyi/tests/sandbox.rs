@@ -199,6 +199,19 @@ fn a_module_answers_its_public_functions_under_the_grant() {
     }
 }
 
+/// A path with backslashes, as Windows spells one, names the module in
+/// the map as a path with slashes does (decision AW48).
+#[test]
+fn a_path_with_backslashes_loads() {
+    let mut calc = Sandbox::load_source("some\\where\\calc.ry", CALC, Grant::default())
+        .expect("the module loads");
+    assert_eq!(calc.module(), "calc");
+    assert_eq!(
+        calc.call("add", vec![Value::integer(1), Value::integer(1)]),
+        Ok(Value::integer(2))
+    );
+}
+
 #[test]
 fn a_call_outside_the_grant_is_refused_before_it_runs() {
     let mut calc = sandbox("");

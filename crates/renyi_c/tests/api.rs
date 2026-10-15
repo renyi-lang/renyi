@@ -360,6 +360,46 @@ fn the_version_and_the_api_version_are_told() {
     assert_eq!(version, format!("renyi {}", env!("CARGO_PKG_VERSION")));
 }
 
+/// The cost of a call through the C API against `Sandbox::call` from
+/// Rust (decision AW46's measure): `risky(5)` ten thousand times each
+/// way, the difference being the JSON decode and encode per call.
+/// `cargo test --release -p renyi_c -- --ignored --nocapture the_cost`.
+#[test]
+#[ignore]
+fn the_cost_of_a_call_each_way() {
+    use renyi::{Grant, Sandbox};
+    use renyi_vm::Value;
+    use std::time::Instant;
+    const TURNS: u32 = 10_000;
+
+    let started = Instant::now();
+    let mut sandbox = Sandbox::load_source("shapes.ry", SHAPES, Grant::default()).expect("loads");
+    let loaded = started.elapsed();
+    let started = Instant::now();
+    for _ in 0..TURNS {
+        let value = sandbox
+            .call("risky", vec![Value::integer(5)])
+            .expect("answers");
+        assert_eq!(value, Value::integer(5));
+    }
+    let rust = started.elapsed();
+
+    let handle = load("");
+    assert!(!handle.is_null(), "{}", last_error());
+    let started = Instant::now();
+    for _ in 0..TURNS {
+        assert_eq!(call(handle, "risky", "[5]"), (OK, "5".to_string()));
+    }
+    let c_api = started.elapsed();
+    unsafe { renyi_free_sandbox(handle) };
+    println!(
+        "load {:.1} ms; per call: Sandbox::call {:.1} us, renyi_call {:.1} us",
+        loaded.as_secs_f64() * 1e3,
+        rust.as_secs_f64() * 1e6 / f64::from(TURNS),
+        c_api.as_secs_f64() * 1e6 / f64::from(TURNS)
+    );
+}
+
 /// The functions the header declares, and the ones the library exports.
 #[test]
 fn the_header_declares_what_the_library_exports() {

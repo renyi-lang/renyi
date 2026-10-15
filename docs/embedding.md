@@ -236,6 +236,39 @@ for one thread at a time.
 `crates/renyi_c/examples/host.c` is a host of fifty lines over
 `calc.ry` beside it; CI compiles it with the system's compiler, runs it
 and compares its output with `host.expected`. A test of the crate holds
-the header's functions equal to the library's exports. The Python
-binding through `ctypes`, the library in the release archives and the
-crate on crates.io are stage 40b.
+the header's functions equal to the library's exports.
+
+**From Python.** `bindings/python/renyi.py` is the binding: one file
+over `ctypes` and the standard library, no dependency (stage 40b). It
+finds the library through `RENYI_C_LIB`, else beside itself (the
+release archive's layout), else under `target/release` and
+`target/debug` of the checkout it sits in.
+
+```python
+import renyi
+
+with renyi.Sandbox.load("calc.ry", {"grant": "console", "memory": "16 megabytes"}) as calc:
+    for function in calc.functions():
+        print(function["signature"])
+    print(calc.call("add", 2, 3))                          # 5
+    print(calc.call("shift", {"across": 1, "down": 2}, 10))  # {'across': 11, 'down': 12}
+```
+
+`Sandbox.load(path, grant)` and `Sandbox.load_source(name, text,
+grant)` take the grant as a dict, as a JSON text or as `None`, and
+raise `LoadError` with the reason; the sandbox is a context manager
+and `close` frees the handle. `call(name, *arguments, guards=None)`
+takes Python values `json.dumps` writes and answers what `json.loads`
+reads, or raises `Failed`, `Crashed`, `Exited` (with `code`),
+`Refused` or `OverMemory` (with `limit` and `used`), each a
+`RenyiError`; `module`, `grant`, `warnings` and `functions()` describe
+the module; `renyi.version()` and `renyi.api_version()` tell the
+versions. `bindings/python/example.py` is the C example in Python,
+which CI runs and compares with `example.expected`.
+
+**The archive.** Every release carries, beside the binary's archive
+for each target, `renyi_c-<version>-<target>.tar.gz` (`.zip` on
+Windows): the shared and the static library, `renyi.h`, `renyi.py`,
+`example.py`, `host.c`, `calc.ry`, the license and a README
+(`bindings/README.md`). The crate `renyi_c` is on crates.io with the
+others (`docs/RELEASE.md`).

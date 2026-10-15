@@ -57,7 +57,8 @@ The owner's steps are marked (owner); the others a session does.
    the crates to crates.io, in dependency order, each with
    `cargo publish -p <crate>`: `renyi_json`, `renyi_syntax`,
    `renyi_package`, `renyi_check`, `renyi_index`, `renyi_workspace`,
-   `renyi_vm`, `renyi`.
+   `renyi_vm`, `renyi`, `renyi_c` (the C API, decision AW46; it
+   depends on `renyi`, so it goes last).
    `cargo login` takes the token from the owner; the token never enters
    the repository or a log. Each crate's manifest carries its
    description, license and repository, and the crates name each

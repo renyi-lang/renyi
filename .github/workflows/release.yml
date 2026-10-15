@@ -1,8 +1,11 @@
 # The release (decision AI2): a tag `v<version>` builds the `renyi` binary
 # for Linux (x86_64), macOS (Apple silicon) and Windows (x86_64), runs the
 # conformance suite against each, and publishes a GitHub Release with the
-# three archives, their checksums and the editor extension. The tag's
-# version must be the workspace version of `Cargo.toml` (docs/RELEASE.md).
+# three archives, their checksums and the editor extension; since decision
+# AW46 (stage 40b) a fourth archive per target carries the C API: the
+# shared and the static library of `renyi_c`, the header, the Python
+# binding and the C example. The tag's version must be the workspace
+# version of `Cargo.toml` (docs/RELEASE.md).
 
 name: Release
 
@@ -58,6 +61,9 @@ jobs:
       - name: Build
         run: cargo build --release --locked -p renyi --target ${{ matrix.target }}
 
+      - name: Build the C API
+        run: cargo build --release --locked -p renyi_c --target ${{ matrix.target }}
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
@@ -78,6 +84,16 @@ jobs:
           tar -C dist -czf "dist/$name.tar.gz" "$name"
           (cd dist && shasum -a 256 "$name.tar.gz" > "$name.tar.gz.sha256")
           cat "dist/$name.tar.gz.sha256"
+          lib="renyi_c-${GITHUB_REF_NAME}-${{ matrix.target }}"
+          mkdir -p "dist/$lib"
+          for file in librenyi_c.a librenyi_c.so librenyi_c.dylib; do
+            [ -f "target/${{ matrix.target }}/release/$file" ] && cp "target/${{ matrix.target }}/release/$file" "dist/$lib/"
+          done
+          cp crates/renyi_c/include/renyi.h bindings/python/renyi.py bindings/python/example.py crates/renyi_c/examples/host.c crates/renyi_c/examples/calc.ry LICENSE "dist/$lib/"
+          cp bindings/README.md "dist/$lib/README.md"
+          tar -C dist -czf "dist/$lib.tar.gz" "$lib"
+          (cd dist && shasum -a 256 "$lib.tar.gz" > "$lib.tar.gz.sha256")
+          cat "dist/$lib.tar.gz.sha256"
 
       - name: Package (Windows)
         if: matrix.archive == 'zip'
@@ -90,6 +106,14 @@ jobs:
           $hash = (Get-FileHash "dist/$name.zip" -Algorithm SHA256).Hash.ToLower()
           "$hash  $name.zip" | Out-File -Encoding ascii "dist/$name.zip.sha256"
           Get-Content "dist/$name.zip.sha256"
+          $lib = "renyi_c-$env:GITHUB_REF_NAME-${{ matrix.target }}"
+          New-Item -ItemType Directory -Force "dist/$lib" | Out-Null
+          Copy-Item "target/${{ matrix.target }}/release/renyi_c.dll", "target/${{ matrix.target }}/release/renyi_c.dll.lib", "target/${{ matrix.target }}/release/renyi_c.lib", "crates/renyi_c/include/renyi.h", "bindings/python/renyi.py", "bindings/python/example.py", "crates/renyi_c/examples/host.c", "crates/renyi_c/examples/calc.ry", "LICENSE" "dist/$lib/"
+          Copy-Item "bindings/README.md" "dist/$lib/README.md"
+          Compress-Archive -Path "dist/$lib" -DestinationPath "dist/$lib.zip"
+          $hash = (Get-FileHash "dist/$lib.zip" -Algorithm SHA256).Hash.ToLower()
+          "$hash  $lib.zip" | Out-File -Encoding ascii "dist/$lib.zip.sha256"
+          Get-Content "dist/$lib.zip.sha256"
 
       - uses: actions/upload-artifact@v4
         with:
@@ -156,6 +180,7 @@ jobs:
             echo
             echo "Or \`cargo install renyi --version ${GITHUB_REF_NAME#v}\` with a Rust toolchain."
             echo "The \`.vsix\` is the VS Code extension (highlighting and the language server client): Extensions, \"Install from VSIX\"."
+            echo "The \`renyi_c-\` archives are the C API (docs/embedding.md section 7): the shared and the static library, the header \`renyi.h\`, the Python binding \`renyi.py\` and a C example."
             echo
             echo "Checksums: the \`.sha256\` file next to each archive."
           } > notes.md

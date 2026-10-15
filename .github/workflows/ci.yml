@@ -85,14 +85,17 @@ jobs:
           cargo run -q -- format --check showcase/raycaster/*.ry
           cargo run -q -- test showcase/raycaster/raycaster.ry
 
-      # the C API (decision AW46, stage 40a): the library builds, the C
-      # example compiles against it with the system's compiler, runs on
-      # its module and prints what examples/host.expected holds
-      - name: The C API
+      # the C API (decision AW46, stages 40a and 40b): the library builds,
+      # the C example compiles against it with the system's compiler, runs
+      # on its module and prints what examples/host.expected holds, and
+      # the Python example does the same through the binding over ctypes,
+      # which finds the library under target/debug by itself
+      - name: The C API and the Python binding
         run: |
           cargo build -q -p renyi_c
           cc crates/renyi_c/examples/host.c -Icrates/renyi_c/include -Ltarget/debug -lrenyi_c -Wl,-rpath,"$PWD/target/debug" -o target/host_example
           target/host_example crates/renyi_c/examples/calc.ry | diff - crates/renyi_c/examples/host.expected
+          python bindings/python/example.py crates/renyi_c/examples/calc.ry | diff - bindings/python/example.expected
 
       # the client of the language server (decision AN2) bundles, so
       # that a release does not find out

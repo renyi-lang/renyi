@@ -9867,3 +9867,41 @@ The codec's failure is rendered as the module would see it
 reworded. Not in this stage: the Python binding, the release artifact
 and the crate on crates.io (40b), the screen callback and the value
 handles (40c). (Claude)
+
+**AW48. Stage 40b built: the Python binding, the library archive, the
+crate for crates.io, the measure.** Done on 2026-10-15 as AW46 set it.
+`bindings/python/renyi.py`, one file over `ctypes` and the standard
+library: `Sandbox.load(path, grant)` and `Sandbox.load_source(name,
+text, grant)` with the grant a dict, a JSON text or `None`, a context
+manager with `close`; `call(name, *arguments, guards=None)` with the
+arguments as Python values through `json.dumps` and the value back
+through `json.loads`, the other statuses as the exceptions `Failed`,
+`Crashed`, `Exited` (with `code`), `Refused` and `OverMemory` (with
+`limit` and `used`) under `RenyiError`; `module`, `grant`, `warnings`,
+`functions()`, `version()`, `api_version()`; the library found
+through `RENYI_C_LIB`, else beside the file (the archive's layout),
+else under `target/release` and `target/debug` of the checkout the
+file sits in, else by the system's loader, and refused when its API
+version is not the binding's. `bindings/python/example.py` is the C
+example in Python, its output `example.expected`, which CI runs and
+compares in the step of 40a. The release workflow builds `renyi_c`
+for every target and packages `renyi_c-<version>-<target>` (`.tar.gz`,
+`.zip` on Windows) with the shared and the static library, the
+header, the binding, the example, the C example, the license and
+`bindings/README.md`; the release notes name it; `docs/RELEASE.md`
+lists `renyi_c` as the ninth crate, published last. A bug the
+binding's measure found: `Sandbox::load` compared the path as given
+with the map's file names, which the index spells with slashes, so a
+Windows path with backslashes was refused with "has no module in the
+map"; fixed in `Sandbox::of` by the same spelling, with a test on a
+backslash name through `load_source`. The measure (wall time on the
+owner's Windows machine, two runs each, the release library, `risky(5)`
+ten thousand times): the load 2.9 and 2.8 ms from Rust, 10.1 and 9.9
+ms from Python (the binding's first import and the file read inside);
+a call 37.9 and 42.4 us through `Sandbox::call`, 36.4 and 43.6 us
+through `renyi_call` (the JSON decode and encode within the noise of
+the VM made per call), 57.7 and 51.1 us from Python, and 62.7 and
+57.3 us for `shift` with a record in and out; all under the hundred
+microseconds the study expected, the VM's construction per call the
+larger part, as it said. Not in this stage: the screen callback and
+the value handles (40c, when a host asks). (Claude)
