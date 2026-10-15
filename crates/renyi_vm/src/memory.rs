@@ -96,7 +96,8 @@ fn freed(size: i64) {
 }
 
 /// Run `work` with this thread's allocations left out of the count
-/// (decision AW66): the JIT's compilations.
+/// (decision AW66): the JIT's compilations, so only with the JIT.
+#[cfg(feature = "jit")]
 pub(crate) fn exempt<T>(work: impl FnOnce() -> T) -> T {
     let was = EXEMPT.with(|exempt| exempt.replace(true));
     let out = work();
