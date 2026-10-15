@@ -9892,7 +9892,7 @@ on a fresh clone).
   completed on 2026-10-14 and the namespace `verified: true`; the
   awesome-mcp-servers pull request (punkpeye/awesome-mcp-servers
   16459, opened 2026-10-14 from the owner's fork, the lane
-  `D:\Projects\.worktrees\Renyiwesome\`) waits for a Glama
+  `D:\Projects\.worktrees\Renyi\awesome\`) waits for a Glama
   listing and its score badge, which the list's bot now requires (a
   Glama account and a Dockerfile that starts `renyi mcp`); the
   official MCP registry lists a crates.io binary (`registryType:
