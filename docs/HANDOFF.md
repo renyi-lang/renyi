@@ -4287,8 +4287,14 @@ to be moved), and the `.sha256` files written on Windows end in CR LF
 (the installer trims it; `sha256sum -c` wants `tr -d '\r'` first). The
 article (`paper/renyi.tex`) carries 0.4.0's numbers from the lane's
 `perf/bench_040.log` and the repository's counts, the first-run measure
-dated on 0.2.0 in the text; `paper/endorsement.md` is the request the
-owner sends with the submission's link. The owner's steps: the
+dated on 0.2.0 in the text, and was condensed for the submission on the
+owner's word (the introduction no longer repeats the design section;
+5,115 to 4,643 words by `wc`; sci-paper's `ai_ism_lint.py` clean of
+blockers, its colon advisories kept as before, `perf/ai_lint_040.log`);
+`paper/endorsement.md` is the request the owner sends with the
+submission's link. The announcements' texts at 0.4.0 are the lane's
+`announcements_0.4.0.md` (the 0.2.0 texts with the C API, the memory
+budget, the registry and the stable version), for the owner to post. The owner's steps: the
 Marketplace upload (section 7 item 5 of the release document), the
 arXiv submission with the endorsement, the announcements.
 

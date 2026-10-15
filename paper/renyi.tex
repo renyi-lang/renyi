@@ -36,33 +36,31 @@
 \maketitle
 
 \begin{abstract}
-AI agents write and run small programs that glue services together:
-a script that reads a directory, calls an API and writes a report. The person who runs such a script has to answer one
-question before it runs, \emph{what can this program touch?}, and one
-after, \emph{what did it do?}, and neither is answerable from a script
-in a general-purpose language. We present Renyi, a statically typed
-scripting language whose signatures declare effects as scoped,
-budgeted capabilities; the checker refuses a function that uses what it
-does not declare, the grant of \texttt{main} is the whole program's
-authority, dependencies included, and at run time every effect passes
-one boundary in the virtual machine where the grant, the budgets and the
-provenance guards are checked. Because every effect passes that
-boundary, a run can be recorded as data, replayed offline, narrated
-through the program's own \texttt{purpose} clauses and reproduced on
-another machine from its manifest. The surface syntax is a regular
-subset of English constrained for agents as writers and people as
-reviewers: one spelling per concept, named arguments, no exceptions, and
-every diagnostic carrying the fix. The toolchain, in Rust, comprises a
-checker, a bytecode VM with a template and an optimising native tier, an
-ahead-of-time image format, a WebAssembly build that runs the whole
-toolchain in a browser, a project map and a language server; the
-compiler is written again in Renyi and held byte-equal to the Rust one
-by tests. We report three measures on the released toolchain: every
-example workflow's recording reproduces on another operating system,
-agents given only the language's one-page skill file wrote four of five
-workflows clean within two attempts, and Claude Sonnet 5.5 reading the
-cheat sheet alone predicts the output of corpus programs at 90\% and
-explains them at 100\%.
+AI agents write and run small programs that glue services together.
+The person who runs such a program has to answer one question before it
+runs, \emph{what can this program touch?}, and one after, \emph{what did
+it do?}, and neither is answerable from a script in a general-purpose
+language. We present Renyi, a statically typed scripting language whose
+signatures declare effects as scoped, budgeted capabilities. The checker
+refuses a function that uses what it does not declare, the grant of
+\texttt{main} is the whole program's authority, dependencies included,
+and at run time every effect passes one boundary in the virtual machine
+where the grant, the budgets and the provenance guards are checked. That
+boundary is what makes a run recordable: as data, replayed offline,
+narrated through the program's own \texttt{purpose} clauses and
+reproduced on another machine from its manifest. The surface syntax is a
+regular subset of English with one spelling per concept, named
+arguments, no exceptions and a fix in every diagnostic, its rules chosen
+by measuring language models reading and writing it. The toolchain, in
+Rust, has a checker, a bytecode VM with two machine-code tiers, an
+ahead-of-time image, a WebAssembly build of the whole toolchain, a
+project map and a language server; the compiler is written again in
+Renyi and held byte-equal to the Rust one by tests. On the released
+toolchain, every example workflow's recording reproduces on another
+operating system, agents given only the language's one-page skill file
+wrote four of five workflows clean within two attempts, and Claude
+Sonnet 5.5 reading the cheat sheet alone predicts the output of corpus
+programs at 90\% and explains them at 100\%.
 \end{abstract}
 
 \section{Introduction}
@@ -87,66 +85,35 @@ from the inside~\citep{leijen2014koka,brachthauser2020effekt}, but the
 languages that have them were designed for a different writer and a
 different reader, and they say nothing about what a run did.
 
-Renyi is designed around the answers to those two questions.
+Renyi is designed around those answers. Every
+function's signature lists what it needs (\texttt{needs console,
+filesystem.read("data"), network.http("api.example") at most 60 per
+minute}), the checker refuses a body that uses what its signature does
+not declare, directly or through a call, and the signature of
+\texttt{main} is the whole program's grant, which must cover every
+dependency it reaches. There is no ambient I/O, no reflection, and
+foreign code is a capability. At run time every effect passes one
+boundary in the VM, where the effective grant, the budgets and the
+guards are checked, and that boundary is what makes a run recordable:
+\texttt{renyi record} writes the run as a JSON document under a
+manifest, \texttt{renyi run -{}-replay} re-executes it offline,
+\texttt{renyi reproduce} checks it on another machine, and \texttt{renyi
+run -{}-explain} narrates it through the program's \texttt{purpose}
+clauses. The surface is a regular subset of English that fits on one
+page of under 3,000 tokens, with one spelling per concept, named
+arguments, no exceptions, a \texttt{purpose} line on every public
+definition and a fix in every diagnostic; its rules were chosen by
+measuring language models reading and writing the language
+(Section~\ref{sec:readability}). The tooling an agent needs is part of
+the toolchain: the project map with its semantic diff and its chunks for
+retrieval by embedding, a server for the Model Context
+Protocol~\citep{mcp} and a language server.
 
-\paragraph{Effects are capabilities, declared and enforced.}
-Every function's signature lists what it needs: \texttt{needs console,
-filesystem.read("data"), network.http("api.example")}. A need is scoped
-to a path, a host or a variable, may carry a budget (\texttt{at most 60
-per minute}) and a provenance guard (\texttt{filesystem.read("keys")
-only to network.http("vault.example")}: what comes in through the one
-capability leaves only through the other). The checker refuses a body
-that uses what its signature does not declare, directly or through a
-call, and the signature of \texttt{main} is the whole program's grant,
-which must cover the transitive effects of every dependency it reaches.
-There is no ambient I/O, no reflection, and foreign code is a
-capability. At run time every effect passes one boundary in the VM,
-where the effective grant of the running call chain, the budgets and the
-guards are checked.
-
-\paragraph{Runs are recorded, replayed and narrated.}
-Because every effect passes that boundary, \texttt{renyi record} writes a
-run as a JSON document, one entry per primitive call with its arguments
-and its outcome, under a manifest: the toolchain, the content hash of
-\texttt{main}'s closure, every dependency's version and hash, the grant,
-the arguments, the outcome and the hash of the output. \texttt{renyi run
---replay} re-executes the program offline from the recording;
-\texttt{renyi reproduce} replays a recording under its manifest and
-compares the outcome and the output byte for byte; \texttt{renyi run
---explain} narrates a run through the \texttt{purpose} clauses it passes;
-a \texttt{replays} test pins a function with effects to a recording.
-
-\paragraph{The syntax is for an agent as writer and a person as reviewer.}
-The surface is a regular subset of English: blocks end with \texttt{end},
-there is no \texttt{=}, \texttt{==}, \texttt{null}, exception or
-anonymous function, one argument is positional and two or more are named
-in declaration order, every call that can fail is read with
-\texttt{otherwise}, every public definition carries a \texttt{purpose}
-line in prose, and the whole language fits on one page of under 3,000
-tokens. The checker enforces each as a rule with a diagnostic code and
-a fix; the rules were chosen by measuring language models reading and
-writing the language (Section~\ref{sec:readability}).
-
-\paragraph{The tooling an agent needs is part of the language.}
-\texttt{renyi index} is the project map: every definition with its
-signature, effects, callers, metrics and content hash; \texttt{index
---diff} is a semantic diff per definition with the version bump it
-forces; \texttt{index -{}-chunks} writes the map as chunks for retrieval by
-embedding; \texttt{renyi mcp} serves the toolchain to an agent host over
-the Model Context Protocol~\citep{mcp}; \texttt{renyi lsp} serves editors.
-
-The design, in Section~\ref{sec:design}, is scoped, budgeted and
-guarded capabilities in signatures, enforced statically across a
-program and its packages and dynamically by a grant stack at one
-boundary; recording, replay and reproduction as consequences of that
-boundary; and a surface syntax whose rules were chosen by measurement.
-Its implementation, in Section~\ref{sec:implementation}, is a toolchain
-of about one hundred thousand lines of Rust, a VM with three tiers, an
-ahead-of-time image, a WebAssembly build, and a compiler written in
-Renyi held equal to the Rust one by tests, which gives the language a
-self-hosting measure. The evaluation, in Section~\ref{sec:evaluation},
-measures the claims of the language's positioning on the released
-toolchain, with the readability rounds and the benchmarks.
+Section~\ref{sec:design} gives the design, Section~\ref{sec:implementation}
+the implementation (about a hundred thousand lines of Rust, a VM with
+three tiers, an image, a WebAssembly build, and the compiler written in
+Renyi and judged against the Rust one) and Section~\ref{sec:evaluation}
+the measures of the language's claims on the released toolchain.
 
 \section{The design}
 \label{sec:design}
@@ -232,15 +199,14 @@ packages. The diagnostic names the callee, the capability and the fix
 
 The dynamic rule is the grant stack. The effective grant of a running
 function is the intersection of the program's grant with the scopes
-declared along the call chain; a general HTTP client package declares
-\texttt{network.http} without a scope and a program that grants
-\texttt{network.http("api.example.com")} may still use it, since every
-primitive checks the actual host or path against the effective grant at
-the moment of the call. The same mechanism serves the command-line
-narrowing \texttt{renyi run -{}-deny network} and the embedding API's
-sandbox, where a host program loads a Renyi module under a grant
+declared along the call chain, and every primitive checks the actual
+host or path against it at the moment of the call, so a general HTTP
+client package that declares \texttt{network.http} without a scope
+serves a program that grants one host. The same mechanism serves the
+command-line narrowing \texttt{renyi run -{}-deny network} and the
+embedding API's sandbox, where a host loads a Renyi module under a grant
 narrower than the module's own \texttt{main} declares, with a memory
-budget enforced by a counting allocator.
+budget kept by a counting allocator.
 
 \subsection{Packages}
 
@@ -264,24 +230,28 @@ a program that grants it is told so the first time it runs.
 A Renyi run is a deterministic function of its code, its dependencies
 and its effects: time and randomness are effects and are recorded like
 any other, maps and sets iterate in insertion order, decimal and float
-arithmetic follow the standards, and tasks run one after the other. The
-recording therefore suffices to replay the run: \texttt{renyi run
---replay} answers every primitive call from the recording, matched by
-arguments, and touches nothing outside the process. Arguments and
-outcomes are encoded by the library's JSON rules, so a recording is
-readable and editable by a person or an agent, and a replay decodes it
-against the program's declared types: a response whose shape no longer
-fits fails the replay as it would fail in production. A recording can be
-redacted by name (a header, a field) and keeps a placeholder with the
-hash of what was removed.
+arithmetic follow the standards, and tasks run one after the other.
+\texttt{renyi record} writes a run as a JSON document, one entry per
+primitive call with its arguments and its outcome, and \texttt{renyi run
+-{}-replay} answers every primitive call from it, matched by arguments,
+touching nothing outside the process. Arguments and outcomes are encoded
+by the library's JSON rules, so a recording is readable and editable by
+a person or an agent, and a replay decodes it against the program's
+declared types: a response whose shape no longer fits fails the replay
+as it would fail in production. A recording can be redacted by name (a
+header, a field) and keeps a placeholder with the hash of what was
+removed.
 
 The manifest in the recording's header names everything the run
-depended on. \texttt{renyi reproduce} refuses a program whose
-\texttt{main} does not hash as the manifest says, warns when the
-toolchain differs, refuses when the dependencies differ, replays, and
-compares the outcome and the output; a difference names the first call
-that differed. \texttt{renyi test} runs \texttt{replays} tests the same
-way, and \texttt{-{}-refresh} records a test live once.
+depended on: the toolchain, the content hash of \texttt{main}'s closure,
+every dependency's version and hash, the grant, the arguments, the
+outcome and the hash of the output. \texttt{renyi reproduce} refuses a
+program whose \texttt{main} does not hash as the manifest says, warns
+when the toolchain differs, refuses when the dependencies differ,
+replays, and compares the outcome and the output; a difference names the
+first call that differed. A \texttt{replays} test pins a function with
+effects to a recording the same way, and \texttt{-{}-refresh} records it
+live once.
 
 \subsection{The surface}
 
@@ -327,25 +297,19 @@ one. Section~\ref{sec:readability} says how the rules were chosen.
 \subsection{The toolchain}
 
 The toolchain is one binary, \texttt{renyi}, written in Rust in ten
-crates (103,194 lines at release 0.4.0): the syntax crate (lexer,
-parser, formatter, JSON encoder of the tree), the JSON crate the VM,
-the recordings and the packages share, the checker (declarations,
-bodies, effects, refinements on literals, the fixes), the package crate
-(manifests, lockfiles, registries, resolution), the index (the project
-map, metrics, the semantic diff, the chunks), the workspace (the resident
-world a language server and an MCP server keep between calls), the VM,
-the binary's own crate (commands, the language server, the MCP server,
-the sandbox API), the web crate (the toolchain for WebAssembly) and the
-C API crate (a shared and a static library over the sandbox API, with a
-Python binding). The
-standard library is 16 modules declared in Renyi (795 lines of
-declarations compiled into the checker) with native implementations in
-the VM. The language is specified by a reference of one section per
+crates (103,194 lines at release 0.4.0): the syntax, the JSON the VM,
+the recordings and the packages share, the checker, the packages, the
+index, the workspace a language server and an MCP server keep between
+calls, the VM, the binary's own crate with the commands and the sandbox
+API, the web crate for WebAssembly, and the C API with its Python
+binding. The standard library is 16 modules declared in Renyi (795 lines
+of declarations compiled into the checker) with native implementations
+in the VM. The language is specified by a reference of one section per
 construct with the grammar excerpt, the static rules with their codes
 and the run-time behaviour; a conformance suite of 67 cases (programs,
 commands, expected outputs, exit codes and diagnostic codes) runs
-against any \texttt{renyi} binary without the Rust crates, and the
-continuous integration runs it on Linux and Windows for every push.
+against any \texttt{renyi} binary without the Rust crates, on Linux and
+Windows for every push.
 
 \subsection{The virtual machine}
 
@@ -387,12 +351,12 @@ The front end, the checker and the interpreter build for
 exports, 3,062,776 bytes (995,913 gzipped) at release 0.4.0. A run that
 presents a frame through \texttt{std.screen} suspends in the VM and is
 resumed by the page with the keys held and the time elapsed, which is how
-the project's demonstration game, a Doom-style raycaster of about two thousand
-lines of Renyi in sixteen modules, plays on the project's site: the same
+the project's demonstration game, a Doom-style raycaster of 2,814 lines
+of Renyi in sixteen modules, plays on the project's site; the same
 program plays at the terminal under \texttt{renyi run}, where the frames
-are drawn as text. In a headless Chrome on the author's machine the game
-ran at 55 to 60 frames a second with 3.0 to 3.8 ms a frame spent in the
-interpreted VM (measured on 2026-10-13).
+are drawn as text. In a headless Chrome on the author's machine it ran
+at 55 to 60 frames a second with 3.0 to 3.8 ms a frame spent in the
+interpreted VM (2026-10-13).
 
 \subsection{The compiler written in Renyi}
 
@@ -410,38 +374,34 @@ diagnostic of the Rust front end is therefore also a diagnostic of the
 Renyi one, kept in step by the judges on every commit.
 
 The compiler is also the toolchain's largest program and its speed
-measure. The project set a gate for switching the binary's front end to
-the compiler written in Renyi: within three times the Rust front end's
-instructions on checking the compiler's own largest module. The VM's
-rounds (the typed round, the template tier, the register allocation of
-operands, the in-place updates, the frames made lazy) and two rounds of
-cuts in the compiler's own sources brought the ratio on the check row
-to 2.96, inside the gate; the author chose to keep the Rust front end
-in the binary and the Renyi one as the judged twin. The largest cut in
-the Renyi sources came from writing a record update into the slot that
-holds the base, so that the VM's in-place plan applies, rather than
-binding the updated record to a fresh name.
+measure. The gate for switching the binary's front end to it was three
+times the Rust front end's instructions on checking the compiler's own
+largest module; the VM's rounds (the typed round, the template tier,
+operands in registers, updates in place, frames made lazy) and two
+rounds of cuts in the compiler's own sources brought the ratio to 2.96,
+and the author chose to keep the Rust front end in the binary and the
+Renyi one as the judged twin.
 
 \subsection{Tooling}
 
 \texttt{renyi index} builds the map from the checked program: for every
 module and definition, the signature, the effects, the failure types,
 the callers and callees, the size metrics, the content hash and the
-budgets, rendered as text or JSON. \texttt{index -{}-diff} compares two maps
-or a map and a revision and lists the changes per definition with what
-each reaches and the version bump it forces. \texttt{index -{}-chunks}
-writes the map as JSON Lines, one chunk per module and definition, whose
-id is the hash of its text, so that a host's retrieval index is a
-projection of the map that changes exactly when a definition does; a
-prototype measured three chunk texts against 45 questions with two
-embedding models and a BM25 baseline before the format was fixed.
-\texttt{renyi mcp} serves the map, the checker, the formatter, the tests,
-the chunks, the cheat sheet and a library lookup to an agent host over
-standard input and output, keeping the checked world of the directory
-between calls and re-checking only what changed. \texttt{renyi lsp} serves
-diagnostics, hover, outline, references, rename, completion, signature
-help and workspace symbols to editors, with a rename refused when the
-project checked with the edits applied gains an error.
+budgets. \texttt{index -{}-diff} compares two maps or a map and a revision
+and lists the changes per definition with what each reaches and the
+version bump it forces. \texttt{index -{}-chunks} writes the map as JSON
+Lines, one chunk per module and definition with the hash of its text as
+its id, so that a host's retrieval index is a projection of the map that
+changes exactly when a definition does (three chunk texts were measured
+against 45 questions with two embedding models and a BM25 baseline
+before the format was fixed). \texttt{renyi mcp} serves the map, the
+checker, the formatter, the tests, the chunks, the cheat sheet and a
+library lookup to an agent host over standard input and output, keeping
+the checked world of the directory between calls and re-checking only
+what changed. \texttt{renyi lsp} serves diagnostics, hover, outline,
+references, rename, completion, signature help and workspace symbols to
+editors, with a rename refused when the project checked with the edits
+applied gains an error.
 
 \section{Evaluation}
 \label{sec:evaluation}
@@ -472,18 +432,14 @@ recorded ones.
 \emph{An agent given the skill file writes a workflow that checks clean
 and runs on its first or second attempt; every failed attempt was
 answered by a diagnostic with a fix the agent applied.} Five tasks of the
-workflows' kind were written (expenses by category from a CSV, a log's
-levels and most frequent errors, word frequencies, an inventory's low
-stock and total value from JSON, a rename plan from a directory listing
-and an argument), each given to a fresh agent (a Claude Code subagent)
-allowed to read only the starter pack's skill file and the one-page
-cheat sheet, with no MCP server and no other file of the repository, and
-to run the release binary. An attempt is one version of the program
-followed by \texttt{renyi check}. Table~\ref{tab:firstrun} gives the
-result: three tasks checked clean on the first attempt, one on the
-second and one on the third; tests and the run passed on the same
-attempt in every case, with the outputs checked by each agent against an
-independent computation.
+workflows' kind (Table~\ref{tab:firstrun}) were each given to a fresh
+agent (a Claude Code subagent) allowed to read only the starter pack's
+skill file and the one-page cheat sheet, with no MCP server and no other
+file of the repository, and to run the release binary. An attempt is one
+version of the program followed by \texttt{renyi check}. Three tasks
+checked clean on the first attempt, one on the second and one on the
+third; tests and the run passed on the same attempt in every case, with
+the outputs checked by each agent against an independent computation.
 
 \begin{table}[t]
 \centering
@@ -512,10 +468,7 @@ the second attempt at the inventory task: the agent wrote \texttt{or
 fails with FileError, JsonError}, the parser's \texttt{expected}
 diagnostic proposed one statement per line, which was not the fix, and
 the agent found the spelling with \texttt{or} by a guess. The gaps the
-agents named in the skill file (that spelling, the JSON module's error
-type, that a library type's members are methods, what the directory
-listing and the map's entries answer) are one bullet more in the skill
-file since.
+agents named in the skill file are one bullet more in it since.
 
 \subsection{Readability}
 \label{sec:readability}
@@ -583,9 +536,8 @@ cachegrind and callgrind, not wall-clock: the self-check's estimated
 cycles fell from 14.83 billion before the typed round to under 9.4
 billion at its close, and the ratio of the compiler written in Renyi to
 the Rust front end on the check row from 3.26 to 2.96 over the last
-round, with the project's decisions document recording every stage's
-measure and the ones that were measured and left off (a locals-in-registers
-scheme, an inliner).
+round. The project's decisions document records every stage's measure,
+the ones measured and left off among them.
 
 \section{Related work}
 
@@ -642,10 +594,9 @@ can touch, the signature of \texttt{main} states and the checker and
 the VM enforce, dependencies included. What it did, a recording states
 as data and a manifest makes reproducible. The syntax that carries
 those answers was chosen by measuring the readers it is for. The
-toolchain is released, the language is self-hosted and judged, and the
-measures reported here will be followed by review time by people, the
-first-run rate with the MCP server connected, and the toolchain's own
-front end switched to the compiler written in Renyi.
+toolchain is released and the language is self-hosted and judged; the
+measures to follow are review time by people and the first-run rate
+with the MCP server connected.
 
 \paragraph{Availability.} The toolchain, the specification, the corpus,
 the conformance suite, the readability harness and every measure's lane
