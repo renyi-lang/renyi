@@ -4104,6 +4104,268 @@ Then the first stage the owner confirms. Done in session 14: the study is
 the section "Stage 29, the new backend: the design study (session 14)"
 below, and the owner's answers are decision AW1.
 
+## Stage 40, the C API: the design study (session 15)
+
+**What the owner ordered (AW28, opened 2026-10-15).** The C API of
+decision A5 ("embedding into host programs (Rust, Python, JS, C)
+through a stable C API"), last of AW28's three stages, its design
+study before any code and the study's questions in a batch of four.
+Decision F1 names "embedding Renyi as a scripting engine" in v1's
+compatibility scope; AP2 and `docs/embedding.md` say the C API "is a
+layer over" the Rust one, "for Python, JS and C hosts".
+
+**What exists.** The Rust embedding API (decisions AP1 and AP2,
+`crates/renyi/src/sandbox.rs`, 549 lines): `Grant` (`parse`,
+`from_json`, `from_file`, `spelling`; `memory` in bytes), `Sandbox`
+(`load`, `load_source`, `module`, `grant`, `functions`, `warnings`,
+`set_screen`, `call(name, Vec<Value>) -> Result<Value, CallError>`,
+`guarded(value, capability)`), `Function` (name, signature, purpose,
+parameters, needs, `exposed_as_tool`, `input_schema` as a JSON text,
+D6) and `CallError` (`Refused`, `Failed`, `Crashed { message,
+location }`, `Exited(code)`, `OverMemory { limit, used }`); each call
+on a VM of its own, the budgets carried across the calls, the memory
+budget through the counting allocator the host's binary declares
+(`renyi::Allocator`, or `Counting<A>` around its own), refused at
+load without it. The test `crates/renyi/tests/sandbox.rs` (the module
+`calc` of eight public functions; arity, visibility, needs, a scope, a
+budget across calls, a guard, a memory budget, the binary's
+`--sandbox`). The crate `renyi` is a library and a binary (AK1), an
+`rlib` only: no `cdylib`, no `staticlib`, no header. The web crate
+(decision AW29 (3), `crates/renyi_web`, `crate-type = ["cdylib",
+"rlib"]`) is the C ABI the project has: sixteen `extern "C"`
+functions by hand, no `cbindgen`, a thread-local `Session`, texts in
+as `(pointer, len)` the caller allocated through `renyi_alloc` and
+frees through `renyi_free`, texts out as `(renyi_text(),
+renyi_text_len())` valid until the next call, statuses as small
+integers (`FINISHED` 0 to `SUSPENDED` 6), the exit code by its own
+getter; `tools/wasm_check.js` and `docs/assets/play.js` are its two
+hosts. The JSON codec of `std.json` (`natives/json.rs`): `encode(vm,
+value, naming)` walks any value (a record by its field names, a
+variant as the codec spells it, Bytes as base64, a Decimal and a
+Duration as numbers, an Instant as its ISO text, a Guarded value as
+what it wraps, a set or a pair as a sequence, a map's keys as texts;
+a function, a native value, a range or a failure value cannot be
+carried, "cannot render ... as JSON") and `decode(vm, json, ty, path,
+naming)` builds a value of a declared `Ty` or answers the failure
+value;
+both need a `Vm` for the type table. A function's parameters carry
+their types: `FunctionMeta.param_types` as the checker spells them
+and `param_type_indices` into `Program.result_types`, the `Ty` of
+each declared parameter (decision AU8). The Python bridge (decisions
+AL1 to AL4) is the other direction, Renyi calling Python, through a
+worker process and JSON; the toolchain already describes an exposed
+function to a host as JSON Schema (`renyi tools`, D6) and serves an
+agent over MCP. The release (decision AI2): three archives of the
+binary with checksums and the extension; eight crates on crates.io.
+
+**What a C API is for, concretely.** A host that is not Rust and not
+a browser loads a Renyi module with a grant and calls its functions:
+a Python service that runs an agent's tool under `network.http("api")
+at most 60 per minute`, a C or C++ program that scripts itself in
+Renyi, a Node host through a foreign-function package, a Go or Java
+host the same way. The three promises of the sandbox (effects,
+budgets and guards, memory) come through unchanged, because the C
+layer calls `Sandbox` and nothing else; what the layer decides is how
+a value crosses, how an error is told, who owns what memory, and how
+the library ships.
+
+**The design, item by item.**
+
+- *The crate.* A new crate `crates/renyi_c`, `crate-type =
+  ["cdylib", "staticlib", "rlib"]`, over `renyi::Sandbox`; the header
+  `include/renyi.h` written by hand, as the web crate's ABI was (AW29
+  (3): no tool beyond cargo), held equal to the exports by a test that
+  reads the header and the `#[no_mangle]` functions of `lib.rs` and
+  compares the names and the arities (the way `tests/reference.rs`
+  holds the reference to the grammar). The alternative, `cbindgen`,
+  generates the header from the Rust, at the price of a build
+  dependency (or a tool on the machine and in CI) and of a header
+  whose wording is the tool's; the API is about twenty functions, so
+  the hand-written header is the smaller debt. The `renyi` crate
+  itself does not become a `cdylib`: every `cargo build` would then
+  write a shared library beside the binary, and a `cdylib` declares
+  its own global allocator, which the Rust test binaries of the crate
+  do not want.
+
+- *The allocator.* The C library declares `renyi::Allocator` itself
+  (`#[global_allocator]` in `renyi_c`): a `cdylib` has its own Rust
+  allocator, separate from the host's `malloc`, so the count sees the
+  library's allocations, which are the VM's, and not the host's. That
+  is the count the memory budget means ("the bytes a call holds above
+  the level at its start"), and it is cleaner than the Rust API's
+  today, which counts the whole process. A host gets `memory` in the
+  grant with no declaration of its own. The `staticlib` is the one
+  case where the allocator is the host's: a C program linking it
+  statically gets Rust's global allocator as the library's, which is
+  `renyi::Allocator` still, so the count holds there too.
+
+- *Handles.* `renyi_sandbox *` is an opaque pointer, one per loaded
+  module (a host may hold several, as the Rust API allows), made by
+  `renyi_load(path, grant_json)` or `renyi_load_source(name, text,
+  grant_json)` and freed by `renyi_free_sandbox`. The grant is the
+  JSON object of `embedding.md` section 1 as a text, or the empty
+  text for a grant of nothing; a grant that does not parse answers a
+  null handle with the message in a process-wide last-error text
+  (`renyi_last_error()`), the one place a text lives outside a
+  handle. Every other text a call answers (`renyi_text(sandbox)`,
+  `renyi_text_len(sandbox)`) belongs to the handle and is valid
+  until the next call on it, as the web crate does; a host that
+  keeps a text copies it. No `renyi_alloc`: the host's texts are
+  read where they lie, `(const char *, size_t)`, not NUL-terminated,
+  so a Python `bytes` or a C string of a known length crosses with
+  no copy on the host's side. A handle is not thread-safe (`Value`
+  holds `Rc`): one thread at a time per handle, several handles on
+  several threads, and the header says so; a memory budget is one
+  per process (AP1), unchanged.
+
+- *Values: JSON across the boundary.* `renyi_call(sandbox, name,
+  args_json)` takes the arguments as one JSON array text and answers
+  the value as one JSON text, both in the codec of `std.json`: a
+  record by its field names, a variant as the codec spells it, Bytes
+  as base64, an Instant as its ISO text, Nothing as `null`. The
+  arguments are decoded against the function's declared parameter
+  types (`param_type_indices` into `result_types`) by
+  `natives::json::decode` on the call's own VM before the call, so
+  a wrong shape is refused before anything runs, with the codec's
+  path in the message (`argument 2 ("count"): expected Integer, found
+  text`); the answer is encoded by `natives::json::encode` on the
+  same VM before it is dropped, since the encoder needs the type
+  table for records and variants. A function whose parameter or
+  result the codec cannot carry (a function, a native value such as a
+  connection, a range) is listed by `renyi_functions` with
+  `"callable": false` and refused with the reason. The alternative,
+  a value handle API (`renyi_value_integer`, `renyi_value_list_push`,
+  `renyi_value_record_field` and their readers: thirty functions at
+  least, each with an ownership rule, and a reader of records that
+  needs the VM for the names) buys the hosts that want no JSON parse
+  per call a saving the first stage cannot measure a need for; every
+  host A5 names (Python, JS, C) has a JSON library at hand, the
+  exposed functions already describe themselves in JSON Schema (D6),
+  and a text per call is the shape MCP and the Python bridge use.
+  The handles can come later as an addition without changing the
+  JSON path (an alternative the owner is asked about).
+
+- *Guards.* `renyi_call_guarded(sandbox, name, args_json,
+  guards_json)`: a JSON array parallel to the arguments, a capability
+  text or `null` per argument (`[null, "filesystem.read(\"secrets\")"]`),
+  each applied through `Sandbox::guarded` after the decode; the plain
+  `renyi_call` is `renyi_call_guarded` with every guard `null`.
+
+- *Statuses and errors.* The outcome of a call is an integer, the
+  web crate's way: `RENYI_OK` 0 (the value in the text), `RENYI_FAILED`
+  1 (the failure rendered), `RENYI_CRASHED` 2 (the message and the
+  location), `RENYI_EXITED` 3 (the code through `renyi_exit_code`),
+  `RENYI_REFUSED` 4 (not public, the arity, a `needs` the grant does
+  not cover, an argument the codec refused), `RENYI_OVER_MEMORY` 5
+  (the limit and the peak through `renyi_memory_limit` and
+  `renyi_memory_used`), each with its text; a load answers a null
+  handle with `renyi_last_error` for a module with errors (the
+  diagnostics as `renyi check` renders them), a grant that does not
+  parse, or a file that cannot be read. The statuses are `#define`s
+  in the header and `pub const`s in the crate, and the header carries
+  `RENYI_API_VERSION` (1) beside the toolchain's version
+  (`renyi_version()`): the promise is additive, a function or a
+  status added raises nothing, a change to one is a new major of the
+  API version.
+
+- *The module's description.* `renyi_functions(sandbox)` answers a
+  JSON array of the `Function` records (name, signature, purpose,
+  parameters, needs, `exposed_as_tool`, `input_schema` as an object,
+  `callable`), `renyi_module(sandbox)` the module's name,
+  `renyi_warnings(sandbox)` the checker's warnings, `renyi_grant
+  (sandbox)` the grant's spelling: four texts, so that a Python
+  binding of fifty lines shows a loaded module as the Rust API does.
+
+- *The screen host (AW31).* `Sandbox::set_screen` takes a Rust trait
+  object; the C form is a callback `int (*draw)(void *user, const
+  char *frame, size_t len, char *input_out)` with the frame as the
+  web crate's text (one shape per line) and the input written back,
+  which `renyi_set_screen(sandbox, draw, user)` wraps in a `Screen`.
+  It is out of the first stage: the one host that draws frames is
+  the game's page, served by the web crate already, and a C host
+  that wants one can take the design from `renyi_web::Live`; the
+  stage's plan keeps it as 40c when a host asks.
+
+- *The bindings.* Python: `bindings/python/renyi.py`, one file over
+  `ctypes` and the standard library, no package to install: `Sandbox
+  (path, grant)` loads, `.functions` lists, `.call(name, *args)`
+  encodes the arguments with `json.dumps`, decodes the answer with
+  `json.loads` and raises `RenyiError` with the status and the text;
+  the library found beside the file, by `RENYI_LIBRARY`, or on the
+  loader's path. It is the proof that the C API serves the Python
+  host of A5, and the example the guide shows. JS: Node has no
+  foreign-function interface in its standard library (`ffi-napi` or
+  `koffi` are packages, each a native build), and a Node host has the
+  WASM module already for the browser's grant; a Node binding waits
+  for a host that asks, and the study says so. A C example,
+  `examples/c/host.c`, forty lines: load `calc.ry`, print its
+  functions, call `add`, call `shout` under `console`, print a
+  refusal; compiled and run in CI's `checks` job with the system's
+  `cc` against the `staticlib`.
+
+- *Tests.* `crates/renyi_c/tests/api.rs` over the `extern "C"`
+  functions from Rust (the web crate's way, every platform of CI):
+  the `calc` module of `tests/sandbox.rs` through the C surface, each
+  status reached once, a record and a variant across the codec both
+  ways, an argument of the wrong shape refused with its path, a guard
+  applied, two handles alive at once, the texts valid until the next
+  call, the header's names equal to the exports; the C example and
+  the Python binding driven by the `checks` job (ubuntu: `cc`, the
+  system's `python3`), each comparing its output with an expected
+  text; the Windows job builds the crate and runs the Rust tests.
+
+- *Packaging.* The release workflow builds `renyi_c` for the three
+  targets and adds a fourth artifact per target,
+  `renyi-c-<version>-<target>.tar.gz` (`.zip` on Windows): the shared
+  library (`librenyi_c.so`, `.dylib`, `renyi_c.dll` with its `.lib`),
+  the static library, `renyi.h`, `renyi.py`, the C example and a
+  README; and `renyi_c` goes on crates.io with the eight crates, so
+  that `cargo build -p renyi_c --release` from the source is the
+  other road. The installers (`install.sh`, `install.ps1`) stay the
+  binary's: a host that embeds Renyi builds or downloads the library
+  on purpose.
+
+- *The measure.* The size of the shared library per target (the
+  binary is 10.4 MB with every feature; the library carries the same
+  VM, the JIT included, so about that), and the cost of a call
+  through the C API against `Sandbox::call` from Rust: `add(2, 3)`
+  ten thousand times each way, the difference being the JSON decode
+  and encode and the VM per call (which the Rust API pays too); the
+  stage records both in its entry, and a call under a hundred
+  microseconds on the owner's machine is the expectation, the VM's
+  construction per call being the larger part.
+
+- *The documents.* `docs/embedding.md` gains section 7, "From C and
+  Python", with the header's functions, the statuses, the JSON
+  codec's rules and the Python binding's example; `docs/design/07-
+  system-design.md` section 4.2 names the C layer; the README's
+  embedding line names the library; the roadmap's stage 40; the
+  decisions entry; `CLAUDE.md`'s table gains `crates/renyi_c`,
+  `bindings/`, `examples/c/` and the artifact.
+
+**The stages.** 40a: the crate, the header, the allocator, the
+handles, `load`, `load_source`, `functions`, `module`, `warnings`,
+`grant`, `call`, `call_guarded`, the texts and the statuses, the
+Rust tests, the header held equal to the exports; the C example
+compiled in CI. 40b: the Python binding, its run in CI, the fourth
+release artifact, the crate on crates.io at the next release, the
+documents, the measure. 40c, when a host asks: the screen callback;
+the value handles beside the JSON path if a host shows the JSON cost
+matters.
+
+**The questions for the owner** (one batch of four, decision AW46
+when answered): (1) values across the boundary: JSON texts both ways,
+decoded against the declared parameter types (recommended), or a
+value handle API, or JSON first and handles as 40c; (2) the library:
+a new crate `renyi_c` as `cdylib` and `staticlib` with a hand-written
+header held equal by a test (recommended), or `cbindgen` in the
+build, or the `renyi` crate itself made a `cdylib`; (3) the first
+stage's hosts: C and Python through `ctypes` (recommended), C alone,
+or C, Python and Node through `koffi`; (4) the packaging: a fourth
+release artifact per target with the libraries, the header, the
+binding and the example, and the crate on crates.io (recommended), or
+the crate on crates.io alone.
+
 ## Stage 37, the map for retrieval by embedding: the design study (session 14)
 
 **The owner's request** (2026-10-13, after stage 35b): "find a way to fit
