@@ -69,19 +69,20 @@ jobs:
       # Linux, docs/RELEASE.md section 9); the shared library and the
       # binary carry none. The toolchain's llvm-objcopy removes the
       # sections (ELF and COFF `.llvmbc`, Mach-O `__LLVM,__bitcode`; a
-      # section that is not there is ignored) and the debug info.
+      # section that is not there is ignored) and the debug info. Not on
+      # Windows: llvm-objcopy refuses the MSVC archive `renyi_c.lib`
+      # ("unsupported object file format", the first run of v0.4.0), so
+      # that library keeps its bitcode.
       - name: Strip the bitcode from the static library
+        if: matrix.archive != 'zip'
         shell: bash
         run: |
           rustup component add llvm-tools
-          sysroot=$(rustc --print sysroot | tr '\\' '/')
-          objcopy=$(find "$sysroot/lib/rustlib" -name 'llvm-objcopy*' -type f | head -1)
-          for lib in target/${{ matrix.target }}/release/librenyi_c.a target/${{ matrix.target }}/release/renyi_c.lib; do
-            [ -f "$lib" ] || continue
-            ls -l "$lib"
-            "$objcopy" --remove-section .llvmbc --remove-section .llvmcmd --remove-section __LLVM,__bitcode --remove-section __LLVM,__cmdline --strip-debug "$lib"
-            ls -l "$lib"
-          done
+          objcopy=$(find "$(rustc --print sysroot)/lib/rustlib" -name 'llvm-objcopy*' -type f | head -1)
+          lib=target/${{ matrix.target }}/release/librenyi_c.a
+          ls -l "$lib"
+          "$objcopy" --remove-section .llvmbc --remove-section .llvmcmd --remove-section __LLVM,__bitcode --remove-section __LLVM,__cmdline --strip-debug "$lib"
+          ls -l "$lib"
 
       - uses: actions/setup-python@v5
         with:

@@ -411,4 +411,8 @@ bitcode sections removed and the debug info stripped brings it to 42.6
 MB, and the C example links against the result and prints its expected
 output on Linux and on Windows (the lane's `strip_c_lib.sh`; the Windows
 archive from 395 to 58 MB on a debug build). The release workflow runs
-that step after the C API's build, on every target.
+that step after the C API's build on Linux and macOS; on Windows the
+first run of v0.4.0 failed there, `llvm-objcopy` refusing the MSVC
+archive `renyi_c.lib` ("unsupported object file format"; the local test
+had been on a GNU-toolchain archive), so the Windows static library
+keeps its bitcode (105 MB) and the step is skipped for it.
