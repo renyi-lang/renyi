@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1
+
+The binary's release 0.2.1; the extension is unchanged.
+
 ## 0.2.0
 
 The language client (decision AN2): the extension starts `renyi lsp` for

@@ -122,7 +122,8 @@ release as a `.vsix`. `docs/RELEASE.md` is the
 release procedure, and the documentation site is
 <https://renyi-lang.org>. An agent starts from `starter/` (decision AI3): a
 skill file, the MCP configuration and five workflows that do real work,
-with their tests and recordings.
+with their tests and recordings. The MCP registry lists the toolchain
+as `mcp-name: org.renyi-lang/renyi`.
 
 ## Status
 
@@ -260,7 +261,10 @@ python tools/bench.py target/debug/renyi              # the benchmarks of bench/
 cargo test
 ```
 
-Release 0.2.0 is out (2026-10-13; the procedure in `docs/RELEASE.md`,
+Release 0.2.1 (2026-10-14) fixes the scope of the current directory,
+`filesystem.read(".")`, which refused every relative path, and lists
+the toolchain on the MCP registry. Release 0.2.0 is out (2026-10-13;
+the procedure in `docs/RELEASE.md`,
 decisions AI1 to AI5 and AW36; the extension is on the Visual Studio
 Marketplace and Open VSX as `renyi-lang.renyi`). Between 0.1.0
 (2026-10-07) and it came the

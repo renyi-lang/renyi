@@ -1,0 +1,35 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "org.renyi-lang/renyi",
+  "title": "Renyi",
+  "description": "Check, format, run and test Renyi programs; the project map with effects, diffs and chunks.",
+  "version": "0.2.1",
+  "websiteUrl": "https://renyi-lang.org",
+  "repository": {
+    "url": "https://github.com/renyi-lang/renyi",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "cargo",
+      "identifier": "renyi",
+      "version": "0.2.1",
+      "transport": {
+        "type": "stdio"
+      },
+      "packageArguments": [
+        {
+          "type": "positional",
+          "value": "mcp",
+          "description": "The MCP server command of the renyi binary."
+        },
+        {
+          "type": "positional",
+          "value": ".",
+          "valueHint": "directory",
+          "description": "The directory of the Renyi project to serve."
+        }
+      ]
+    }
+  ]
+}
