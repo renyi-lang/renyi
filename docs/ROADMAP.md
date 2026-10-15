@@ -963,6 +963,6 @@ round for the compile row, closed (AW52 to AW59) on
 2026-10-15, the compile row 2,590.8 to 1,943.0 million instructions,
 -25.0%, the ratio against the reference 7.09 to 5.31, the emitter's
 own part halved; the liveness walk's residue (about 30 million) left.
-Next, by the owner's order: the article brought to release 0.3.0,
-then its arXiv submission. Not
-scheduled: the Rust front end's name sets as bits.
+The article waits for a stable version (the owner's word of
+2026-10-15 evening), then its arXiv submission. Not scheduled: the
+Rust front end's name sets as bits, the liveness walk's residue.
