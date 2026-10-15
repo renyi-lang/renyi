@@ -64,6 +64,25 @@ jobs:
       - name: Build the C API
         run: cargo build --release --locked -p renyi_c --target ${{ matrix.target }}
 
+      # fat LTO leaves LLVM bitcode in every object of the static library,
+      # the standard library's among them (121 MB of which 42 are code on
+      # Linux, docs/RELEASE.md section 9); the shared library and the
+      # binary carry none. The toolchain's llvm-objcopy removes the
+      # sections (ELF and COFF `.llvmbc`, Mach-O `__LLVM,__bitcode`; a
+      # section that is not there is ignored) and the debug info.
+      - name: Strip the bitcode from the static library
+        shell: bash
+        run: |
+          rustup component add llvm-tools
+          sysroot=$(rustc --print sysroot | tr '\\' '/')
+          objcopy=$(find "$sysroot/lib/rustlib" -name 'llvm-objcopy*' -type f | head -1)
+          for lib in target/${{ matrix.target }}/release/librenyi_c.a target/${{ matrix.target }}/release/renyi_c.lib; do
+            [ -f "$lib" ] || continue
+            ls -l "$lib"
+            "$objcopy" --remove-section .llvmbc --remove-section .llvmcmd --remove-section __LLVM,__bitcode --remove-section __LLVM,__cmdline --strip-debug "$lib"
+            ls -l "$lib"
+          done
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"

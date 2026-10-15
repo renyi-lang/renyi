@@ -403,3 +403,12 @@ The Marketplace upload of `renyi-v0.3.0.vsix` was done by the owner
 on 2026-10-15 ("[Succeeded] Extension publish on Visual Studio
 Marketplace", 17:21). Open after it: the static library's size (strip
 the bitcode, or a release profile for the archive without fat LTO).
+Settled the same night, for release 0.4.0: the bitcode is in every
+object of the archive, the standard library's included, so a profile
+without LTO only brought the Linux archive from 121 to 66 MB; the
+toolchain's `llvm-objcopy` (`rustup component add llvm-tools`) with the
+bitcode sections removed and the debug info stripped brings it to 42.6
+MB, and the C example links against the result and prints its expected
+output on Linux and on Windows (the lane's `strip_c_lib.sh`; the Windows
+archive from 395 to 58 MB on a debug build). The release workflow runs
+that step after the C API's build, on every target.
