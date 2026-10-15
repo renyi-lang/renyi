@@ -16,6 +16,7 @@ public type Ty is one of
   Never
   ErrorTy
   can ToJson
+  can Hash
 end
 
 public type FunctionSignature

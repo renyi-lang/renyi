@@ -9994,3 +9994,55 @@ three kinds and a nested dataclass, bound and called through the
 generated module, the unit test with eight classes of which four are
 refused. The documents: `docs/python.md` section 3, the reference's
 command row, the handoff's binder section, CLAUDE.md. (Claude)
+
+**AW52. The owner's answers after the study of stage 42: the emitter's
+own round, Renyi first, the grouping by a query, the keys as records,
+the VM items measured each (2026-10-15).** The study (the handoff's
+section "Stage 42, the emitter's own round for the compile row: the
+design study (session 15)") measured the compile row at 2,590.8 million
+instructions on d18ec06 (7.09 against the reference binary of AU34,
+13.25 at AU58's study), the emitter 1,098.4 of it, the front end
+1,198.4, the rendering as JSON 204.6, and found the emitter's shape:
+the type table searched linearly, `function_at` linear, the references
+grouped by appending to a list the map still holds (quadratic, 315.0
+million), the map keys built as texts per lookup (204.4), the liveness
+walk, the JSON writer's allocations, the frees at the end. Four
+questions were put; the owner took the recommended answer to each. (1)
+The round runs, the compile row's instruction count its measure, the
+Renyi-only stages first: 42a the type table and the functions by map,
+42b the references grouped in one pass, 42c the keys as records; the
+VM's items after them. AW27's finding stands (the ratio has no
+consumer); what the round buys is the shape of `compiler/emit.ry`, the
+program the language's users read as its reference program, written
+as the language intends. (2) The references are grouped by a `group
+by` query, which the VM groups in one pass; a hand-written pass only
+where the query falls short. (3) The keys are the records themselves:
+`Span` with `can Hash` derived, a record of the owner and the body;
+not Integers packed by hand, not the texts. (4) 42d, the JSON writer
+in the VM, and 42e, the frees at the end of a `renyi` command's run,
+are both in, each measured first on the compile row and `bench/` and
+kept only where it pays; a budgeted or embedded run keeps its frees.
+(The owner, through the four questions)
+
+**AW53. Stage 42a built: the emitter's type table and its functions by
+map (2026-10-15).** `compiler/emit.ry` keeps `type_indices`, a `Map of
+Ty to Integer`, beside the program's `result_types`, as the Rust
+emitter keeps its index beside the table: `type_index` looks the type
+up and appends it with its index only when new, `known_type_index` is
+the lookup; `Ty` derives `Hash` (`compiler/types.ry`). `function_at`
+takes the context and looks the body up in `functions_at`, a `Map of
+BodyKey to Integer` built once by `functions_by_body` in
+`new_context`; `BodyKey` is the record of the owner and the body
+location, with `Hash` derived. The measure (the perf lane,
+`measure_stage.sh 42a`, callgrind on the Linux release build, the
+image): the compile row 2,590.8 to 2,407.2 million instructions,
+-7.1%, the ratio against the reference 7.09 to 6.58 (the estimate was
+-150 million); the check and parse rows unchanged (1,291.5 and 631.8);
+hashing and equality 140.5 to 102.6, comparisons 63.7 to 6.9, the
+generated code 977.2 to 882.5. The bytecode the Renyi compiler writes
+of `compiler/bodies.ry` is byte for byte the Rust compiler's (the
+derives of `Ty` and the type ids after it shift in both). A derived
+`Hash` is not checked against the fields' types by either checker
+today (the reference says it derives from the structure); the VM
+hashes every value by its structure, so a record key hashes as the
+reference says. (Claude)

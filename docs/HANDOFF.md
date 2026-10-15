@@ -213,8 +213,13 @@ references grouped by quadratic copies 12.2%, the type table's linear
 search 5.4%, the keys as texts 7.9%; stages 42a to 42f with estimates,
 42a to 42c Renyi only, about -550 million) and the four questions put
 to the owner (what the round is for, the grouping, the keys, the VM
-items); the owner's answers are the next decision entry. The open
-items of AW45 stand
+items), answered as decision AW52 (the round runs, Renyi first, the
+grouping by a query, the keys as records, the VM items measured each).
+42a is done (decision AW53: the type table and the functions by map,
+the compile row 2,590.8 to 2,407.2 million instructions, -7.1%, the
+ratio 7.09 to 6.58). The work next: 42b (the references grouped by a
+query), 42c (the keys as records), then 42d and 42e measured each. The
+open items of AW45 stand
 beside it (the verified domain, the article's submission, now that
 0.3.0 is out).
 The session's record is "Done in session 14"
@@ -4349,6 +4354,14 @@ first, up to -100. 42f, the liveness walk (finding 5): about -50,
 optional. With 42d and 42e the row is about 1,840, the ratio about
 5.0. The front end's 1,198 stays: the check row is at its gate (AW26)
 and its next cuts are the checker's, not this round's.
+
+**The owner's answers (decision AW52) and the stages built.** The
+recommended answer to each of the four questions. 42a built (decision
+AW53): `type_indices` beside `result_types`, `functions_at` by
+`BodyKey`, `Ty` and `BodyKey` with `Hash` derived; the compile row
+2,590.8 to 2,407.2 million instructions (-7.1%), the ratio against the
+reference 7.09 to 6.58; the bytecode of `compiler/bodies.ry` byte for
+byte the Rust compiler's.
 
 **What the round is for.** The ratio has no consumer (AW27). What the
 stages buy without one: the quadratic copies of finding 3 and the

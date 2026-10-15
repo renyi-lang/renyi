@@ -96,12 +96,21 @@ type LoopContext
   has mark: Integer
 end
 
+type BodyKey
+  purpose: A body of a module as a map key.
+  has owner: Integer
+  has body: BodyLocation
+  can Hash
+end
+
 type Context
   purpose: What every body's emitter shares: the world, the tables being built and the counters.
   has world: World
   has globals: Map of Text to Integer
   has refs: Map of Text to List of Reference
+  has functions_at: Map of BodyKey to Integer
   has result_types: List of Ty
+  has type_indices: Map of Ty to Integer
   has field_sites: Integer
   has codes: List of Code
   has function_codes: List of maybe Integer
@@ -497,16 +506,20 @@ function type_index_at(emitter: Emitter, span: Span) returns Step of maybe Integ
 end
 
 function type_index(emitter: Emitter, ty: Ty) returns Step of maybe Integer
-  purpose: The index of a type in the program's table of the types it names, added when new.
+  purpose: The index of a type in the program's table of the types it names, added when new; the index kept by type beside the table.
 
   let context be emitter.context
-  let mutable index be 0
-  for each known in context.result_types
-    if known is ty then return Step(value: index, emitter: emitter) end
-    change index to index + 1
+  match context.type_indices.get(ty)
+    when some(known) then return Step(value: known, emitter: emitter)
+    when nothing then
+      let index be context.result_types.length()
+      let extended be context
+        with result_types: context.result_types.append(ty), type_indices: context.type_indices.set(
+          key: ty,
+          value: index
+        )
+      return Step(value: index, emitter: emitter with context: extended)
   end
-  let extended be context with result_types: context.result_types.append(ty)
-  return Step(value: index, emitter: emitter with context: extended)
 end
 
 function typed_target(emitter: Emitter, span: Span) returns maybe Ty
@@ -3183,7 +3196,9 @@ function new_context(world: World, modules: List of CheckedModule) returns Conte
     world: world,
     globals: globals,
     refs: refs,
+    functions_at: functions_by_body(world),
     result_types: [],
+    type_indices: {},
     field_sites: 0,
     codes: [],
     function_codes: function_codes,
@@ -3203,7 +3218,7 @@ function compile_module(context: Context, owner: Integer, info: ModuleInfo) retu
     match item
       when FunctionItem(value: func) then
         let body be ItemBody(item: index)
-        match function_at(world: context.world, owner: owner, body: body)
+        match function_at(context: context, owner: owner, body: body)
           when some(id) then
             change updated to compile_function(
               context: updated,
@@ -3257,7 +3272,7 @@ function compile_implementation(
   let mutable method be 0
   for each func in functions
     let body be ImplementationBody(item: index, method: method)
-    match function_at(world: context.world, owner: owner, body: body)
+    match function_at(context: context, owner: owner, body: body)
       when some(id) then
         change updated to compile_function(
           context: updated,
@@ -3294,15 +3309,22 @@ function compile_type_items(context: Context, owner: Integer, info: ModuleInfo) 
   return updated
 end
 
-function function_at(world: World, owner: Integer, body: BodyLocation) returns maybe Integer
+function function_at(context: Context, owner: Integer, body: BodyLocation) returns maybe Integer
   purpose: The declared function whose body is at a location of a module.
 
+  return context.functions_at.get(BodyKey(owner: owner, body: body))
+end
+
+function functions_by_body(world: World) returns Map of BodyKey to Integer
+  purpose: Every declared function's id by the module and the location of its body.
+
+  let mutable found: Map of BodyKey to Integer be {}
   let mutable id be 0
   for each info in world.functions
-    if info.owner is owner and info.body is body then return id end
+    change found to found.set(key: BodyKey(owner: info.owner, body: info.body), value: id)
     change id to id + 1
   end
-  return nothing
+  return found
 end
 
 function compile_function(
@@ -4026,12 +4048,7 @@ end
 function known_type_index(context: Context, ty: Ty) returns maybe Integer
   purpose: The index of a type in the program's table when the table holds it, never added: a parameter's type, for the generated code.
 
-  let mutable index be 0
-  for each known in context.result_types
-    if known is ty then return index end
-    change index to index + 1
-  end
-  return nothing
+  return context.type_indices.get(ty)
 end
 
 function foreign_binding(world: World, info: FunctionInfo) returns maybe ForeignBinding

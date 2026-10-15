@@ -752,8 +752,13 @@ where one decided, the status. The dates are those of the decisions.
     liveness walk (111.1), `emit` already in place, the JSON writer's
     allocations, the frees at the end. Stages 42a to 42f with
     estimates, 42a to 42c in `compiler/emit.ry` alone (about -550
-    million). Four questions put to the owner; not scheduled until
-    answered.
+    million). The owner's answers (AW52, 2026-10-15): the round runs
+    with the compile row's instruction count as its measure, Renyi
+    first, the references grouped by a `group by` query, the keys as
+    records, the VM items (42d the JSON writer, 42e the frees at the
+    end) measured each. 42a done (AW53, 2026-10-15): the type table
+    and the functions by map; the compile row 2,590.8 to 2,407.2
+    million, -7.1%, the ratio 7.09 to 6.58.
 
 ## 3. The tracks
 
@@ -936,6 +941,6 @@ crate, the measure) are done, and the crate goes to crates.io with
 the next release; 40c, the screen callback and the value handles,
 waits for a host that asks. Stage 41, the Python
 bridge's items, is closed (AW49 to AW51). Stage 42, the emitter's own
-round for the compile row, has its study and waits on the owner's
-answers to its four questions. Not scheduled: the Rust front end's
-name sets as bits.
+round for the compile row, is in progress (AW52, AW53: 42a done, the
+compile row 2,407.2 million; 42b, 42c, then 42d and 42e). Not
+scheduled: the Rust front end's name sets as bits.
