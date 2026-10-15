@@ -10132,3 +10132,20 @@ renders the bytecode file through `renyi_syntax`'s own JSON type
 API's texts and the bridge's lines among them, takes the same path.
 The bytecode of `compiler/bodies.ry` byte for byte the Rust
 compiler's and 42f's. (Claude)
+
+**AW58. Stage 42e measured and left off: the frees at the end of a run
+cost nothing to speak of (2026-10-15).** The experiment (the perf
+lane's `exp42e.sh`): the runner patched to flush the console, drop the
+Python worker and the JIT, and forget the VM and the program when
+`RENYI_LEAVE_VALUES` is set, so that the values still held at the end
+of `main` are left to the process's exit. The compile row by `perf
+stat`, three runs each: 1,937.9, 1,937.8 and 1,938.3 million
+instructions with the frees, 1,938.4, 1,938.1 and 1,938.4 without;
+`bench/records` 278.8 both ways, `json_round_trip` 808.9 both ways;
+the outputs equal. Nothing is held at the end: a program's values die
+where their last reads are (decisions AU17 and AU55), so the compile
+row's program tree is freed inside `render_indented`, which consumes
+it, and the checker's world when `compile_file` leaves them; what the
+study attributed to the exit (`release_last`, 97.5 million) is the
+frees of the run itself. The patch is not kept; the stage closes with
+its measure. (Claude)

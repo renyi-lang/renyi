@@ -226,9 +226,11 @@ compile row to 2,127.8, -7.5%, the ratio 5.82; the three Renyi stages
 compile row to 2,056.7, -3.3%, the ratio 5.63); 42d is done (decision
 AW57: the JSON writer's allocation per line, the Integer formatter and
 the scan of a plain text; the compile row to 1,958.0, -4.8%, the ratio
-5.36, `bench/json_round_trip` -6.9%). The work next: 42e (the frees at
-the end) measured first, and the liveness walk after it. The open
-items of AW45 stand
+5.36, `bench/json_round_trip` -6.9%); 42e is measured and left off
+(decision AW58: the values die at their last reads, nothing is held at
+the end, the compile row the same to within 0.1% with the frees
+skipped). The work next: 42g, the liveness walk (`walk_block`, 181.7
+million, 8.8% of the row). The open items of AW45 stand
 beside it (the verified domain, the article's submission, now that
 0.3.0 is out).
 The session's record is "Done in session 14"
@@ -4390,7 +4392,11 @@ text directly already; the costs were the allocation per line, the
 Integer formatter and the per-byte scan); the compile row 2,056.7 to
 1,958.0 (-4.8%), the ratio 5.36; `json_round_trip` 841.5 to 783.6
 million; the Rust `compile` row untouched, its writer being
-`renyi_syntax`'s.
+`renyi_syntax`'s. 42e measured and left off (decision AW58): the
+runner patched to forget the VM and the program at the end under an
+environment variable, the compile row 1,937.9 against 1,938.4 million
+by `perf stat`, no difference; finding 8 corrected: the values die at
+their last reads, nothing is held at the end.
 
 **What the round is for.** The ratio has no consumer (AW27). What the
 stages buy without one: the quadratic copies of finding 3 and the
