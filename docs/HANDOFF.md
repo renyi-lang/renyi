@@ -9915,9 +9915,16 @@ on a fresh clone).
   trigger before the claim (the admin page says so); after the claim,
   the Dockerfile goes in through the admin page's "Docker builds"
   (the repository's `Dockerfile`; Glama runs its checks from it and
-  lists in search only what passes), and then the badge `[![renyi-lang/renyi MCP server](https://glama.ai/mcp/servers/renyi-lang/renyi/badges/score.svg)](https://glama.ai/mcp/servers/renyi-lang/renyi)`
-  goes after the line's description in the pull request (the badge
-  URL answers "not listed" until then); the owner's GitHub sign-in to
+  lists in search only what passes); the badge
+  `[![renyi-lang/renyi MCP server](https://glama.ai/mcp/servers/renyi-lang/renyi/badges/score.svg)](https://glama.ai/mcp/servers/renyi-lang/renyi)`
+  is in the pull request since 03:23 UTC on the 15th (after the
+  repository link, as the list's other entries place it; the fork's
+  commit 07c88430), the bot's label went from `missing-glama` to
+  `has-glama` and its new comment asks that the server "has been
+  evaluated by Glama and has a quality score", which is the
+  Dockerfile step after the claim; a cron job of the session checks
+  the mail, the notifications, the pull request and the claim twice
+  an hour until the session ends; the owner's GitHub sign-in to
   Glama failed with "Authentication failed" in every browser after the
   first sign-in's profile page was left unfinished, and an account
   made with the email and then connected to GitHub worked; the
