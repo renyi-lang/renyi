@@ -10738,8 +10738,13 @@ on a fresh clone).
   `main` with the entry first in its section as 16459 placed Renyi's,
   made by the scratchpad's `awesome_mcp.py`, no AI trailer. The
   awesome-claude-code list takes one resource per form (100 stars or
-  14 days; `cc-tree` has 101), and the form text for the owner is in
-  the session's last message; `krispo/awesome-haskell` has no
+  14 days; `cc-tree` has 101), and the form text is ready (Display
+  Name `cc-tree`, category Skills, the repository, `skymanbp`, a
+  three-sentence description), but on 2026-10-15 the repository had
+  limited issue creation to collaborators (GitHub's interaction
+  limit, a day to a week), so the form could not be opened; the
+  contributing rules allow the web form only, no `gh`, no pull
+  request: try the form again in a later round; `krispo/awesome-haskell` has no
   contributing rules and was last pushed on 2026-08-03, so CodeEraser
   was not submitted there.
 - **Release 0.1.0 is out** (2026-10-07). The domain
