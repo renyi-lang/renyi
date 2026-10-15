@@ -10106,3 +10106,29 @@ instructions, -3.3%, the ratio against the reference 5.82 to 5.63;
 bytecode of `compiler/bodies.ry` byte for byte the Rust compiler's. A
 lesson for the reader of `compiler/`: a `Step` is taken apart value
 first, emitter last. (Claude)
+
+**AW57. Stage 42d built: the JSON writer without the allocation per
+line, the formatter for an Integer and the scan of a plain text
+(2026-10-15).** The VM's `render` and `render_indented` already wrote
+the text as the value was walked (`TextSink`, the round of AQ); the
+study's finding 7 was wrong to say a tree was built. What cost was
+three things in the writer: `renyi_json::newline` allocated
+`" ".repeat(indent)` for every line (356,542 lines of the compile
+row's file), every Integer went through `core::fmt` as a `dyn Display`,
+and `write_string` walked every byte of every text although almost
+none needs an escape. Now `newline` copies from a constant run of
+spaces, `Sink` has `integer(i64)`, which `TextSink` writes through
+`integer::push_digits` for a machine-word Integer and a `Duration`
+(`TreeSink` as before), and `write_string` copies a text whole when no
+byte of it needs an escape. The measure (`measure_stage.sh 42d`,
+`bench42d.sh`): the compile row 2,056.7 to 1,958.0 million
+instructions, -4.8%, the ratio against the reference 5.63 to 5.36; the
+load and the writer's category 80.1 to 37.5, texts and memory copies
+131.9 to 73.2, `write_string` 34.4 to 25.1 million self; of `bench/`,
+`json_round_trip` 841.5 to 783.6 million (-6.9%) and the others
+unchanged; the Rust `compile` row unchanged at 470.1, because it
+renders the bytecode file through `renyi_syntax`'s own JSON type
+(`file.rs`), not this writer. Every program that renders JSON, the C
+API's texts and the bridge's lines among them, takes the same path.
+The bytecode of `compiler/bodies.ry` byte for byte the Rust
+compiler's and 42f's. (Claude)

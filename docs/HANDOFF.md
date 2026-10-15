@@ -223,9 +223,12 @@ ratio 6.29); 42c is done (decision AW55: the keys as records, the
 compile row to 2,127.8, -7.5%, the ratio 5.82; the three Renyi stages
 -17.9% together); 42f is done (decision AW56: `emit` reads the
 `Step`'s value before its emitter, so the appends work in place; the
-compile row to 2,056.7, -3.3%, the ratio 5.63). The work next: 42d
-(the JSON writer) and 42e (the frees at the end) measured each, and
-the liveness walk after them. The open items of AW45 stand
+compile row to 2,056.7, -3.3%, the ratio 5.63); 42d is done (decision
+AW57: the JSON writer's allocation per line, the Integer formatter and
+the scan of a plain text; the compile row to 1,958.0, -4.8%, the ratio
+5.36, `bench/json_round_trip` -6.9%). The work next: 42e (the frees at
+the end) measured first, and the liveness walk after it. The open
+items of AW45 stand
 beside it (the verified domain, the article's submission, now that
 0.3.0 is out).
 The session's record is "Done in session 14"
@@ -4382,6 +4385,12 @@ inclusive with 54.9 in `type_index_at`, so its appends do copy; the
 `updated`), which keeps the `Takes` plan from moving the lists. 42f
 built (decision AW56): the index read first; the compile row 2,127.8
 to 2,056.7 (-3.3%), the ratio 5.63, `emit` 213.9 to 142.5 million.
+42d built (decision AW57): finding 7 corrected (the sink wrote the
+text directly already; the costs were the allocation per line, the
+Integer formatter and the per-byte scan); the compile row 2,056.7 to
+1,958.0 (-4.8%), the ratio 5.36; `json_round_trip` 841.5 to 783.6
+million; the Rust `compile` row untouched, its writer being
+`renyi_syntax`'s.
 
 **What the round is for.** The ratio has no consumer (AW27). What the
 stages buy without one: the quadratic copies of finding 3 and the

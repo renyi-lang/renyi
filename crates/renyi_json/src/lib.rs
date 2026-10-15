@@ -293,19 +293,40 @@ pub fn write_json(json: &Json, out: &mut String, indent: Option<usize>, depth: u
     }
 }
 
+/// The spaces an indentation is copied from, without an allocation per
+/// line (decision AW57); a deeper indentation takes several copies.
+const SPACES: &str = "                                                                ";
+
 /// The line break before an item of the indented layout, with the
 /// indentation of its depth; nothing on one line.
 pub fn newline(out: &mut String, indent: Option<usize>, depth: usize) {
     if let Some(width) = indent {
         out.push('\n');
-        out.push_str(&" ".repeat(width * depth));
+        let mut left = width * depth;
+        while left > 0 {
+            let run = left.min(SPACES.len());
+            out.push_str(&SPACES[..run]);
+            left -= run;
+        }
     }
+}
+
+/// Whether a byte of a JSON string needs an escape.
+fn needs_escape(byte: u8) -> bool {
+    byte < 0x20 || byte == b'"' || byte == b'\\'
 }
 
 /// A JSON string: the text quoted, with the escapes JSON needs.
 pub fn write_string(text: &str, out: &mut String) {
     out.reserve(text.len() + 2);
     out.push('"');
+    // a text with nothing to escape, the common case, is copied whole
+    // (decision AW57)
+    if !text.bytes().any(needs_escape) {
+        out.push_str(text);
+        out.push('"');
+        return;
+    }
     // a run of plain characters is copied at once: the bytes that need an
     // escape are ASCII, never inside a multibyte sequence
     let mut start = 0;

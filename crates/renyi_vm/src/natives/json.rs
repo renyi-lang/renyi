@@ -493,6 +493,9 @@ trait Sink {
     fn null(&mut self);
     fn boolean(&mut self, value: bool);
     fn number(&mut self, value: &dyn Display);
+    /// A machine-word Integer, written without the formatter (decision
+    /// AW57).
+    fn integer(&mut self, value: i64);
     fn text(&mut self, value: &str);
     fn begin_array(&mut self);
     fn item(&mut self);
@@ -536,6 +539,10 @@ impl Sink for TreeSink {
     }
 
     fn number(&mut self, value: &dyn Display) {
+        self.put(Json::Number(value.to_string()));
+    }
+
+    fn integer(&mut self, value: i64) {
         self.put(Json::Number(value.to_string()));
     }
 
@@ -617,6 +624,10 @@ impl Sink for TextSink {
         let _ = write!(self.out, "{value}");
     }
 
+    fn integer(&mut self, value: i64) {
+        crate::integer::push_digits(&mut self.out, value);
+    }
+
     fn text(&mut self, value: &str) {
         renyi_json::write_string(value, &mut self.out);
     }
@@ -668,6 +679,10 @@ fn walk(vm: &mut Vm, value: &Value, naming: Naming, sink: &mut dyn Sink) -> Resu
             sink.boolean(*value);
             Ok(())
         }
+        Value::Integer(Int::Small(value)) => {
+            sink.integer(*value);
+            Ok(())
+        }
         Value::Integer(value) => {
             sink.number(value);
             Ok(())
@@ -709,7 +724,7 @@ fn walk(vm: &mut Vm, value: &Value, naming: Naming, sink: &mut dyn Sink) -> Resu
         }
         Value::Pair(pair) => sequence(vm, [&pair.0, &pair.1].into_iter(), naming, sink),
         Value::Duration(ms) => {
-            sink.number(ms);
+            sink.integer(*ms);
             Ok(())
         }
         Value::Instant(ms) => {
