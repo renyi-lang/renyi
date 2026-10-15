@@ -9910,12 +9910,26 @@ on a fresh clone).
   `glama.ai/mcp/servers/renyi-lang/renyi` is up, marked Official);
   the claim of the page, which a repository of an organization gets
   through `glama.json` at the root naming the maintainer (commit
-  5b1f7b3, `"maintainers": ["skymanbp"]`), takes effect at Glama's
-  next sync of the repository, which the owner's account cannot
-  trigger before the claim (the admin page says so); after the claim,
-  the Dockerfile goes in through the admin page's "Docker builds"
-  (the repository's `Dockerfile`; Glama runs its checks from it and
-  lists in search only what passes); the badge
+  5b1f7b3, `"maintainers": ["skymanbp"]`), took effect at Glama's
+  next sync, at 00:36 on the 15th (the admin page opens to the
+  owner's account; Discovery score 33% before any build); Glama does
+  not take a Dockerfile as a file but generates one from a form on
+  the admin page's Dockerfile tab (the base image, build steps and
+  CMD arguments as JSON arrays; its own image installs Node and
+  Python and starts the command through `mcp-proxy`): the build steps
+  are `["RENYI_INSTALL_DIR=/usr/local/bin sh install.sh"]` (the
+  repository is cloned to `/app`, so the installer is run from
+  there) and the command `["renyi", "mcp", "/app"]`, on
+  `debian:trixie-slim`; the test build of 00:39 on the 15th (test
+  `01a13ddb-fadc-7c3a-9d74-868c0cb7a4c8` under the Dockerfile tab)
+  passed in 1 minute 3 seconds: the installer put `renyi` 0.2.1 in
+  place, the server answered the initialize request and the SSE
+  stream opened; the badge's title went from "Renyi on Glama" to
+  "Renyi – MCP server rated A on Glama" within minutes, so the
+  quality score the awesome-mcp-servers bot asks for exists; the
+  "Make Release" link beside the test (a release Glama lists and
+  hosts) is a public surface the session's permissions refused, so
+  it waits for the owner's click or their say-so; the badge
   `[![renyi-lang/renyi MCP server](https://glama.ai/mcp/servers/renyi-lang/renyi/badges/score.svg)](https://glama.ai/mcp/servers/renyi-lang/renyi)`
   is in the pull request since 03:23 UTC on the 15th (after the
   repository link, as the list's other entries place it; the fork's
