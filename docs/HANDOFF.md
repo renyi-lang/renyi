@@ -217,9 +217,10 @@ items), answered as decision AW52 (the round runs, Renyi first, the
 grouping by a query, the keys as records, the VM items measured each).
 42a is done (decision AW53: the type table and the functions by map,
 the compile row 2,590.8 to 2,407.2 million instructions, -7.1%, the
-ratio 7.09 to 6.58). The work next: 42b (the references grouped by a
-query), 42c (the keys as records), then 42d and 42e measured each. The
-open items of AW45 stand
+ratio 7.09 to 6.58); 42b is done (decision AW54: the references
+grouped by a `group by` query, the compile row to 2,300.8, -4.4%, the
+ratio 6.29). The work next: 42c (the keys as records), then 42d and
+42e measured each. The open items of AW45 stand
 beside it (the verified domain, the article's submission, now that
 0.3.0 is out).
 The session's record is "Done in session 14"
@@ -4361,7 +4362,11 @@ AW53): `type_indices` beside `result_types`, `functions_at` by
 `BodyKey`, `Ty` and `BodyKey` with `Hash` derived; the compile row
 2,590.8 to 2,407.2 million instructions (-7.1%), the ratio against the
 reference 7.09 to 6.58; the bytecode of `compiler/bodies.ry` byte for
-byte the Rust compiler's.
+byte the Rust compiler's. 42b built (decision AW54): the references
+grouped by a `group by` query in `new_context` and `targets_of`; the
+compile row 2,407.2 to 2,300.8 (-4.4%), the ratio 6.29; `new_context`
+205.0 to 114.0 million, `targets_of` 111.0 to 95.2; the quadratic
+copies were about 107 million, not the 250 estimated.
 
 **What the round is for.** The ratio has no consumer (AW27). What the
 stages buy without one: the quadratic copies of finding 3 and the

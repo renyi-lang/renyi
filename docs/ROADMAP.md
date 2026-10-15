@@ -758,7 +758,9 @@ where one decided, the status. The dates are those of the decisions.
     records, the VM items (42d the JSON writer, 42e the frees at the
     end) measured each. 42a done (AW53, 2026-10-15): the type table
     and the functions by map; the compile row 2,590.8 to 2,407.2
-    million, -7.1%, the ratio 7.09 to 6.58.
+    million, -7.1%, the ratio 7.09 to 6.58. 42b done (AW54,
+    2026-10-15): the references grouped by a `group by` query; the
+    compile row to 2,300.8, -4.4%, the ratio 6.29.
 
 ## 3. The tracks
 
@@ -941,6 +943,6 @@ crate, the measure) are done, and the crate goes to crates.io with
 the next release; 40c, the screen callback and the value handles,
 waits for a host that asks. Stage 41, the Python
 bridge's items, is closed (AW49 to AW51). Stage 42, the emitter's own
-round for the compile row, is in progress (AW52, AW53: 42a done, the
-compile row 2,407.2 million; 42b, 42c, then 42d and 42e). Not
+round for the compile row, is in progress (AW52 to AW54: 42a and 42b
+done, the compile row 2,300.8 million; 42c, then 42d and 42e). Not
 scheduled: the Rust front end's name sets as bits.

@@ -293,13 +293,7 @@ function targets_of(context: Context, owner: Integer, body: BodyLocation)
   purpose: The references of one body by span; two references may share a span.
 
   let references be context.refs.get(refs_key(owner: owner, body: body)) otherwise []
-  let mutable targets: Map of Text to List of Target be {}
-  for each reference in references
-    let key be span_key(reference.span)
-    let existing be targets.get(key) otherwise []
-    change targets to targets.set(key: key, value: existing.append(reference.target))
-  end
-  return targets
+  return for each reference in references group by span_key(reference.span) collect reference.target
 end
 
 function new_emitter(
@@ -3166,10 +3160,11 @@ function new_context(world: World, modules: List of CheckedModule) returns Conte
   let mutable refs: Map of Text to List of Reference be {}
   for each entry in modules
     let id be entry.id otherwise continue
-    for each reference in entry.references
-      let key be refs_key(owner: id, body: reference.body)
-      let existing be refs.get(key) otherwise []
-      change refs to refs.set(key: key, value: existing.append(reference))
+    let grouped be
+      for each reference in entry.references
+      group by refs_key(owner: id, body: reference.body)
+    for each key, references in grouped
+      change refs to refs.set(key: key, value: references)
     end
   end
   let mutable globals: Map of Text to Integer be {}

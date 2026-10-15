@@ -10046,3 +10046,23 @@ derives of `Ty` and the type ids after it shift in both). A derived
 today (the reference says it derives from the structure); the VM
 hashes every value by its structure, so a record key hashes as the
 reference says. (Claude)
+
+**AW54. Stage 42b built: the references grouped by a query
+(2026-10-15).** `new_context` groups each module's references by body
+with `for each reference in entry.references group by refs_key(...)`
+and stores each group under its key once; `targets_of` is the query
+`for each reference in references group by span_key(reference.span)
+collect reference.target`. The VM groups in one pass (`GroupInsert`),
+so no list is copied while it grows, where the loops of `get`,
+`append` and `set` copied the list the map still held at every append.
+The measure (`measure_stage.sh 42b`): the compile row 2,407.2 to
+2,300.8 million instructions, -4.4%, the ratio against the reference
+6.58 to 6.29; `new_context` 205.0 to 114.0 million inclusive,
+`targets_of` 111.0 to 95.2 (its lists are short, one or two targets a
+span; what remains there is the key built as a text, stage 42c's
+item), counts and drops 250.5 to 196.5. The estimate of -250 million
+was too high: the quadratic copies were about 107 million, not 250;
+the study's attribution of the clones and the memory copies to them
+was partly wrong, the rest being the texts of the keys. The bytecode
+of `compiler/bodies.ry` byte for byte the Rust compiler's and 42a's.
+(Claude)
