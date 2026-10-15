@@ -336,9 +336,12 @@ order. A function is passed as a value by name, `retry(action: fetch)`, and
 called through a parameter of function type with positional arguments.
 
 A **function type** is `function(Url) returns Page or fails with HttpError
-needs network.http`. The effects of a function passed as an argument are
-charged where it is passed, whatever the parameter's type lists (decision
-B1); a higher-order function declares only its own effects.
+needs network.http`. The effects of a function named as a value are
+charged where it is named, whatever the value then does: passed, bound,
+stored in a collection or a field, or returned, the name charges the
+function that writes it (decisions B1 and AW60); a higher-order function
+declares only its own effects. A function type that lists `needs` takes a
+value that needs at most what it lists; one without takes any.
 
 ### Static rules
 
@@ -359,6 +362,10 @@ B1); a higher-order function declares only its own effects.
   through a function type is positional. The callee exists
   (`unknown-function`, `unknown-method`, with the closest name or the
   module to import as the fix) and is a function (`not-callable`).
+- A function named as a value is charged, with its needs, to the body
+  that names it (`capability-missing`, section 7); a value of a function
+  type that lists `needs` needs at most what the type lists
+  (`type-mismatch`).
 - A type parameter takes no type arguments, a generic type takes as many
   as it declares, and a constraint names an ability with as many as it
   declares (`type-arity`); every type named exists
@@ -370,7 +377,8 @@ B1); a higher-order function declares only its own effects.
 Arguments are evaluated left to right; a function value is the function
 itself, not a closure, since there is nothing to capture. A function
 passed as an argument runs under the grant in force where it is called, so
-the higher-order function's own `needs` narrows it (decisions Q1 and V9).
+the higher-order function's own `needs` narrows its scopes (decisions Q1
+and V9); its kinds are what the name's charge put in `main`'s grant.
 
 ---
 
@@ -1069,8 +1077,9 @@ leave the program only through the listed sinks.
 ### Static rules
 
 - Every capability a body uses, directly or through a call, is covered by
-  the function's `needs` (`capability-missing`); a function passed as an
-  argument is charged where it is passed (section 3). A call into a
+  the function's `needs` (`capability-missing`); a function named as a
+  value is charged where it is named (section 3, decision AW60). A call
+  into a
   dependency (decision AC1) is covered like a library call: the kind of
   the capability statically, its scope by the grant stack at run time,
   and the diagnostic names the package ("`announce` (package `greeting`

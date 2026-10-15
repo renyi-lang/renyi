@@ -240,9 +240,14 @@ not to be touched yet: the owner's word of 2026-10-15 evening,
 the work after this and a stable version; then its three "release
 0.2.0" lines, the line count and the benchmark table are re-read from
 their sources, then the owner's arXiv submission and the endorsement
-request). The work next is the owner's call at the next session: the
-roadmap's remaining candidates (the Rust front end's name sets as
-bits, the liveness walk's residue) or something new. The watch rounds
+request). Stage 43 closed gap 1.11 the same evening (AW60, AW61: a
+function value charged where it is named, a function type's `needs` a
+bound; the handoff's section "Stage 43"); it left GAPS 1.19 (a
+function returning a function type cannot declare its own `needs`, a
+surface change, sketch item R3-3). The work next is the owner's call at
+the next session: GAPS 1.19, the roadmap's remaining candidates (the
+Rust front end's name sets as bits, the liveness walk's residue) or
+something new. The watch rounds
 (Gmail, the notifications, the ten list pull requests, the Glama
 badge, the blocked awesome-claude-code form) were a cron of session
 15 and stop with it; a new session runs one on "巡检一轮". The open
@@ -4243,6 +4248,174 @@ iterator in two slots, the Rust front end's name sets).
 Then the first stage the owner confirms. Done in session 14: the study is
 the section "Stage 29, the new backend: the design study (session 14)"
 below, and the owner's answers are decision AW1.
+
+## Stage 43, the effects of a function value bound, stored or returned (GAPS 1.11): the design study (session 15)
+
+**The gap.** `docs/GAPS.md` 1.11 and decision V9 say it in one sentence:
+"a function value stored in a collection and called later is charged
+nowhere statically and is refused by the grant stack at run time". The
+owner chose it as the next stage on 2026-10-15 ("设计缺口 1.11：集合里的
+函数值的权限"), the study first, then four questions.
+
+**The rule as it stands.** Reference section 3: "The effects of a
+function passed as an argument are charged where it is passed, whatever
+the parameter's type lists (decision B1); a higher-order function
+declares only its own effects", and at run time "a function passed as
+an argument runs under the grant in force where it is called, so the
+higher-order function's own `needs` narrows it (decisions Q1 and V9)".
+In the Rust checker: a function named as a value gets the type
+`function(params) returns R or fails with F needs N` with its needs in
+it (`check.rs`, `function_type`, line 2580), and the `Info` of the
+expression remembers which function it was (`Info.function`, line 117,
+set at the two sites: a bare name, line 2516, and `module.function`,
+line 2713); a call of a declared function collects the functions passed
+by name (`check_args`, line 3344, the `function_args` of line 3250) and
+charges their needs to the caller beside the callee's own (lines 3263
+to 3274); a call through a function type charges nothing
+(`call_function_type`, lines 3328 to 3333); and the assignability of a
+function type compares the parameters, the result and the failures and
+ignores the needs on purpose (lines 671 to 685, the comment "its needs
+are charged where it is passed (decision B1)"). The Renyi checker
+mirrors each site (`compiler/bodies.ry`: the name as a value, line
+4008, the type, line 4086, the call through a type, line 5228, and the
+charge, `charge_effects`, line 5153, decision AD1). In the VM: a code
+object narrows the grant only when its function has a `needs` clause
+(`vm.rs`, `narrows`, lines 750 to 757, `frame_grant_under`, line 1051),
+and the narrowing, `grant::within` (`grant.rs`, line 353), restricts
+only the scopes of the capabilities on the lines the needs mention; a
+capability on another line "passes through unchanged, since the
+function reaches it only through a function value whose effects its
+caller covered" (its comment, lines 346 to 352). So at run time the
+effective grant is `main`'s declared grant (or the sandbox's), its
+scopes narrowed along the chain, and a kind `main` never declared is
+refused at the primitive boundary with a crash.
+
+**The measure: eight probes** (`D:\Projects\.worktrees\Renyi\gap111\`,
+the debug binary of 106f42e, `RENYI_NO_CACHE=1`). Each passes a
+function `announce(text) needs console` that prints; `main` declares
+nothing unless said.
+
+| probe | shape | `renyi check` | `renyi run` |
+|---|---|---|---|
+| `direct` | `twice(action: announce, ...)` | `capability-missing`: "`announce` needs `console`, which `main` does not declare" | refused by the check |
+| `inherit` | `relay(text)` without `needs` calls `announce` | `capability-missing` on `relay` | refused by the check |
+| `mismatch` | the parameter's type is `function(Text)` without needs, `main needs console` | clean | prints twice, exit 0 |
+| `narrowed` | `paced(...) needs time` calls the passed function, `main needs console, time` | clean | prints, exit 0 |
+| `bound` | `let say be announce`, then `twice(action: say, ...)` | clean | crash: "`std.console.print` needs console, which the grant (nothing) of `bound.announce` does not allow" |
+| `stored` | `run_all(actions: [announce], ...)`, a `for each` over the list | clean | the same crash |
+| `returned` | `pick() returns function(Text) needs console` returns `announce`; `let say be pick()`; `say("hello")` | clean | the same crash |
+| `field` | `type Handler` with `has action: function(Text) needs console`; `Handler(action: announce)`; `let act be handler.action`; `act("hello")` | clean | the same crash |
+
+What the probes settle. (1) B1 charges only the name written directly
+as an argument of a declared function's call: a `let` binding (`bound`),
+a list literal (`stored`), a return (`returned`) and a record field
+(`field`) each lose the charge, and the program checks clean and crashes
+at its first primitive. The gap is wider than "a collection": any
+position but the argument. (2) The needs written on a function type are
+documentation: `mismatch` passes a function needing `console` to a
+parameter typed without needs, checks clean and runs, because the charge
+is the passing, not the type. The corpus writes function types without
+needs everywhere (`examples/retry.ry` line 14, `compiler/parser.ry`
+line 663, `library/std/server.ry` line 31; only the conformance case
+`higher_order.ry` writes `needs console` on one), so a rule that checked
+the type's needs against the value's would reject the corpus. (3) The
+reference's "so the higher-order function's own `needs` narrows it"
+overstates the VM: `narrowed` shows a function needing only `time`
+calling a passed function that prints, and the print is allowed, since
+`within` narrows scopes and passes other kinds through. The sentence is
+true of scopes only; the VM is right (B1 is what makes the passed
+function's needs part of `main`'s grant) and the sentence is to be
+corrected. (4) A function without `needs` is pure at check time
+(`inherit` is refused) and at run time its frame does not narrow
+(`narrows` is false), which is consistent: it can only reach an effect
+through a function value, which B1 charged to whoever named it.
+
+**Where a function value can go.** As an argument of a declared
+function (charged), as an argument of a call through a function type
+(the type's parameters may themselves be function types; not charged,
+since `call_function_type` returns no functions), bound by `let`, an
+element of a list, a set or a map literal or of `append`, a record field
+at construction or in `with`, a return value, the subject of a `match`
+bound to a pattern name, a `task` result. The corpus, the starter pack,
+the showcase and the compiler use none of these but the first (the grep
+for `let name be function` finds only field reads), so every candidate
+below leaves them unchanged.
+
+**The candidates.**
+
+A. **Charge at the name.** A function named as a value is charged, with
+its needs, to the function that writes the name, wherever the value
+goes. The checker already knows the function at the two sites
+(`Info.function`); the charge moves from the call site (lines 3263 to
+3268, which `check_args` feeds) to those two sites, and `check_args`
+stops returning functions. For a direct argument the diagnostic is the
+same message at the same function (the name is written in the call),
+with the span the name's; `bound`, `stored`, `returned` and `field`
+become `capability-missing` on `main` with the fix "add `needs console`
+to the signature of `main`". B1's "charged where it is passed" becomes
+"charged where it is named", which is what B1 meant ("effects of
+function-typed parameters flow to the call site automatically"), and V9
+and the run-time rule are untouched: `main`'s grant then covers every
+function value a program can reach, since every name is on a static
+chain to `main`. Cost: one rule in `check.rs` and its mirror in
+`bodies.ry` (decision AD1), four conformance cases, the reference's
+section 3 and its appendix, GAPS 1.11 closed. What it does not cover: a
+function value that reaches a program from outside, which the language
+has no way to make (a function value is "the function itself, not a
+closure" and nothing deserialises one; `expose as tool` refuses function
+types, `tool_type.ry`).
+
+B. **Needs in the type, checked both ways.** A function type's `needs`
+becomes part of assignability (the value may need at most what the type
+lists) and a call through a function type charges the type's needs to
+the caller. Then a higher-order function declares the needs of what it
+calls, every function type in the corpus that is passed an effectful
+function gains a `needs`, and B1's "a higher-order function declares
+only its own effects" and V9 are reversed by a new entry. `retry.ry`,
+`server.ry`'s `serve` (whose handler reaches whatever the program grants)
+and the compiler's `parse_list` (`parser.ry` line 663) are the first to
+change, and a generic `map` over effectful functions needs effect
+polymorphism, which B1 excluded ("users never see effect variables").
+Cost: a design reversal, the surface's section 3, the corpus, both
+checkers, the emitters' metadata if the VM is to narrow kinds. The gain
+over A is a type that says what a value may do, which the run-time grant
+already enforces.
+
+C. **Document the hole.** The reference's static rules gain the
+sentence of V9, GAPS 1.11 stays open, nothing else moves. Cost: a
+sentence. The promise "a program that checks does not crash on a
+capability it did not declare" (sketch section 3, decision B1) stays
+broken for the four shapes.
+
+**What else the stage fixes.** The reference's run-time sentence
+(section 3) to "the higher-order function's own `needs` narrows its
+scopes (decisions Q1 and V9)", with the same correction wherever section
+7 repeats it; `docs/GAPS.md` 1.11's "Still open" struck under A. The
+recommendation is A: the smallest rule that closes every shape, no
+surface change, no corpus change.
+
+**The questions for the owner** (asked 2026-10-15): the rule (A, B or
+C); whether the needs on a function type stay documentation (A) or
+become a one-way check (the value may need at most what the type lists:
+an error that would hit `retry.ry` and `serve`'s handler, so no); the
+diagnostic (the existing `capability-missing` with the same message and
+fix, or a new code naming the shape); and whether the run-time sentence
+is corrected to scopes or the VM made to refuse kinds (which would
+contradict B1 and break `narrowed`).
+
+**The owner's answers (decision AW60) and the build (AW61).** A; the
+one-way check, as a bound only where the type lists needs (a type
+without takes any, so the corpus is unchanged); `capability-missing`;
+the sentence corrected. Built the same evening: `charge_named` at the
+two name sites of both checkers, the call charging only its callee,
+`needs_ok` in both assignabilities, five conformance cases, two tests in
+`rules.rs`, the reference's sections 3 and 7, GAPS 1.11 closed; the
+selfhost judge green. The probes `bound`, `stored`, `field` are now
+`capability-missing` on `main` at the name's column; `returned` on
+`pick`, which exposes the residue: a function returning a function type
+has no spelling for its own `needs` (the clause after `returns
+function(...)` is the type's), GAPS 1.19 and sketch item R3-3, a
+surface change for a later decision. Gates: {GATES}.
 
 ## Stage 42, the emitter's own round for the compile row: the design study (session 15)
 
@@ -10778,7 +10951,26 @@ on a fresh clone).
   (cc-enforcer), #809 (cc-memory), #810 (sci-paper), each one line in
   Development & Workflow from its own branch of the fork (the three
   insert at neighbouring lines, so a merge of one may need the others
-  rebased), and VoltAgent/awesome-agent-skills#1215 (`Add skill:
+  rebased); that list's sweep of 2026-10-15 18:04 UTC scans every
+  contributed repository with `plugin-scanner` and lists it from a
+  score of 80: #807 passed, #808 (70), #809 (72) and #810 (70) were
+  blocked, so by the owner's word ("改，三个都改") the three
+  repositories were brought over the line the same evening (the
+  actions pinned to commit SHAs with the tag as a comment, a monthly
+  Dependabot entry for the workflows, SECURITY.md for cc-enforcer and
+  sci-paper, `requirements.lock` for cc-memory; cc-enforcer 1450bf5,
+  cc-memory 1698a5c, sci-paper d7da435, their own gates green), the
+  same scanner on the tracked files giving 89, 89 and 88; the list's
+  next sweep rescans them (`D:\Projects\.worktrees\cc-tree\lists\scans\`
+  holds the scanner's venv and the reports); what remains below 100 is
+  the scanner reading test fixtures and documentation examples as
+  credentials, torch's `model.eval()` as dynamic execution, and
+  sci-paper's minimum-version requirements, all left as they are;
+  Dependabot's first run the same hour opened cc-memory #2, #3, #4 and
+  sci-paper #2, #3, bumping checkout to v7.0.1, setup-python to v7.0.0
+  and upload-artifact to v7.0.2 with every check green, merged the
+  same evening by the owner's word, "都合并"), and
+  VoltAgent/awesome-agent-skills#1215 (`Add skill:
   skymanbp/sci-paper`, Productivity and Collaboration). Not submitted:
   autoshade to ibaaj/awesome-OpenSourcePhotography, whose
   CONTRIBUTING.md says "Tools that heavily rely on external AI systems

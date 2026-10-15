@@ -902,6 +902,11 @@ open items start at R3-1 and are listed here when they arise.
 
 - R3-1: an `Iterable` ability, so that `for each` can walk a program's own
   types. Decided as V10: one method, `to_list`, in section 5.
+- R3-3: a function whose return type is a function type has no spelling
+  for its own `needs` or failures, since the clauses after `returns
+  function(...)` belong to the type (`docs/GAPS.md` 1.19, decision AW61).
+  Open: a parenthesised type, or the clauses after a returned function
+  type read as the declaration's.
 - R3-2: constraints with type arguments (`for any Bag where Bag can
   Iterable of Item`), so that generic code can walk a parameter. Deferred
   until after the bytecode emitter by decision Y4; decided as AB1 in

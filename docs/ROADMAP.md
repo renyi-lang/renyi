@@ -777,6 +777,21 @@ where one decided, the status. The dates are those of the decisions.
     1,943.0 million instructions, -25.0%, the ratio 7.09 to 5.31, the
     emitter's own part -50.0%, the parse row -14.4% through 42d; the
     bytecode byte for byte the Rust compiler's throughout.
+43. **The effects of a function value bound, stored or returned, gap
+    1.11** (session 15, 2026-10-15; the handoff's section "Stage 43").
+    The study: eight probes showed B1 charging only a name written
+    directly as an argument, so a `let`, a list, a return and a record
+    field each lost the charge and the program checked clean and
+    crashed at its first primitive; the needs on a function type were
+    documentation; the reference's "narrows it" was true of scopes
+    only. The owner's answers (AW60): charge at the name, wherever the
+    value goes; a function type that lists `needs` bounds the value's;
+    `capability-missing`; the sentence corrected. Built (AW61):
+    `charge_named` in both checkers, `needs_ok` in both
+    assignabilities, five conformance cases, the reference's sections
+    3 and 7, GAPS 1.11 closed; the selfhost judge green. Residue: GAPS
+    1.19, a function returning a function type has no spelling for its
+    own `needs` (sketch item R3-3, a surface change).
 
 ## 3. The tracks
 
@@ -787,8 +802,9 @@ state of each line.
   freeze), 11 (the grammar and the reference), 17 (the positioning).
   The surface is frozen (V11): a change is a new decision entry first,
   then the reference, the grammar, the cheat sheet, the formatter and
-  the conformance suite in one commit. Open: R3-1 (`Iterable`), section
-  6 of `docs/GAPS.md`.
+  the conformance suite in one commit. Open: R3-1 (`Iterable`), R3-3
+  (the clauses after a returned function type, GAPS 1.19), section 6
+  of `docs/GAPS.md`.
 - **B. The toolchain in Rust**: stages 3, 4, 5, 7, 10, 13, 14, 22, 25.
   Complete for the language as designed; the Rust front end is the
   binary's until the switch of track C.
@@ -963,6 +979,8 @@ round for the compile row, closed (AW52 to AW59) on
 2026-10-15, the compile row 2,590.8 to 1,943.0 million instructions,
 -25.0%, the ratio against the reference 7.09 to 5.31, the emitter's
 own part halved; the liveness walk's residue (about 30 million) left.
-The article waits for a stable version (the owner's word of
-2026-10-15 evening), then its arXiv submission. Not scheduled: the
-Rust front end's name sets as bits, the liveness walk's residue.
+Stage 43, gap 1.11, closed (AW60, AW61) the same evening; GAPS 1.19
+(sketch R3-3) is its residue. The article waits for a stable version
+(the owner's word of 2026-10-15 evening), then its arXiv submission.
+Not scheduled: GAPS 1.19, the Rust front end's name sets as bits, the
+liveness walk's residue.

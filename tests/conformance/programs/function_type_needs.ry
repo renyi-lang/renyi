@@ -1,0 +1,18 @@
+module function_type_needs
+  purpose: A function type that lists needs takes a value needing at most those (decision AW60).
+
+import std.console
+
+function announce(text: Text) needs console
+  console.print(text)
+end
+
+function paced(action: function(Text) needs time, text: Text)
+  action(text)
+end
+
+public function main() needs console
+  purpose: Pass a function that needs more than the type lists.
+
+  paced(action: announce, text: "hello")
+end

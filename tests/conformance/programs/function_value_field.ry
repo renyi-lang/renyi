@@ -1,0 +1,20 @@
+module function_value_field
+  purpose: A function value kept in a record field is charged where it is named (decision AW60).
+
+import std.console
+
+type Handler
+  has action: function(Text) needs console
+end
+
+function announce(text: Text) needs console
+  console.print(text)
+end
+
+public function main()
+  purpose: Call a field.
+
+  let handler be Handler(action: announce)
+  let act be handler.action
+  act("hello")
+end

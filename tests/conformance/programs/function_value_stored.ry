@@ -1,0 +1,20 @@
+module function_value_stored
+  purpose: A function value stored in a list is charged where it is named (decision AW60).
+
+import std.console
+
+function announce(text: Text) needs console
+  console.print(text)
+end
+
+function run_all(actions: List of function(Text) needs console, text: Text)
+  for each action in actions
+    action(text)
+  end
+end
+
+public function main()
+  purpose: Call a stored function.
+
+  run_all(actions: [announce], text: "hello")
+end

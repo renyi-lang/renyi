@@ -10189,3 +10189,75 @@ both. The emitter's remaining shape, for whoever reopens the row: the
 liveness walk 159.1 million, `emit` 142.5 (its three appends through
 the `Takes` plan, about 70 of it), `type_index_at` 54.9, the rest
 spread over the rules under 10 million each. (Claude)
+
+**AW60. The owner's answers on gap 1.11, the effects of a function value
+(2026-10-15).** The study (`docs/HANDOFF.md`, stage 43) measured the
+rule with eight probes: B1 charged only a function name written directly
+as an argument of a declared function's call, so a `let` binding, a list
+literal, a return and a record field each lost the charge, the program
+checked clean and crashed at its first primitive; the needs written on a
+function type were documentation (a `function(Text)` parameter took a
+function needing `console`); and the reference's "the higher-order
+function's own `needs` narrows it" was true of scopes only, since
+`grant::within` passes the kinds the needs do not mention through. The
+owner's answers, recommended first:
+
+1. **The rule: charge at the name.** A function named as a value is
+   charged, with its needs, to the body that names it, wherever the
+   value goes: passed, bound, stored in a collection or a field, or
+   returned. B1's "charged where it is passed" reads "charged where it
+   is named"; a higher-order function still declares only its own
+   effects; V9 and the run-time rule stand. The checker charges at the
+   two sites where a name becomes a value (a bare name, `module.function`)
+   and no longer at the call that receives it (`check.rs`,
+   `charge_named`; `bodies.ry` the same, decision AD1). The alternatives
+   were the needs in the type checked both ways (a reversal of B1 and
+   V9, the corpus's higher-order functions declaring what they call) and
+   documenting the hole.
+2. **A function type that lists `needs` bounds the value's.** The value
+   may need at most what the type lists (`type-mismatch`, the types shown
+   with their needs); a type without `needs` takes any value, as before,
+   so `retry.ry`, `serve`'s handler and the compiler's `parse_list` are
+   unchanged.
+3. **The diagnostic is `capability-missing`**, the same message and fix
+   as a direct argument's, at the name's span; no new code.
+4. **The run-time sentence is corrected**, not the VM: "narrows its
+   scopes". The VM is right, since the name's charge is what puts the
+   passed function's kinds in `main`'s grant.
+
+The conformance cases `function_value_bound.ry`, `function_value_stored.ry`,
+`function_value_returned.ry`, `function_value_field.ry` and
+`function_type_needs.ry`; `rules.rs` gains the two shapes; the reference's
+section 3 and section 7; `docs/GAPS.md` 1.11 closed. (user)
+
+**AW61. Stage 43 built: a function value charged where it is named, a
+function type's needs a bound (2026-10-15).** The Rust checker charges
+a function's needs at the two sites where its name becomes a value
+(`check.rs`, `charge_named`, called from the bare name and from
+`module.function`), the call of a declared function charges only the
+callee's own needs and `check_args` no longer collects the functions
+passed (`Info.function` is gone), and the assignability of a function
+type adds `needs_ok`: when the expected type lists needs, every need of
+the value is covered by one of them (`effects::covered`, strict). The
+Renyi checker makes the same four changes (`compiler/bodies.ry`,
+`charge_named`, `charge_effects` without `passed`, `check_args`
+returning the checker, `assign_functions` with `needs_ok`; the `Info`
+record loses `function_id`), and the selfhost judge holds it byte for
+byte to the Rust checker on the corpus, the conformance suite and the
+compiler. The conformance suite gains `function_value_bound.ry`,
+`function_value_stored.ry`, `function_value_returned.ry` and
+`function_value_field.ry` (`capability-missing`) and
+`function_type_needs.ry` (`type-mismatch`, "the argument is
+`function(Text) needs console`, but `function(Text) needs time` is
+needed"); `rules.rs` gains the four shapes and the bound; the reference's
+section 3 (the rule, the static rule, the run-time sentence "narrows its
+scopes") and section 7; `docs/GAPS.md` 1.11 closed. The corpus, the
+starter pack, the showcase and the compiler check as before: none of
+them names a function anywhere but as a direct argument, and none of
+their function types lists needs. One residue, recorded as `docs/GAPS.md`
+1.19 and sketch item R3-3: a function whose return type is a function
+type cannot declare its own `needs` or failures, since the grammar has no
+parenthesised type and the clause after `returns function(...)` belongs
+to the type; under this rule such a function that returns an effectful
+name is refused and has no way to declare what it needs. Gates: fmt (clean after rustfmt), clippy, cargo test 67 suites OK, the format check of compiler/ and bench/, the corpus lint, the token budget and the wasm build green (the perf lane's gates43.log).
+(Claude)

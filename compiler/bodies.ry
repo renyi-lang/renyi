@@ -125,7 +125,6 @@ public type Info
   purpose: What an expression produced: its type, its unhandled errors, the function it names.
   has ty: Ty
   has failures: List of Ty
-  has function_id: maybe Integer
 end
 
 public type Shape is one of
@@ -336,7 +335,7 @@ end
 function plain(ty: Ty) returns Info
   purpose: A value without unhandled errors that names no function.
 
-  return Info(ty: ty, failures: [], function_id: nothing)
+  return Info(ty: ty, failures: [])
 end
 
 function push_error(checker: Checker, code: Text, message: Text, span: Span, fix: Text)
@@ -1026,7 +1025,10 @@ function assign_functions(
     members: actual.failures,
     expected: expected.failures
   )
-  return Done(value: params_done_value and returns_ok and fails_ok, checker: updated)
+  let needs_ok be expected.capabilities.is_empty()
+    or for each need in actual.capabilities
+    all effects.covered(granted: expected.capabilities, needed: need, runtime_scoped: false)
+  return Done(value: params_done_value and returns_ok and fails_ok and needs_ok, checker: updated)
 end
 
 function unify_all(checker: Checker, left: List of Ty, right: List of Ty, span: Span)
@@ -3699,7 +3701,7 @@ function infer_with(checker: Checker, base: Expr, updates: List of Arg, expected
         change updated to infer(checker: updated, expr: update.value, expected: nothing).checker
       end
   end
-  return Done(value: Info(ty: ty, failures: failures, function_id: nothing), checker: updated)
+  return Done(value: Info(ty: ty, failures: failures), checker: updated)
 end
 
 function find_field(fields: List of FieldSpec, name: Text) returns maybe FieldSpec
@@ -4021,11 +4023,8 @@ function infer_function_name(checker: Checker, name: Name, function_id: Integer)
       span: name.span
     )
   end
-  let info be Info(
-    ty: function_type(checker: updated, id: function_id),
-    failures: [],
-    function_id: function_id
-  )
+  change updated to charge_named(checker: updated, function_id: function_id, span: name.span)
+  let info be Info(ty: function_type(checker: updated, id: function_id), failures: [])
   return Done(value: info, checker: updated)
 end
 
@@ -4386,11 +4385,8 @@ function infer_module_member(checker: Checker, target: Integer, name: Name) retu
         deprecation: deprecation,
         span: name.span
       )
-      let info be Info(
-        ty: function_type(checker: updated, id: function_id),
-        failures: [],
-        function_id: function_id
-      )
+      change updated to charge_named(checker: updated, function_id: function_id, span: name.span)
+      let info be Info(ty: function_type(checker: updated, id: function_id), failures: [])
       return Done(value: info, checker: updated)
     when nothing then change updated to updated
   end
@@ -4836,11 +4832,8 @@ function call_ability_method(
     args: args,
     span: span,
     name: name.text
-  ).checker
-  return Done(
-    value: Info(ty: result otherwise Unit, failures: failures, function_id: nothing),
-    checker: updated
   )
+  return Done(value: Info(ty: result otherwise Unit, failures: failures), checker: updated)
 end
 
 function default_literal(checker: Checker, ty: Ty) returns Checker
@@ -5033,26 +5026,22 @@ function call_known(
   let explicit_value be explicit.value
   change updated to explicit.checker
   change updated to guide_result(checker: updated, result: result, expected: expected, span: span)
-  let passed be check_args(
+  change updated to check_args(
     checker: updated,
     params: explicit_value,
     args: args,
     span: span,
     name: name
   )
-  let passed_value be passed.value
-  change updated to check_matches_literal(checker: passed.checker, info: info, args: args)
-  change updated to charge_effects(checker: updated, info: info, passed: passed_value, span: span)
+  change updated to check_matches_literal(checker: updated, info: info, args: args)
+  change updated to charge_effects(checker: updated, info: info, span: span)
   change updated to check_instance_constraints(
     checker: updated,
     instances: subst,
     name: name,
     span: span
   )
-  return Done(
-    value: Info(ty: result otherwise Unit, failures: failures, function_id: nothing),
-    checker: updated
-  )
+  return Done(value: Info(ty: result otherwise Unit, failures: failures), checker: updated)
 end
 
 function note_result(checker: Checker, info: FunctionInfo, result: maybe Ty, span: Span)
@@ -5150,9 +5139,27 @@ function guide_result(checker: Checker, result: maybe Ty, expected: maybe Ty, sp
   return assign(checker: checker, actual: result_ty, expected: resolved, span: span).checker
 end
 
-function charge_effects(checker: Checker, info: FunctionInfo, passed: List of Integer, span: Span)
-  returns Checker
-  purpose: The callee's needs plus those of function-valued arguments, each required of the body.
+function charge_named(checker: Checker, function_id: Integer, span: Span) returns Checker
+  purpose: A function named as a value is charged, with its needs, to the body that names it (AW60).
+
+  let info be declare.function_at(world: checker.world, id: function_id)
+  if info.capabilities.is_empty() then return checker end
+  let charge be charge_of(checker: checker, info: info)
+  let mutable updated be checker with effect_calls: checker.effect_calls + 1
+  for each grant in info.capabilities
+    change updated to require_capability(
+      checker: updated,
+      needed: grant,
+      runtime_scoped: charge.runtime_scoped,
+      source: charge.source,
+      span: span
+    )
+  end
+  return updated
+end
+
+function charge_effects(checker: Checker, info: FunctionInfo, span: Span) returns Checker
+  purpose: The callee's needs, each required of the body; a passed function was charged at its name.
 
   let mutable needed: List of Needed be []
   let charge be charge_of(checker: checker, info: info)
@@ -5160,19 +5167,6 @@ function charge_effects(checker: Checker, info: FunctionInfo, passed: List of In
     change needed to needed.append(
       Needed(grant: grant, runtime_scoped: charge.runtime_scoped, source: charge.source)
     )
-  end
-  for each passed_id in passed
-    let passed_info be declare.function_at(world: checker.world, id: passed_id)
-    let passed_charge be charge_of(checker: checker, info: passed_info)
-    for each grant in passed_info.capabilities
-      change needed to needed.append(
-        Needed(
-          grant: grant,
-          runtime_scoped: passed_charge.runtime_scoped,
-          source: passed_charge.source
-        )
-      )
-    end
   end
   let mutable updated be checker
   if not needed.is_empty() then
@@ -5265,11 +5259,7 @@ function call_function_type(
   if not signature.capabilities.is_empty() then
     change updated to updated with effect_calls: updated.effect_calls + 1
   end
-  let info be Info(
-    ty: signature.result otherwise Unit,
-    failures: signature.failures,
-    function_id: nothing
-  )
+  let info be Info(ty: signature.result otherwise Unit, failures: signature.failures)
   return Done(value: info, checker: updated)
 end
 
@@ -5280,7 +5270,7 @@ function check_args(
   span: Span,
   name: Text
 )
-  returns Done of List of Integer
+  returns Checker
   purpose: Arguments against parameters: one is positional, two or more are named in order (M4).
 
   if args.length() is not params.length() then
@@ -5291,10 +5281,9 @@ function check_args(
       span: span,
       name: name
     )
-    return Done(value: [], checker: infer_args_only(checker: updated, args: args))
+    return infer_args_only(checker: updated, args: args)
   end
   let mutable updated be check_arg_names(checker: checker, params: params, args: args, name: name)
-  let mutable passed: List of Integer be []
   let mutable index be 0
   for each arg in args
     let param be params.at(index) otherwise break
@@ -5302,10 +5291,6 @@ function check_args(
     let done_value be done.value
     let value_span be expr_span(arg.value)
     change updated to require_handled(checker: done.checker, info: done_value, span: value_span)
-    match done_value.function_id
-      when some(function_id) then change passed to passed.append(function_id)
-      when nothing then change passed to passed
-    end
     change updated to expect(
       checker: updated,
       actual: done_value.ty,
@@ -5315,7 +5300,7 @@ function check_args(
     )
     change index to index + 1
   end
-  return Done(value: passed, checker: updated)
+  return updated
 end
 
 function argument_count(
@@ -5817,10 +5802,7 @@ function construct_variant(
   )
   let failures_value be failures.value
   let ty be App(id: variant.type_id, args: args_tys_value)
-  return Done(
-    value: Info(ty: ty, failures: failures_value, function_id: nothing),
-    checker: failures.checker
-  )
+  return Done(value: Info(ty: ty, failures: failures_value), checker: failures.checker)
 end
 
 function variant_fields_at(variants: List of VariantInfo, index: Integer) returns List of FieldInfo
@@ -5981,10 +5963,7 @@ function construct_pair(
   )
   let failures_value be failures.value
   let ty be App(id: type_id, args: args_tys)
-  return Done(
-    value: Info(ty: ty, failures: failures_value, function_id: nothing),
-    checker: failures.checker
-  )
+  return Done(value: Info(ty: ty, failures: failures_value), checker: failures.checker)
 end
 
 function construct_record(
@@ -6016,7 +5995,7 @@ function construct_record(
     span: span
   )
   let ty be App(id: type_id, args: args_tys)
-  return Done(value: Info(ty: ty, failures: failures_value, function_id: nothing), checker: updated)
+  return Done(value: Info(ty: ty, failures: failures_value), checker: updated)
 end
 
 function construct_subtype(
@@ -6076,7 +6055,7 @@ function construct_subtype(
     when nothing then change updated to updated
   end
   change updated to check_text_literal(checker: updated, type_id: type_id, value: arg.value)
-  return Done(value: Info(ty: ty, failures: failures, function_id: nothing), checker: updated)
+  return Done(value: Info(ty: ty, failures: failures), checker: updated)
 end
 
 function check_subtype_value(checker: Checker, name: TypeName, condition: Expr, value: Expr)

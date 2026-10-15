@@ -1,0 +1,19 @@
+module function_value_returned
+  purpose: A function value returned is charged to the function that names it (decision AW60).
+
+import std.console
+
+function announce(text: Text) needs console
+  console.print(text)
+end
+
+function pick() returns function(Text) needs console
+  return announce
+end
+
+public function main()
+  purpose: Call a returned function.
+
+  let say be pick()
+  say("hello")
+end

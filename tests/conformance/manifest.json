@@ -198,6 +198,41 @@
       "exit_code": 0
     },
     {
+      "name": "a function value bound to a local is charged where it is named",
+      "command": "check",
+      "program": "tests/conformance/programs/function_value_bound.ry",
+      "diagnostics": ["capability-missing"],
+      "exit_code": 1
+    },
+    {
+      "name": "a function value stored in a list is charged where it is named",
+      "command": "check",
+      "program": "tests/conformance/programs/function_value_stored.ry",
+      "diagnostics": ["capability-missing"],
+      "exit_code": 1
+    },
+    {
+      "name": "a function value returned is charged to the function that names it",
+      "command": "check",
+      "program": "tests/conformance/programs/function_value_returned.ry",
+      "diagnostics": ["capability-missing"],
+      "exit_code": 1
+    },
+    {
+      "name": "a function value kept in a record field is charged where it is named",
+      "command": "check",
+      "program": "tests/conformance/programs/function_value_field.ry",
+      "diagnostics": ["capability-missing"],
+      "exit_code": 1
+    },
+    {
+      "name": "a function type that lists needs bounds the value's needs",
+      "command": "check",
+      "program": "tests/conformance/programs/function_type_needs.ry",
+      "diagnostics": ["type-mismatch"],
+      "exit_code": 1
+    },
+    {
       "name": "exhaustiveness looks inside the patterns",
       "command": "check",
       "program": "tests/conformance/programs/match_nested.ry",

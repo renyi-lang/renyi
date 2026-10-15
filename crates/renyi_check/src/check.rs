@@ -114,8 +114,6 @@ struct Info {
     ty: Ty,
     /// The error types of a fallible call that nothing has handled yet.
     fails: Vec<Ty>,
-    /// The function a bare name or `module.function` refers to.
-    function: Option<FunctionId>,
 }
 
 impl Info {
@@ -123,7 +121,6 @@ impl Info {
         Info {
             ty,
             fails: Vec::new(),
-            function: None,
         }
     }
 }
@@ -678,12 +675,16 @@ impl<'w> Checker<'w> {
                     _ => false,
                 };
                 // the function value may fail only with what the expected type
-                // lists; its needs are charged where it is passed (decision B1)
+                // lists; its needs are charged where it is named (decisions B1
+                // and AW60), and a type that lists needs bounds them: the value
+                // may need at most what the type lists
                 let fails_ok = a
                     .fails
                     .iter()
                     .all(|f| e.fails.iter().any(|g| self.same_type(f, g)));
-                params_ok && returns_ok && fails_ok
+                let needs_ok =
+                    e.needs.is_empty() || a.needs.iter().all(|need| covered(&e.needs, need, false));
+                params_ok && returns_ok && fails_ok && needs_ok
             }
             (Ty::Param(a), Ty::Param(e)) => a == e,
             (Ty::Union(a), Ty::Union(e)) => {
@@ -2381,11 +2382,7 @@ impl<'w> Checker<'w> {
                         }
                     }
                 }
-                Info {
-                    ty,
-                    fails,
-                    function: None,
-                }
+                Info { ty, fails }
             }
             ExprKind::Otherwise { value, fallback } => {
                 self.infer_otherwise(value, fallback, expr.span, expected)
@@ -2519,10 +2516,10 @@ impl<'w> Checker<'w> {
                 let deprecated = self.world.functions[function].deprecated.as_deref();
                 self.note_deprecated(&name.text, deprecated, name.span);
             }
+            self.charge_named(function, name.span);
             return Info {
                 ty: self.function_type(function),
                 fails: Vec::new(),
-                function: Some(function),
             };
         }
         if self.world.modules[self.module]
@@ -2713,10 +2710,10 @@ impl<'w> Checker<'w> {
                         self.require_public(function, name.span);
                         let deprecated = self.world.functions[function].deprecated.as_deref();
                         self.note_deprecated(&name.text, deprecated, name.span);
+                        self.charge_named(function, name.span);
                         return Info {
                             ty: self.function_type(function),
                             fails: Vec::new(),
-                            function: Some(function),
                         };
                     }
                     if let Some(constant) = self.world.modules[target].constants.get(&name.text) {
@@ -3030,7 +3027,6 @@ impl<'w> Checker<'w> {
                 Info {
                     ty: returns.unwrap_or(Ty::Unit),
                     fails,
-                    function: None,
                 }
             }
             None => {
@@ -3247,25 +3243,20 @@ impl<'w> Checker<'w> {
                 let _ = self.assign(returns, &expected, span);
             }
         }
-        let function_args = self.check_args(&explicit_params, args, span, &name);
+        self.check_args(&explicit_params, args, span, &name);
         // decision K3: a literal pattern is checked here
         if is_library && is_method && name == "matches" {
             if let Some(arg) = args.first() {
                 self.check_regex_literal(&arg.value);
             }
         }
-        // effects: the callee's needs plus those of function-valued arguments
+        // effects: the callee's needs; a function-valued argument was charged
+        // where its name was written (decision AW60)
         let (runtime_scoped, source) = self.charge_of(id);
-        let mut needed: Vec<(Capability, bool, String)> = needs
+        let needed: Vec<(Capability, bool, String)> = needs
             .into_iter()
             .map(|c| (c, runtime_scoped, source.clone()))
             .collect();
-        for passed in function_args {
-            let (runtime_scoped, source) = self.charge_of(passed);
-            for capability in &self.world.functions[passed].needs {
-                needed.push((capability.clone(), runtime_scoped, source.clone()));
-            }
-        }
         if !needed.is_empty() {
             self.effect_calls += 1;
         }
@@ -3289,7 +3280,6 @@ impl<'w> Checker<'w> {
         Info {
             ty: returns.unwrap_or(Ty::Unit),
             fails,
-            function: None,
         }
     }
 
@@ -3326,29 +3316,21 @@ impl<'w> Checker<'w> {
             self.infer_value(&arg.value, param, "the argument");
         }
         // the effects of a function-typed parameter are charged where the
-        // function is passed (sketch section 3), so the call needs nothing
-        // of this function; it still counts as a call with effects
+        // function is named (sketch section 3, decision AW60), so the call
+        // needs nothing of this function; it still counts as a call with
+        // effects
         if !function.needs.is_empty() {
             self.effect_calls += 1;
         }
         Info {
             ty: function.returns.clone().unwrap_or(Ty::Unit),
             fails: function.fails.clone(),
-            function: None,
         }
     }
 
     /// Check arguments against parameters: one argument is positional, two
-    /// or more are named in declaration order (sketch section 3, M4). Returns
-    /// the functions passed by name, for the effects of the call.
-    fn check_args(
-        &mut self,
-        params: &[(String, Ty)],
-        args: &[Arg],
-        span: Span,
-        name: &str,
-    ) -> Vec<FunctionId> {
-        let mut passed = Vec::new();
+    /// or more are named in declaration order (sketch section 3, M4).
+    fn check_args(&mut self, params: &[(String, Ty)], args: &[Arg], span: Span, name: &str) {
         if args.len() != params.len() {
             let wanted: Vec<String> = params.iter().map(|(n, _)| n.clone()).collect();
             let message = if params.is_empty() {
@@ -3374,7 +3356,7 @@ impl<'w> Checker<'w> {
             for arg in args {
                 self.infer(&arg.value, None);
             }
-            return passed;
+            return;
         }
         if params.len() == 1 {
             if let Some(label) = &args[0].name {
@@ -3422,12 +3404,8 @@ impl<'w> Checker<'w> {
         for (arg, (_, param_ty)) in args.iter().zip(params) {
             let info = self.infer(&arg.value, Some(param_ty));
             self.require_handled(&info, arg.value.span);
-            if let Some(function) = info.function {
-                passed.push(function);
-            }
             self.expect(&info.ty, param_ty, arg.value.span, "the argument");
         }
-        passed
     }
 
     /// A literal regular expression (decision K3): what the engine would
@@ -3515,6 +3493,21 @@ impl<'w> Checker<'w> {
     /// path or host at run time, and so does a function of another
     /// package, through the grant stack, decision AC1), and the callee as
     /// the message names it, with its package when it has one.
+    /// A function named as a value is charged, with its needs, to the body
+    /// that names it, wherever the value goes: passed, bound, stored or
+    /// returned (decision AW60).
+    fn charge_named(&mut self, function: FunctionId, span: Span) {
+        let needs = self.world.functions[function].needs.clone();
+        if needs.is_empty() {
+            return;
+        }
+        let (runtime_scoped, source) = self.charge_of(function);
+        self.effect_calls += 1;
+        for capability in &needs {
+            self.require_capability(capability, runtime_scoped, &source, span);
+        }
+    }
+
     fn charge_of(&self, id: FunctionId) -> (bool, String) {
         let info = &self.world.functions[id];
         let package = &self.world.modules[info.module].package;
@@ -3734,7 +3727,6 @@ impl<'w> Checker<'w> {
             return Info {
                 ty: Ty::App(type_id, args_tys),
                 fails,
-                function: None,
             };
         } else {
             self.world.lookup_type(self.module, &name.text)
@@ -3774,7 +3766,6 @@ impl<'w> Checker<'w> {
             return Info {
                 ty: Ty::App(type_id, args_tys),
                 fails,
-                function: None,
             };
         }
         match &self.world.types[type_id].kind {
@@ -3786,7 +3777,6 @@ impl<'w> Checker<'w> {
                 Info {
                     ty: Ty::App(type_id, args_tys),
                     fails,
-                    function: None,
                 }
             }
             TypeKindInfo::Subtype { base, refinement } => {
@@ -3844,7 +3834,6 @@ impl<'w> Checker<'w> {
                 Info {
                     ty: Ty::App(type_id, Vec::new()),
                     fails,
-                    function: None,
                 }
             }
             TypeKindInfo::Sum(variants) => {

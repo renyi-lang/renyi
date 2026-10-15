@@ -90,10 +90,12 @@ Ordered by how much they matter to the language's promises.
     (decision B1); a function type with `needs` may be followed by
     another parameter (`parser.rs`, `capabilities`). At run time the
     passed function runs under the grant in force where it is called
-    (decision Q1). Still open: a function value stored in a collection
-    and called later is charged nowhere statically; the grant stack
-    refuses it at run time. Tested in `rules.rs` and by the conformance
-    case `higher_order.ry`.
+    (decision Q1). Closed in stage 43 (decision AW60): a function named
+    as a value is charged where it is named, wherever the value goes
+    (bound, stored, returned, kept in a field), and a function type that
+    lists `needs` takes a value needing at most those. Tested in
+    `rules.rs` and by the conformance cases `higher_order.ry`,
+    `function_value_*.ry` and `function_type_needs.ry`.
 12. Done in stage 1: **type parameters are in scope for body annotations**
     (`check.rs`, `resolve_in_body` takes the function's `for any`
     parameters). Tested in `rules.rs`.
@@ -150,6 +152,18 @@ Ordered by how much they matter to the language's promises.
     `check_condition_body` and `infer_name`; conformance case
     `refinement_field.ry`). `--redact` works by name by decision S3,
     which is the design, not a gap.
+19. Found in stage 43 (decision AW61): **a function whose return type is
+    a function type cannot declare its own `needs` or failures.** The
+    grammar has no parenthesised type, so in `function pick() returns
+    function(Text) needs console` the clause belongs to the function
+    type (`FunctionType` in `docs/grammar.ebnf`, greedy), and `pick` has
+    no spelling for its own. Under AW60 a function that returns an
+    effectful name is charged and refused with nothing it can write.
+    A surface change (a parenthesised type, or a rule that the clauses
+    after a returned function type belong to the declaration) is a
+    decision first (V11), then the grammar, the reference, the cheat
+    sheet, the formatter and the conformance suite in one commit;
+    sketch item R3-3.
 
 ## 2. Promised compile-time checks that nobody wrote
 
@@ -428,8 +442,8 @@ documents say.
 
 Stage 1 is done. Sections 1, 2, 3 and 5 are resolved except the residue
 their entries name: 1.8 (the server and the primitives that cannot fail
-crash on a scope denial; containment is lexical), 1.11 (a function value
-stored in a collection is charged nowhere statically), 1.14 (the
+crash on a scope denial; containment is lexical), 1.11 (closed in stage
+43, decision AW60), 1.14 (the
 recording's grant header is not compared with a test's `needs`), 1.17
 (`Hash` implementations are never called; collections keep the derived
 equality; `repeat`, `pad` and the rounding places go through `small()`),

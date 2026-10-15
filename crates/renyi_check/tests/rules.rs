@@ -822,6 +822,51 @@ fn a_higher_order_function_declares_only_its_own_effects() {
 }
 
 #[test]
+fn a_function_named_as_a_value_is_charged_where_it_is_named() {
+    // decision AW60: bound, stored, returned or kept in a field, the name
+    // charges the body that writes it, so `main` must declare the needs
+    let head = "function announce(text: Text) needs console\n  console.print(text)\nend\n\nfunction twice(action: function(Text) needs console, text: Text)\n  action(text)\n  action(text)\nend\n\n";
+    let bound = format!(
+        "{head}public function main()\n  purpose: Run.\n\n  let say be announce\n  twice(action: say, text: \"hi\")\nend\n"
+    );
+    raises(&program(&bound), "capability-missing");
+    clean(&program(&bound.replace("main()", "main() needs console")));
+    let stored = format!(
+        "{head}function run_all(actions: List of function(Text) needs console, text: Text)\n  for each action in actions\n    action(text)\n  end\nend\n\npublic function main()\n  purpose: Run.\n\n  run_all(actions: [announce], text: \"hi\")\nend\n"
+    );
+    raises(&program(&stored), "capability-missing");
+    clean(&program(&stored.replace("main()", "main() needs console")));
+    let returned = format!(
+        "{head}function pick() returns function(Text) needs console\n  return announce\nend\n\npublic function main()\n  purpose: Run.\n\n  let say be pick()\n  say(\"hi\")\nend\n"
+    );
+    // `pick` cannot declare `needs console` itself: after `returns
+    // function(Text)` the clause belongs to the function type (the grammar
+    // has no parenthesised type), which stage 43 records as a gap
+    raises(&program(&returned), "capability-missing");
+    let field = format!(
+        "type Handler\n  has action: function(Text) needs console\nend\n\n{head}public function main()\n  purpose: Run.\n\n  let handler be Handler(action: announce)\n  let act be handler.action\n  act(\"hi\")\nend\n"
+    );
+    raises(&program(&field), "capability-missing");
+    clean(&program(&field.replace("main()", "main() needs console")));
+}
+
+#[test]
+fn a_function_type_with_needs_bounds_the_value() {
+    // decision AW60: a function type that lists needs takes a value that
+    // needs at most what it lists; one without needs takes any
+    let head = "function announce(text: Text) needs console\n  console.print(text)\nend\n\n";
+    let twice = |needs: &str| {
+        format!(
+            "{head}function twice(action: function(Text){needs}, text: Text)\n  action(text)\n  action(text)\nend\n\npublic function main() needs console\n  purpose: Run.\n\n  twice(action: announce, text: \"hi\")\nend\n"
+        )
+    };
+    clean(&program(&twice("")));
+    clean(&program(&twice(" needs console")));
+    clean(&program(&twice(" needs console, time")));
+    raises(&program(&twice(" needs time")), "type-mismatch");
+}
+
+#[test]
 fn type_parameters_are_in_scope_inside_the_body() {
     clean(&program(
         "function first_or(items: List of Item, fallback: Item) returns Item for any Item\n  let chosen: Item be items.at(0) otherwise fallback\n  return chosen\nend\n",

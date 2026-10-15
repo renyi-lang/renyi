@@ -1,0 +1,20 @@
+module function_value_bound
+  purpose: A function value bound to a local is charged where it is named (decision AW60).
+
+import std.console
+
+function announce(text: Text) needs console
+  console.print(text)
+end
+
+function twice(action: function(Text) needs console, text: Text)
+  action(text)
+  action(text)
+end
+
+public function main()
+  purpose: Pass a bound function.
+
+  let say be announce
+  twice(action: say, text: "hello")
+end
