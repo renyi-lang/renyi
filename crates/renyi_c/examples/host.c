@@ -33,7 +33,10 @@ int main(int argc, char **argv) {
                 renyi_last_error());
         return 1;
     }
-    printf("%.*s, API %d\n", (int)renyi_version_len(), renyi_version(), renyi_api_version());
+    /* the version on standard error: the expected output does not change
+     * with a release */
+    fprintf(stderr, "%.*s, API %d\n", (int)renyi_version_len(), renyi_version(),
+            renyi_api_version());
     renyi_module(module);
     show("module: ", module);
     renyi_grant(module);

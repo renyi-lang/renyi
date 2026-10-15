@@ -1,4 +1,3 @@
-renyi 0.2.1, API 1
 module: calc
 grant: console
   add(left: Integer, right: Integer) returns Integer

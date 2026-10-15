@@ -1,4 +1,3 @@
-renyi 0.2.1, API 1
 module: calc
 grant: console
 functions: [{"name":"add","signature":"add(left: Integer, right: Integer) returns Integer","purpose":"Add two numbers.","parameters":2,"needs":[],"exposed_as_tool":false,"input_schema":null,"callable":true},{"name":"shout","signature":"shout(text: Text) returns Text needs console","purpose":"Print the text and return it in capitals.","parameters":1,"needs":["console"],"exposed_as_tool":false,"input_schema":null,"callable":true},{"name":"shift","signature":"shift(point: Point, step: Integer) returns Point","purpose":"Move the point along both axes.","parameters":2,"needs":[],"exposed_as_tool":false,"input_schema":null,"callable":true},{"name":"risky","signature":"risky(number: Integer) returns Integer or fails with Oops","purpose":"Fail below zero.","parameters":1,"needs":[],"exposed_as_tool":false,"input_schema":null,"callable":true}]

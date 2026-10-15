@@ -31,7 +31,9 @@ def main():
     path = sys.argv[1] if len(sys.argv) > 1 else "calc.ry"
     grant = {"grant": "console", "memory": "16 megabytes"}
     with renyi.Sandbox.load(path, grant) as calc:
-        print(f"{renyi.version()}, API {renyi.api_version()}")
+        # the version on standard error: the expected output does not
+        # change with a release
+        print(f"{renyi.version()}, API {renyi.api_version()}", file=sys.stderr)
         print(f"module: {calc.module}")
         print(f"grant: {calc.grant}")
         for function in calc.functions():
