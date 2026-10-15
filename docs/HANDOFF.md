@@ -219,8 +219,12 @@ grouping by a query, the keys as records, the VM items measured each).
 the compile row 2,590.8 to 2,407.2 million instructions, -7.1%, the
 ratio 7.09 to 6.58); 42b is done (decision AW54: the references
 grouped by a `group by` query, the compile row to 2,300.8, -4.4%, the
-ratio 6.29). The work next: 42c (the keys as records), then 42d and
-42e measured each. The open items of AW45 stand
+ratio 6.29); 42c is done (decision AW55: the keys as records, the
+compile row to 2,127.8, -7.5%, the ratio 5.82; the three Renyi stages
+-17.9% together). The work next: the emitter's `emit` with its lists
+taken, not cloned (the `Step` held twice, AW55's finding), then 42d and
+42e measured each, and the liveness walk after them. The open items of
+AW45 stand
 beside it (the verified domain, the article's submission, now that
 0.3.0 is out).
 The session's record is "Done in session 14"
@@ -4366,7 +4370,15 @@ byte the Rust compiler's. 42b built (decision AW54): the references
 grouped by a `group by` query in `new_context` and `targets_of`; the
 compile row 2,407.2 to 2,300.8 (-4.4%), the ratio 6.29; `new_context`
 205.0 to 114.0 million, `targets_of` 111.0 to 95.2; the quadratic
-copies were about 107 million, not the 250 estimated.
+copies were about 107 million, not the 250 estimated. 42c built
+(decision AW55): `Span` and `BodyLocation` with `Hash` derived, the
+references under `BodyKey`, the targets under `Span`, the four text
+key builders gone; the compile row 2,300.8 to 2,127.8 (-7.5%), the
+ratio 5.82; `new_context` to 50.4, `targets_of` to 41.3, `targets_at`
+to 26.2. Finding 6 above was wrong in part: `emit` is 213.9 million
+inclusive with 54.9 in `type_index_at`, so its appends do copy; the
+`Step` record is held twice when the field is read (by `typed` and by
+`updated`), which keeps the `Takes` plan from moving the lists.
 
 **What the round is for.** The ratio has no consumer (AW27). What the
 stages buy without one: the quadratic copies of finding 3 and the

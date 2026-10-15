@@ -107,7 +107,7 @@ type Context
   purpose: What every body's emitter shares: the world, the tables being built and the counters.
   has world: World
   has globals: Map of Text to Integer
-  has refs: Map of Text to List of Reference
+  has refs: Map of BodyKey to List of Reference
   has functions_at: Map of BodyKey to Integer
   has result_types: List of Ty
   has type_indices: Map of Ty to Integer
@@ -124,7 +124,7 @@ type Emitter
   purpose: The state of compiling one body (the Rust `Compiler`), threaded through every function.
   has context: Context
   has owner: Integer
-  has targets: Map of Text to List of Target
+  has targets: Map of Span to List of Target
   has name: Text
   has kind: CodeKind
   has function_id: maybe Integer
@@ -249,51 +249,12 @@ end
 
 let unset_code: Integer be 18446744073709551615
 
-function body_key(body: BodyLocation) returns Text
-  purpose: A body as a map key.
-
-  match body
-    when NoBody then return "n"
-    when ItemBody(item) then return "i{item}"
-    when ImplementationBody(item, method) then return "m{item}.{method}"
-    when ExampleBody(item, method, sample) then
-      let method_key be maybe_key(method)
-      return "e{item}.{method_key}.{sample}"
-    when ConditionBody(item, variant, field) then
-      let variant_key be maybe_key(variant)
-      let field_key be maybe_key(field)
-      return "c{item}.{variant_key}.{field_key}"
-  end
-end
-
-function maybe_key(value: maybe Integer) returns Text
-  purpose: An optional number as part of a key.
-
-  match value
-    when some(found) then return "{found}"
-    when nothing then return "-"
-  end
-end
-
-function span_key(span: Span) returns Text
-  purpose: A span as a map key.
-
-  return "{span.start}:{span.stop}"
-end
-
-function refs_key(owner: Integer, body: BodyLocation) returns Text
-  purpose: A body of a module as a map key.
-
-  let body_text be body_key(body)
-  return "{owner}/{body_text}"
-end
-
 function targets_of(context: Context, owner: Integer, body: BodyLocation)
-  returns Map of Text to List of Target
+  returns Map of Span to List of Target
   purpose: The references of one body by span; two references may share a span.
 
-  let references be context.refs.get(refs_key(owner: owner, body: body)) otherwise []
-  return for each reference in references group by span_key(reference.span) collect reference.target
+  let references be context.refs.get(BodyKey(owner: owner, body: body)) otherwise []
+  return for each reference in references group by reference.span collect reference.target
 end
 
 function new_emitter(
@@ -456,7 +417,7 @@ end
 function targets_at(emitter: Emitter, span: Span) returns List of Target
   purpose: What the checker recorded at a span, in the order it recorded it.
 
-  return emitter.targets.get(span_key(span)) otherwise []
+  return emitter.targets.get(span) otherwise []
 end
 
 function global_index(emitter: Emitter, owner: Integer, name: Text) returns maybe Integer
@@ -3157,12 +3118,12 @@ end
 function new_context(world: World, modules: List of CheckedModule) returns Context
   purpose: The shared state before any body is compiled: the references, the constants, the types.
 
-  let mutable refs: Map of Text to List of Reference be {}
+  let mutable refs: Map of BodyKey to List of Reference be {}
   for each entry in modules
     let id be entry.id otherwise continue
     let grouped be
       for each reference in entry.references
-      group by refs_key(owner: id, body: reference.body)
+      group by BodyKey(owner: id, body: reference.body)
     for each key, references in grouped
       change refs to refs.set(key: key, value: references)
     end

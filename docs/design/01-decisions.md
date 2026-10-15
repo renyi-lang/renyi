@@ -10066,3 +10066,26 @@ the study's attribution of the clones and the memory copies to them
 was partly wrong, the rest being the texts of the keys. The bytecode
 of `compiler/bodies.ry` byte for byte the Rust compiler's and 42a's.
 (Claude)
+
+**AW55. Stage 42c built: the emitter's map keys as records
+(2026-10-15).** The references of a module's bodies are kept under
+`BodyKey`, the record of the owner and the body location, and a body's
+targets under its `Span`: `Span` (`compiler/ast.ry`) and `BodyLocation`
+(`compiler/declare.ry`) derive `Hash`, `targets_of` groups by
+`reference.span` and `targets_at` looks the span up as it is;
+`body_key`, `maybe_key`, `span_key` and `refs_key`, which formatted a
+text per lookup, are gone. The measure (`measure_stage.sh 42c`): the
+compile row 2,300.8 to 2,127.8 million instructions, -7.5%, the ratio
+against the reference 6.29 to 5.82; `compile_project` 808.3 to 635.3
+million inclusive, `new_context` 114.0 to 50.4, `targets_of` 95.2 to
+41.3, `targets_at` 81.9 to 26.2, the natives 480.4 to 399.8, VM other
+169.5 to 120.4. The three Renyi stages together: 2,590.8 to 2,127.8,
+-17.9%, the ratio 7.09 to 5.82, the emitter's own part 1,098.4 to
+635.3. The bytecode of `compiler/bodies.ry` byte for byte the Rust
+compiler's (the two derives shift the ids in both). What the profile
+shows next in the emitter: `emit` 213.9 million inclusive for 29,840
+calls with `type_index_at` only 54.9 of it, which points at its three
+appends copying their lists (the `Step` record that carries the
+emitter is still held by `typed` when `updated.ops` is read, so the
+record is held twice and the field is cloned, not taken); and the
+liveness walk, `walk_block`, 181.7 million (8.5%). (Claude)

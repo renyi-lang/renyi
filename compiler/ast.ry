@@ -6,6 +6,7 @@ public type Span
   has start: Integer
   has stop: Integer
   can ToJson
+  can Hash
 end
 
 public type Name

@@ -165,6 +165,7 @@ public type BodyLocation is one of
   ImplementationBody(item: Integer, method: Integer)
   ExampleBody(item: Integer, method: maybe Integer, sample: Integer)
   ConditionBody(item: Integer, variant: maybe Integer, field: maybe Integer)
+  can Hash
 end
 
 public type FunctionInfo
