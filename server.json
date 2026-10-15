@@ -3,7 +3,7 @@
   "name": "org.renyi-lang/renyi",
   "title": "Renyi",
   "description": "Check, format, run and test Renyi programs; the project map with effects, diffs and chunks.",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "websiteUrl": "https://renyi-lang.org",
   "repository": {
     "url": "https://github.com/renyi-lang/renyi",
@@ -13,7 +13,7 @@
     {
       "registryType": "cargo",
       "identifier": "renyi",
-      "version": "0.3.0",
+      "version": "0.4.0",
       "transport": {
         "type": "stdio"
       },

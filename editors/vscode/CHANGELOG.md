@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.0
+
+The binary's release 0.4.0, the stable version (decision AW67); the
+extension is unchanged.
+
 ## 0.3.0
 
 The binary's release 0.3.0 (the C API and its Python binding); the

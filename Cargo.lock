@@ -626,7 +626,7 @@ dependencies = [
 
 [[package]]
 name = "renyi"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "libmimalloc-sys",
  "renyi_check",
@@ -641,7 +641,7 @@ dependencies = [
 
 [[package]]
 name = "renyi_c"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "renyi",
  "renyi_json",
@@ -650,7 +650,7 @@ dependencies = [
 
 [[package]]
 name = "renyi_check"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "regex",
  "renyi_package",
@@ -659,7 +659,7 @@ dependencies = [
 
 [[package]]
 name = "renyi_index"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "renyi_check",
  "renyi_syntax",
@@ -668,11 +668,11 @@ dependencies = [
 
 [[package]]
 name = "renyi_json"
-version = "0.3.0"
+version = "0.4.0"
 
 [[package]]
 name = "renyi_package"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "renyi_json",
  "renyi_syntax",
@@ -681,11 +681,11 @@ dependencies = [
 
 [[package]]
 name = "renyi_syntax"
-version = "0.3.0"
+version = "0.4.0"
 
 [[package]]
 name = "renyi_vm"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "cranelift-codegen",
  "cranelift-frontend",
@@ -709,7 +709,7 @@ dependencies = [
 
 [[package]]
 name = "renyi_web"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "renyi_check",
  "renyi_package",
@@ -719,7 +719,7 @@ dependencies = [
 
 [[package]]
 name = "renyi_workspace"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "renyi_check",
  "renyi_index",

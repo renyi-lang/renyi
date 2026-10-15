@@ -20,4 +20,4 @@ renyi_check.workspace = true
 # default features of a workspace dependency off; a native build of the
 # whole workspace unifies the features back on, which changes nothing
 # the crate does
-renyi_vm = { path = "../renyi_vm", version = "0.3.0", default-features = false }
+renyi_vm = { path = "../renyi_vm", version = "0.4.0", default-features = false }

@@ -263,27 +263,31 @@ python tools/bench.py target/debug/renyi              # the benchmarks of bench/
 cargo test
 ```
 
-Release 0.3.0 (2026-10-15) adds the C API (decisions AW46 to AW48:
+Release 0.4.0 (2026-10-15) is the stable version (decision AW67): the
+effects of a function value where it is bound, stored or returned (AW60,
+AW61), a type in parentheses (AW62, AW63), the memory budget written in
+the program (AW64 to AW66), the liveness walk's residue on both sides
+(AW67) and the C archive's static library without the bitcode of fat
+LTO. Release 0.3.0 (2026-10-15) adds the C API (decisions AW46 to AW48:
 the crate `renyi_c`, the Python binding and a library archive per
 target) and fixes a Windows path in the embedding API. Release 0.2.1
 (2026-10-14) fixes the scope of the current directory,
-`filesystem.read(".")`, which refused every relative path, and lists
-the toolchain on the MCP registry. Release 0.2.0 is out (2026-10-13;
-the procedure in `docs/RELEASE.md`,
-decisions AI1 to AI5 and AW36; the extension is on the Visual Studio
-Marketplace and Open VSX as `renyi-lang.renyi`). Between 0.1.0
-(2026-10-07) and it came the
-registration API for Rust natives (decisions AJ1 and AK1 to AK4;
+`filesystem.read(".")`, which refused every relative path, and lists the
+toolchain on the MCP registry. Release 0.2.0 is out (2026-10-13; the
+procedure in `docs/RELEASE.md`, decisions AI1 to AI5 and AW36; the
+extension is on the Visual Studio Marketplace and Open VSX as `renyi-
+lang.renyi`). Between 0.1.0 (2026-10-07) and it came the registration
+API for Rust natives (decisions AJ1 and AK1 to AK4;
 `docs/extensions.md`), the Python bridge (decisions AJ2, AJ3 and AL1 to
 AL4; `docs/python.md`), the resident world, the language server with
 completion, references and rename, the watch of `serve` and the
 embedding API (M5, decisions AN1 to AP2, AW38, AW39 and AW44), the
-rounds on the VM's speed and the front end's (decisions AQ to AU, AW1
-to AW27), the toolchain for the browser with the play page and the
-showcase game (decisions AW29 to AW37), and the chunks for retrieval by
-embedding (decisions AW40 to AW43). `docs/ROADMAP.md` is the map of
-every stage, numbered and grouped by track, with what comes next (the
-C API of decision A5 is the next stage of AW28's order, not opened).
+rounds on the VM's speed and the front end's (decisions AQ to AU, AW1 to
+AW27), the toolchain for the browser with the play page and the showcase
+game (decisions AW29 to AW37), and the chunks for retrieval by embedding
+(decisions AW40 to AW43). `docs/ROADMAP.md` is the map of every stage,
+numbered and grouped by track, with what comes next (the C API of
+decision A5 is the next stage of AW28's order, not opened).
 
 ## Working on this repository
 
