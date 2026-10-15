@@ -18,6 +18,14 @@ public type Description
   can FromJson
 end
 
+public type Point
+  purpose: The dataclass `Point` of `analysis.py`: the worker builds it from the object and back.
+  has across: Integer
+  has down: Integer
+  can ToJson
+  can FromJson
+end
+
 public function mean(values: List of Float)
   returns Float
   or fails with PythonError
@@ -50,3 +58,9 @@ public function stall(seconds: Integer)
   or fails with PythonError
   needs python("analysis")
   purpose: Sleeps that many seconds, past the manifest's deadline of one second.
+
+public function shift(point: Point, py_by: Integer)
+  returns Point
+  or fails with PythonError
+  needs python("analysis")
+  purpose: The point moved by that much each way, through the dataclass on the Python side.

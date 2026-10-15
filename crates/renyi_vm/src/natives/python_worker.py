@@ -6,12 +6,21 @@ and the answer {"call": N, "result": ...} or {"call": N, "error": {"where":
 "import" | "call" | "result", "kind": "ValueError", "message": "..."}}. The
 first line the worker writes is {"ready": true, "version": "3.13.3"}. What
 the Python functions print goes to the standard error, so that it cannot mix
-with the protocol."""
+with the protocol. At the boundary (decision AW49) an argument whose
+parameter is annotated with a dataclass or a `NamedTuple` is built from its
+JSON object, through the fields' own annotations, and such a value in the
+result becomes a JSON object of its fields; a `TypedDict` is a dict both
+ways."""
 
+import collections.abc
+import dataclasses
 import importlib
+import inspect
 import json
 import os
 import sys
+import types
+import typing
 
 
 def main():
@@ -45,7 +54,8 @@ def reply(modules, request):
     except Exception as error:
         return {"error": failure("import", error)}
     try:
-        result = function(*request.get("arguments", []))
+        arguments = converted_in(function, request.get("arguments", []))
+        result = convert_out(function(*arguments))
     except Exception as error:
         return {"error": failure("call", error)}
     try:
@@ -53,6 +63,104 @@ def reply(modules, request):
     except (TypeError, ValueError) as error:
         return {"error": failure("result", error)}
     return {"result": result}
+
+
+# the hints of a function or a class, read once
+HINTS = {}
+
+UNIONS = tuple(
+    union
+    for union in (typing.Union, getattr(types, "UnionType", None))
+    if union is not None
+)
+LISTS = (list, set, frozenset, collections.abc.Sequence, collections.abc.Set, collections.abc.Iterable)
+MAPS = (dict, collections.abc.Mapping)
+
+
+def hints_of(target):
+    """The evaluated annotations of a function or a class, {} when they do
+    not evaluate."""
+    found = HINTS.get(target)
+    if found is None:
+        try:
+            found = typing.get_type_hints(target)
+        except Exception:
+            found = dict(getattr(target, "__annotations__", {}))
+        HINTS[target] = found
+    return found
+
+
+def converted_in(function, arguments):
+    """The positional arguments, each built by its parameter's annotation."""
+    try:
+        parameters = list(inspect.signature(function).parameters.values())
+    except (TypeError, ValueError):
+        return arguments
+    hints = hints_of(function)
+    positional = [
+        parameter.name
+        for parameter in parameters
+        if parameter.kind in (parameter.POSITIONAL_ONLY, parameter.POSITIONAL_OR_KEYWORD)
+    ]
+    return [
+        convert_in(value, hints.get(positional[index])) if index < len(positional) else value
+        for index, value in enumerate(arguments)
+    ]
+
+
+def is_namedtuple(cls):
+    return isinstance(cls, type) and issubclass(cls, tuple) and hasattr(cls, "_fields")
+
+
+def convert_in(value, hint):
+    """A value from JSON as the annotation asks for it: a dict into a
+    dataclass or a NamedTuple, through a list, a map, an Optional; the
+    value itself where nothing applies."""
+    if hint is None or value is None:
+        return value
+    origin = typing.get_origin(hint)
+    arguments = typing.get_args(hint)
+    if origin is typing.Annotated:
+        return convert_in(value, arguments[0])
+    if origin in UNIONS:
+        members = [member for member in arguments if member is not type(None)]
+        return convert_in(value, members[0]) if len(members) == 1 else value
+    if origin in LISTS and isinstance(value, list) and len(arguments) == 1:
+        return [convert_in(item, arguments[0]) for item in value]
+    if origin in MAPS and isinstance(value, dict) and len(arguments) == 2:
+        return {key: convert_in(item, arguments[1]) for key, item in value.items()}
+    if isinstance(hint, type) and isinstance(value, dict):
+        fields = hints_of(hint)
+        if dataclasses.is_dataclass(hint) or is_namedtuple(hint):
+            return hint(**{key: convert_in(item, fields.get(key)) for key, item in value.items()})
+        if getattr(typing, "is_typeddict", lambda candidate: False)(hint):
+            # a key the TypedDict does not require comes as null for a
+            # `maybe` field that is nothing: the key is left out, as Python
+            # reads such a dict
+            required = getattr(hint, "__required_keys__", frozenset(fields))
+            return {
+                key: convert_in(item, fields.get(key))
+                for key, item in value.items()
+                if item is not None or key in required
+            }
+    return value
+
+
+def convert_out(value):
+    """A result as JSON carries it: a dataclass or a NamedTuple as the
+    object of its fields, through lists, tuples and dicts."""
+    if dataclasses.is_dataclass(value) and not isinstance(value, type):
+        return {
+            field.name: convert_out(getattr(value, field.name))
+            for field in dataclasses.fields(value)
+        }
+    if isinstance(value, tuple) and hasattr(value, "_fields"):
+        return {name: convert_out(getattr(value, name)) for name in value._fields}
+    if isinstance(value, (list, tuple)):
+        return [convert_out(item) for item in value]
+    if isinstance(value, dict):
+        return {key: convert_out(item) for key, item in value.items()}
+    return value
 
 
 def failure(where, error):

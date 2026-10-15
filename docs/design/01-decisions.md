@@ -9961,3 +9961,36 @@ Python process is left behind (the count before and after a run is
 the same). The documents: `docs/python.md` sections 1 and 5, the
 reference's bridge paragraph, the sketch's section 15, the roadmap's
 stage 41 and track E. (Claude)
+
+**AW51. Stage 41b built: record types from Python classes
+(2026-10-15).** The inspection script reports, beside the functions,
+the classes the annotations name whose fields Python states: a
+dataclass, a `NamedTuple` or a `TypedDict`, each with its kind, its
+bare name, whether it is generic, its own docstring's first line and
+its fields (name, annotation tree, required, taken by the
+constructor), the fields' classes reported in turn. The binder settles
+them into record types, each after the classes its fields name: a
+`public type` with a `has` line per field by the mapping of AM2 (a key
+a `TypedDict` does not require as `maybe`), `can ToJson` and `can
+FromJson`, the purpose from the docstring or "The Python class
+`<qualified>`."; a function's parameter or result of such a class is
+declared as the type. A class stays `JsonValue` with the reason in the
+comment when it is generic, has no fields, has a field its constructor
+does not take, has a field whose name is not a Renyi value name as it
+is (the JSON key must stay the Python name), has a bare name that is
+not a type name or is taken by the prelude, the JSON and time modules,
+`PythonError` or an earlier class, or names itself through its
+fields. The worker converts at the boundary by the function's own
+annotations, read once: a JSON object into a dataclass or a
+`NamedTuple` through `cls(**fields)` and the fields' own annotations,
+through `Optional`, `Annotated`, lists and maps; a `TypedDict` stays a
+dict, an unrequired key that came as null left out; a dataclass or a
+`NamedTuple` in the result rendered as the object of its fields (a
+`NamedTuple` would otherwise cross as a list). The VM and the checker
+are untouched: the record decodes and encodes by its declared type as
+any record does. The tests: the fixture's `shift` through a dataclass
+(`11 12` in the expected output), the binary test's package with the
+three kinds and a nested dataclass, bound and called through the
+generated module, the unit test with eight classes of which four are
+refused. The documents: `docs/python.md` section 3, the reference's
+command row, the handoff's binder section, CLAUDE.md. (Claude)

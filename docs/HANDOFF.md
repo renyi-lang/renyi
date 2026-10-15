@@ -199,13 +199,21 @@ dataclasses, `NamedTuple`s and `TypedDict`s, the worker item closed),
 and 41a is done (decision AW50; the bullet "The deadline per call" at
 the end of the section "The Python bridge as it exists" below): the
 manifest's `deadline`, the worker's output on a thread, the fifth
-variant, bytecode format 11 and encoding 9. The work next: 41b, the
-record types from Python classes in the binder and the worker (the
-study's "Item 1" paragraph is the design), then 41c, the roadmap's
-item closed (done in the roadmap's entry already), then (3) the
-emitter's own round for the compile row, its design study first. The
-open items of AW45 stand beside them (the verified domain, the
-article's submission, now that 0.3.0 is out).
+variant, bytecode format 11 and encoding 9; 41b is done (decision
+AW51; the bullet "The record types from Python classes" in the same
+section): the inspect script's classes, the binder's record types, the
+worker's conversions; and 41c is closed in the roadmap's entry (the
+tests of a file share one worker already). Stage 41 is closed. The
+work next: (3) the emitter's own round for the compile row, its
+design study first (the compile row is the Renyi compiler's
+`compile.ry` on `compiler/bodies.ry` against `renyi compile`, 13.25 by
+instructions at AU58's study, the emitter's linear searches
+`type_index` and `function_at` about 110 million of it, the Rust side
+spending its wall time on the 6 MB bytecode file; AW27 left the round
+unscheduled because the ratio had no consumer, so the study's first
+question is what the round is for). The open items of AW45 stand
+beside it (the verified domain, the article's submission, now that
+0.3.0 is out).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -2461,6 +2469,42 @@ recommended option); the pieces mirror the foreign function interface
   format by number; CI installed Python after `cargo test`, which the
   bridge's tests now need before it.
 
+- **The record types from Python classes (decision AW49, stage 41b,
+  session 15, 2026-10-15).** `python_inspect.py` keeps `CLASSES`, the
+  classes met in the annotations whose fields Python states
+  (`kind_of`: `dataclasses.is_dataclass`, a `tuple` subclass with
+  `_fields`, `typing.is_typeddict`), each with its qualified and bare
+  name, whether generic, its own docstring's first line (the one a
+  dataclass writes for itself does not count) and its fields through
+  `typing.get_type_hints` (name, tree, required, taken by the
+  constructor), the fields' classes noted in turn; the report carries
+  them as `classes`. `bind/python.rs`: `settle_records` settles each
+  class after the classes its fields name (`classes_in`), refusing a
+  generic class, no fields, a field the constructor does not take, a
+  field name that is not a Renyi value name as it is (`is_field_name`:
+  `renyi_name` leaves it alone and it has two characters), a bare name
+  that is not PascalCase or is in `TAKEN_TYPES` (the prelude's, the
+  JSON and time modules', `PythonError`) or an earlier record's, and a
+  class still settling through its own fields; a settled class is a
+  `Record` (name, purpose, fields by the `Mapper`, a key a `TypedDict`
+  does not require as `maybe`, the notes of its `JsonValue` fields),
+  written after the skipped lines as `public type` with `can ToJson`
+  and `can FromJson`; the `Mapper` now holds the outcomes, maps a
+  settled class to its name and puts a refused class's reason in the
+  note (`\`a\` (shapes.XY: \`x\` is not a Renyi field name)`).
+  `python_worker.py`: `converted_in` reads the function's signature
+  and hints once (`HINTS`), `convert_in` builds a dict into a
+  dataclass or a `NamedTuple` by `cls(**fields)` through the fields'
+  hints, through `Optional`, `Annotated`, the list-like and map-like
+  origins, and leaves a `TypedDict` a dict with an unrequired key that
+  came as null left out; `convert_out` renders a dataclass or a
+  `NamedTuple` as the object of its fields through lists, tuples and
+  dicts. The fixture: `Point` and `shift` in `analysis.py`, declared by
+  hand in `analysis.ry` (`py_by`, since `by` is reserved), printed by
+  `stats.ry`; the binary test's `geometry.py` with `Point`, `Size`,
+  `Options` and `Box`, the generated text expected and the four calls
+  through `shapes.ry`; the unit test with eight classes, four refused
+  for the four reasons.
 - **The deadline per call (decision AW49, stage 41a, session 15,
   2026-10-15).** `PythonModule` and `PythonBinding` of `renyi_syntax`
   carry `deadline: Option<u64>` in milliseconds, the manifest's
@@ -10699,10 +10743,10 @@ on a fresh clone).
   for any Python tool that imports it; the signature in a purpose is
   the interpreter's rendering (Python 3.14 prints `Optional[int]` as
   `int | None`), so a generated file differs in its purposes across
-  versions; a class, a dataclass or a `TypedDict` is `JsonValue`, no
-  record type is generated; classes, methods and constants are not
-  declared; a default is not carried, the Renyi caller passes every
-  positional parameter.
+  versions; a dataclass, a `NamedTuple` or a `TypedDict` is a record
+  type since stage 41b (decision AW51), any other class `JsonValue`;
+  classes' methods and constants are not declared; a default is not
+  carried, the Renyi caller passes every positional parameter.
 - **The bridge.** The worker's standard error is inherited from the
   VM's process, not routed through `Options::stderr`, so a harness
   that captures the VM's standard error does not see what Python

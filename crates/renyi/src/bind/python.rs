@@ -8,7 +8,11 @@
 //! mapping does not reach, with a comment naming what stands as
 //! `JsonValue`; a function the bridge cannot call by position (a
 //! keyword-only parameter without a default) or whose signature Python
-//! cannot give is left in the file as a comment with the reason.
+//! cannot give is left in the file as a comment with the reason. A
+//! dataclass, a `NamedTuple` or a `TypedDict` the annotations name becomes
+//! a record type of the file (decision AW49), its fields by the same
+//! mapping, when its fields are Renyi names and its bare name is free;
+//! otherwise it stays `JsonValue` and the comment says why.
 
 use std::path::Path;
 use std::process::{Command, ExitCode, Stdio};
@@ -28,6 +32,39 @@ const PREFIX: &str = "py_";
 /// What a purpose line has room for after `  purpose: ` within the line
 /// limit of 100 columns.
 const PURPOSE_ROOM: usize = 100 - "  purpose: ".len();
+
+/// The type names a generated record may not take: the prelude's, the
+/// JSON module's, the time module's and the bridge's.
+const TAKEN_TYPES: [&str; 28] = [
+    "Integer",
+    "Decimal",
+    "Float",
+    "Boolean",
+    "Text",
+    "Bytes",
+    "List",
+    "Map",
+    "Set",
+    "Range",
+    "Pair",
+    "Duration",
+    "Ordering",
+    "ConstraintViolation",
+    "InvalidNumber",
+    "InvalidEncoding",
+    "TimedOut",
+    "Guarded",
+    "JsonValue",
+    "Naming",
+    "JsonError",
+    "Instant",
+    "Date",
+    "Weekday",
+    "InvalidDate",
+    "PythonError",
+    "Equal",
+    "Compare",
+];
 
 const LISTS: [&str; 4] = [
     "builtins.list",
@@ -199,6 +236,199 @@ enum Entry {
     },
 }
 
+/// A record type of the file, from a class of the report (decision AW49).
+struct Record {
+    name: String,
+    purpose: String,
+    fields: Vec<(String, String)>,
+    /// what stands as `JsonValue` among the fields
+    notes: Vec<String>,
+    json_value: bool,
+}
+
+/// What a class of the report became: a record type by its name, or
+/// `JsonValue` for the reason.
+type Outcome = (String, Result<String, String>);
+
+/// A class as the report describes it.
+struct Class<'a> {
+    qualified: &'a str,
+    short: &'a str,
+    generic: bool,
+    doc: Option<&'a str>,
+    /// name, annotation tree, required, taken by the constructor
+    fields: Vec<(&'a str, Option<&'a Json>, bool, bool)>,
+}
+
+fn class_of(json: &Json) -> Result<Class<'_>, String> {
+    let fields = object(json, "a class of the report")?;
+    let qualified = text(fields, "name").ok_or("a class of the report has no `name`")?;
+    let short = text(fields, "short").unwrap_or(qualified);
+    let generic = matches!(field(fields, "generic"), Some(Json::Boolean(true)));
+    let doc = text(fields, "doc");
+    let mut members = Vec::new();
+    if let Some(Json::Array(items)) = field(fields, "fields") {
+        for item in items {
+            let item = object(item, "a field of the report")?;
+            let name = text(item, "name").ok_or("a field of the report has no `name`")?;
+            let annotation = field(item, "annotation").filter(|tree| !matches!(tree, Json::Null));
+            let required = !matches!(field(item, "required"), Some(Json::Boolean(false)));
+            let init = !matches!(field(item, "init"), Some(Json::Boolean(false)));
+            members.push((name, annotation, required, init));
+        }
+    }
+    Ok(Class {
+        qualified,
+        short,
+        generic,
+        doc,
+        fields: members,
+    })
+}
+
+/// A Renyi type name: PascalCase, letters and digits, not taken.
+fn is_type_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    chars.next().is_some_and(|first| first.is_ascii_uppercase())
+        && chars.all(|ch| ch.is_ascii_alphanumeric())
+}
+
+/// A Python field name that is a Renyi value name as it is: the JSON key
+/// must stay the Python name, so a name the binder would respell is out.
+fn is_field_name(name: &str) -> bool {
+    name.chars().count() >= 2 && renyi_name(name, PREFIX) == name
+}
+
+/// The classes of the report an annotation tree names.
+fn classes_in<'a>(tree: Option<&'a Json>, out: &mut Vec<&'a str>) {
+    let Some(Json::Object(fields)) = tree else {
+        return;
+    };
+    if let Some(class) = text(fields, "class") {
+        out.push(class);
+    }
+    for key in ["args", "union"] {
+        if let Some(Json::Array(items)) = field(fields, key) {
+            for item in items {
+                classes_in(Some(item), out);
+            }
+        }
+    }
+}
+
+/// The classes of the report settled into record types, each after the
+/// classes its fields name (decision AW49): a generic class, one without
+/// fields, one with a field the constructor does not take, a field that is
+/// not a Renyi name, a bare name that is not a type name or is taken, and
+/// a class that names itself through its fields stay `JsonValue`.
+fn settle_records(classes: &[Json]) -> Result<(Vec<Record>, Vec<Outcome>), String> {
+    let classes: Vec<Class> = classes.iter().map(class_of).collect::<Result<_, _>>()?;
+    let mut records = Vec::new();
+    let mut outcomes: Vec<Outcome> = Vec::new();
+    let mut settling: Vec<&str> = Vec::new();
+    for index in 0..classes.len() {
+        settle(index, &classes, &mut records, &mut outcomes, &mut settling);
+    }
+    Ok((records, outcomes))
+}
+
+fn settle<'a>(
+    index: usize,
+    classes: &[Class<'a>],
+    records: &mut Vec<Record>,
+    outcomes: &mut Vec<Outcome>,
+    settling: &mut Vec<&'a str>,
+) {
+    let class = &classes[index];
+    if outcomes.iter().any(|(name, _)| name == class.qualified) {
+        return;
+    }
+    settling.push(class.qualified);
+    let outcome = settle_class(class, classes, records, outcomes, settling);
+    settling.pop();
+    if let Ok(record) = &outcome {
+        records.push(Record {
+            name: record.name.clone(),
+            purpose: record.purpose.clone(),
+            fields: record.fields.clone(),
+            notes: record.notes.clone(),
+            json_value: record.json_value,
+        });
+    }
+    let outcome = outcome.map(|record| record.name);
+    outcomes.push((class.qualified.to_string(), outcome));
+}
+
+fn settle_class<'a>(
+    class: &Class<'a>,
+    classes: &[Class<'a>],
+    records: &mut Vec<Record>,
+    outcomes: &mut Vec<Outcome>,
+    settling: &mut Vec<&'a str>,
+) -> Result<Record, String> {
+    if class.generic {
+        return Err("a generic class".to_string());
+    }
+    if class.fields.is_empty() {
+        return Err("no fields".to_string());
+    }
+    if !is_type_name(class.short) {
+        return Err(format!("`{}` is not a type name", class.short));
+    }
+    if TAKEN_TYPES.contains(&class.short)
+        || outcomes
+            .iter()
+            .any(|(_, outcome)| outcome.as_deref() == Ok(class.short))
+    {
+        return Err(format!("the name `{}` is taken", class.short));
+    }
+    for (name, _, _, init) in &class.fields {
+        if !init {
+            return Err(format!("the constructor does not take `{name}`"));
+        }
+        if !is_field_name(name) {
+            return Err(format!("`{name}` is not a Renyi field name"));
+        }
+    }
+    // the classes the fields name come first; one still settling is this
+    // class through its own fields
+    let mut named = Vec::new();
+    for (_, annotation, _, _) in &class.fields {
+        classes_in(*annotation, &mut named);
+    }
+    for name in named {
+        if settling.contains(&name) {
+            return Err("a class that names itself".to_string());
+        }
+        if let Some(position) = classes.iter().position(|other| other.qualified == name) {
+            settle(position, classes, records, outcomes, settling);
+        }
+    }
+    let mut mapper = Mapper::new(outcomes);
+    let mut fields = Vec::new();
+    for (name, annotation, required, _) in &class.fields {
+        let mut ty = mapper.map(*annotation, &format!("`{name}`"));
+        if !required && !ty.starts_with("maybe ") {
+            ty = format!("maybe {ty}");
+        }
+        fields.push((name.to_string(), ty));
+    }
+    let purpose = match class.doc {
+        Some(doc) => purpose_of(Some(doc), class.short),
+        None => format!(
+            "The Python class `{}`.",
+            fit(class.qualified, PURPOSE_ROOM - 20)
+        ),
+    };
+    Ok(Record {
+        name: class.short.to_string(),
+        purpose,
+        fields,
+        notes: mapper.notes,
+        json_value: mapper.json_value,
+    })
+}
+
 /// The declaration file and the manifest entry for a report.
 pub(super) fn bind(
     package: &str,
@@ -209,6 +439,11 @@ pub(super) fn bind(
     let Some(Json::Array(functions)) = field(fields, "functions") else {
         return Err("the report has no `functions`".to_string());
     };
+    let classes: &[Json] = match field(fields, "classes") {
+        Some(Json::Array(classes)) => classes,
+        _ => &[],
+    };
+    let (records, outcomes) = settle_records(classes)?;
     let tail = [
         "or fails with PythonError".to_string(),
         format!("needs python({package:?})"),
@@ -218,9 +453,9 @@ pub(super) fn bind(
     let mut symbols: Vec<(String, String)> = Vec::new();
     let mut skipped: Vec<String> = Vec::new();
     let mut declared: Vec<String> = Vec::new();
-    let mut imports_json = false;
+    let mut imports_json = records.iter().any(|record| record.json_value);
     for function in functions {
-        match entry_of(function, &mut taken)? {
+        match entry_of(function, &mut taken, &outcomes)? {
             Entry::Skipped { signature, reason } => {
                 skipped.push(format!("# skipped: {signature} ({reason})\n"));
             }
@@ -260,6 +495,20 @@ pub(super) fn bind(
             text.push_str(line);
         }
     }
+    for record in &records {
+        text.push('\n');
+        if !record.notes.is_empty() {
+            text.push_str(&format!("# as JsonValue: {}\n", record.notes.join(", ")));
+        }
+        text.push_str(&format!(
+            "public type {}\n  purpose: {}\n",
+            record.name, record.purpose
+        ));
+        for (name, ty) in &record.fields {
+            text.push_str(&format!("  has {name}: {ty}\n"));
+        }
+        text.push_str("  can ToJson\n  can FromJson\nend\n");
+    }
     for function in &declared {
         text.push('\n');
         text.push_str(function);
@@ -278,7 +527,11 @@ pub(super) fn bind(
 /// order, each required; `*args` and `**kwargs` left out; a keyword-only
 /// parameter with a default left out, one without a default skipping the
 /// function (decision AM1).
-fn entry_of(function: &Json, taken: &mut Vec<String>) -> Result<Entry, String> {
+fn entry_of(
+    function: &Json,
+    taken: &mut Vec<String>,
+    records: &[Outcome],
+) -> Result<Entry, String> {
     let fields = object(function, "a function of the report")?;
     let python_name = text(fields, "name").ok_or("a function of the report has no `name`")?;
     if let Some(reason) = text(fields, "skipped") {
@@ -291,7 +544,7 @@ fn entry_of(function: &Json, taken: &mut Vec<String>) -> Result<Entry, String> {
     let Some(Json::Array(parameters)) = field(fields, "parameters") else {
         return Err(format!("`{python_name}` in the report has no `parameters`"));
     };
-    let mut mapper = Mapper::default();
+    let mut mapper = Mapper::new(records);
     let mut params: Vec<(String, String)> = Vec::new();
     let mut names: Vec<String> = Vec::new();
     for parameter in parameters {
@@ -368,14 +621,24 @@ fn fit(text: &str, room: usize) -> String {
 
 /// The mapping of decision AM2: an annotation tree to the Renyi type the
 /// bridge carries, `JsonValue` where the mapping does not reach, with a
-/// note of what stands as `JsonValue`.
-#[derive(Default)]
-struct Mapper {
+/// note of what stands as `JsonValue`; a class settled as a record type
+/// (decision AW49) is that type, one that was not carries its reason in
+/// the note.
+struct Mapper<'a> {
+    records: &'a [Outcome],
     json_value: bool,
     notes: Vec<String>,
 }
 
-impl Mapper {
+impl<'a> Mapper<'a> {
+    fn new(records: &'a [Outcome]) -> Mapper<'a> {
+        Mapper {
+            records,
+            json_value: false,
+            notes: Vec::new(),
+        }
+    }
+
     fn map(&mut self, tree: Option<&Json>, what: &str) -> String {
         let Some(tree) = tree.filter(|tree| !matches!(tree, Json::Null)) else {
             return self.fallback(what, "no annotation");
@@ -383,10 +646,25 @@ impl Mapper {
         match self.known(tree, what) {
             Some(ty) => ty,
             None => {
-                let shown = shown(tree);
+                let mut shown = shown(tree);
+                if let Some(reason) = self.reason(tree) {
+                    shown = format!("{shown}: {reason}");
+                }
                 self.fallback(what, &shown)
             }
         }
+    }
+
+    /// Why a class of the report is not a record type, when it is one.
+    fn reason(&self, tree: &Json) -> Option<&str> {
+        let Json::Object(fields) = tree else {
+            return None;
+        };
+        let class = text(fields, "class")?;
+        self.records
+            .iter()
+            .find(|(name, _)| name == class)
+            .and_then(|(_, outcome)| outcome.as_ref().err().map(String::as_str))
     }
 
     fn fallback(&mut self, what: &str, shown: &str) -> String {
@@ -415,7 +693,11 @@ impl Mapper {
                 "builtins.list" => self.any("List of"),
                 "builtins.set" | "builtins.frozenset" => self.any("Set of"),
                 "builtins.dict" => self.any("Map of Text to"),
-                _ => None,
+                _ => self
+                    .records
+                    .iter()
+                    .find(|(name, _)| name == class)
+                    .and_then(|(_, outcome)| outcome.as_ref().ok().cloned()),
             };
         }
         if let Some(Json::Array(members)) = field(fields, "union") {
@@ -646,10 +928,89 @@ public function greet(names: List of Text) or fails with PythonError needs pytho
         ];
         for (tree, expected, note) in cases {
             let tree = read_json(tree).unwrap_or_else(|(detail, _)| panic!("{detail}"));
-            let mut mapper = Mapper::default();
+            let mut mapper = Mapper::new(&[]);
             assert_eq!(mapper.map(Some(&tree), "`x`"), expected, "{tree:?}");
             assert_eq!(mapper.notes.join(", "), note, "{tree:?}");
         }
+    }
+
+    #[test]
+    fn the_classes_with_fields_become_record_types() {
+        // decision AW49: a dataclass, a NamedTuple and a TypedDict as
+        // records, the classes a field names first; the rest stays
+        // JsonValue with the reason in the note
+        let point = "{\"name\": \"shapes.Point\", \"short\": \"Point\", \"kind\": \"dataclass\", \"generic\": false, \"doc\": \"A point on the grid\", \"fields\": [{\"name\": \"across\", \"annotation\": {\"class\": \"builtins.int\"}, \"required\": true, \"init\": true}, {\"name\": \"down\", \"annotation\": {\"class\": \"builtins.int\"}, \"required\": true, \"init\": true}]}";
+        let size = "{\"name\": \"shapes.Size\", \"short\": \"Size\", \"kind\": \"namedtuple\", \"generic\": false, \"doc\": null, \"fields\": [{\"name\": \"width\", \"annotation\": {\"class\": \"builtins.float\"}, \"required\": true, \"init\": true}, {\"name\": \"height\", \"annotation\": {\"class\": \"builtins.float\"}, \"required\": true, \"init\": true}]}";
+        let options = "{\"name\": \"shapes.Options\", \"short\": \"Options\", \"kind\": \"typeddict\", \"generic\": false, \"doc\": null, \"fields\": [{\"name\": \"label\", \"annotation\": {\"class\": \"builtins.str\"}, \"required\": false, \"init\": true}, {\"name\": \"extra\", \"annotation\": {\"class\": \"typing.Any\"}, \"required\": true, \"init\": true}]}";
+        // a box names a point before the point is settled
+        let boxed = "{\"name\": \"shapes.Box\", \"short\": \"Box\", \"kind\": \"dataclass\", \"generic\": false, \"doc\": null, \"fields\": [{\"name\": \"corner\", \"annotation\": {\"class\": \"shapes.Point\"}, \"required\": true, \"init\": true}, {\"name\": \"sizes\", \"annotation\": {\"generic\": \"builtins.list\", \"args\": [{\"class\": \"shapes.Size\"}]}, \"required\": true, \"init\": true}]}";
+        let node = "{\"name\": \"shapes.Node\", \"short\": \"Node\", \"kind\": \"dataclass\", \"generic\": false, \"doc\": null, \"fields\": [{\"name\": \"next\", \"annotation\": {\"union\": [{\"class\": \"shapes.Node\"}, {\"none\": true}]}, \"required\": true, \"init\": true}]}";
+        let xy = "{\"name\": \"shapes.XY\", \"short\": \"XY\", \"kind\": \"namedtuple\", \"generic\": false, \"doc\": null, \"fields\": [{\"name\": \"x\", \"annotation\": {\"class\": \"builtins.int\"}, \"required\": true, \"init\": true}]}";
+        let text_class = "{\"name\": \"shapes.Text\", \"short\": \"Text\", \"kind\": \"dataclass\", \"generic\": false, \"doc\": null, \"fields\": [{\"name\": \"value\", \"annotation\": {\"class\": \"builtins.str\"}, \"required\": true, \"init\": true}]}";
+        let generic = "{\"name\": \"shapes.Cell\", \"short\": \"Cell\", \"kind\": \"dataclass\", \"generic\": true, \"doc\": null, \"fields\": [{\"name\": \"value\", \"annotation\": {\"other\": \"~T\"}, \"required\": true, \"init\": true}]}";
+        let shift = "{\"name\": \"shift\", \"signature\": \"shift(point: Point, by: int) -> Point\", \"parameters\": [{\"name\": \"point\", \"kind\": \"positional\", \"default\": false, \"annotation\": {\"class\": \"shapes.Point\"}}, {\"name\": \"by\", \"kind\": \"positional\", \"default\": false, \"annotation\": {\"class\": \"builtins.int\"}}], \"returns\": {\"class\": \"shapes.Point\"}, \"doc\": null}";
+        let odd = "{\"name\": \"odd\", \"signature\": \"odd(a: XY, b: Node, c: Text, d: Cell[int]) -> Box\", \"parameters\": [{\"name\": \"a\", \"kind\": \"positional\", \"default\": false, \"annotation\": {\"class\": \"shapes.XY\"}}, {\"name\": \"b\", \"kind\": \"positional\", \"default\": false, \"annotation\": {\"class\": \"shapes.Node\"}}, {\"name\": \"c\", \"kind\": \"positional\", \"default\": false, \"annotation\": {\"class\": \"shapes.Text\"}}, {\"name\": \"d\", \"kind\": \"positional\", \"default\": false, \"annotation\": {\"generic\": \"shapes.Cell\", \"args\": [{\"class\": \"builtins.int\"}]}}], \"returns\": {\"class\": \"shapes.Box\"}, \"doc\": null}";
+        let report = read_json(&format!(
+            "{{\"version\": \"3.13.0\", \"file\": \"shapes.py\", \"functions\": [{shift}, {odd}], \"classes\": [{boxed}, {point}, {size}, {options}, {node}, {xy}, {text_class}, {generic}]}}"
+        ))
+        .unwrap_or_else(|(detail, _)| panic!("{detail}"));
+        let (text, _) =
+            bind("shapes", "shapes", &report).unwrap_or_else(|detail| panic!("{detail}"));
+        assert_eq!(
+            text,
+            "module shapes
+  purpose: Bindings generated by `renyi bind --python` from shapes.
+
+import std.python exposing PythonError
+import std.json exposing JsonValue
+
+public type Point
+  purpose: A point on the grid.
+  has across: Integer
+  has down: Integer
+  can ToJson
+  can FromJson
+end
+
+public type Size
+  purpose: The Python class `shapes.Size`.
+  has width: Float
+  has height: Float
+  can ToJson
+  can FromJson
+end
+
+public type Box
+  purpose: The Python class `shapes.Box`.
+  has corner: Point
+  has sizes: List of Size
+  can ToJson
+  can FromJson
+end
+
+# as JsonValue: `extra` (Any)
+public type Options
+  purpose: The Python class `shapes.Options`.
+  has label: maybe Text
+  has extra: JsonValue
+  can ToJson
+  can FromJson
+end
+
+public function shift(point: Point, py_by: Integer)
+  returns Point
+  or fails with PythonError
+  needs python(\"shapes\")
+  purpose: `shift(point: Point, by: int) -> Point`.
+
+# as JsonValue: `a` (shapes.XY: `x` is not a Renyi field name), `b` (shapes.Node: a class that names itself), `c` (shapes.Text: the name `Text` is taken), `d` (shapes.Cell[int])
+public function odd(argument_1: JsonValue, argument_2: JsonValue, argument_3: JsonValue, argument_4: JsonValue)
+  returns Box
+  or fails with PythonError
+  needs python(\"shapes\")
+  purpose: `odd(a: XY, b: Node, c: Text, d: Cell[int]) -> Box`.
+"
+        );
     }
 
     #[test]

@@ -725,9 +725,17 @@ where one decided, the status. The dates are those of the decisions.
     killed past it and started again at the next call; `TimedOut(after:
     Duration)` the fifth variant of `PythonError`; the conformance
     fixture's `stall` past a deadline of one second and a binary test
-    with an entry's deadline of 250 milliseconds. 41b next: the record
-    types from dataclasses, `NamedTuple`s and `TypedDict`s in the
-    binder and the worker. 41c: the item "one worker across a test run"
+    with an entry's deadline of 250 milliseconds. 41b done (decision
+    AW51, 2026-10-15): the inspect script reports the dataclasses,
+    `NamedTuple`s and `TypedDict`s the annotations name with their
+    fields, the binder settles them into record types (`public type`
+    with `can ToJson` and `can FromJson`, a class a field names first,
+    the reasons a class stays `JsonValue` in the comment), and the
+    worker builds a dataclass or a `NamedTuple` from the JSON object by
+    the function's annotations and renders one back; the fixture's
+    `shift` through a dataclass, the binary test's package with the
+    three kinds called through the generated module. 41c: the item
+    "one worker across a test run"
     closed as done (the tests of a file share the `Vm` and its worker,
     measured in the study; each file of a run keeps its own).
 

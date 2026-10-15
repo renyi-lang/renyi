@@ -3,10 +3,10 @@ module stats
 
 import std.console
 import std.python exposing PythonError
-import analysis exposing Sample
+import analysis exposing Sample, Point
 
 function main() or fails with PythonError needs console, python("analysis")
-  purpose: Print what Python computes, how an exception, a wrong result and a call past the deadline come back.
+  purpose: Print what Python computes, how a failure of each kind comes back, and a record through a dataclass.
 
   let mean be analysis.mean([1.0, 2.0, 4.5]) otherwise fail
   console.print("{mean}")
@@ -32,4 +32,6 @@ function main() or fails with PythonError needs console, python("analysis")
   end
   let again be analysis.shout("again") otherwise fail
   console.print(again)
+  let moved be analysis.shift(point: Point(across: 1, down: 2), py_by: 10) otherwise fail
+  console.print("{moved.across} {moved.down}")
 end

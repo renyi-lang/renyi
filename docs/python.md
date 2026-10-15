@@ -153,7 +153,22 @@ The types follow the annotations: `int`, `float`, `str`, `bool` and
 `list[T]` (`Sequence[T]`, `Iterable[T]`) is `List of T`, `set[T]` is
 `Set of T`, `dict[str, T]` (`Mapping[str, T]`) is `Map of Text to T`,
 `Optional[T]` and `T | None` are `maybe T`; a result annotated `None`
-is none. Anything else, a missing annotation included, is `JsonValue`
+is none. A dataclass, a `NamedTuple` or a `TypedDict` the annotations
+name becomes a record type of the file (decision AW49), `public type
+Point` with a `has` line per field by the same mapping (a key a
+`TypedDict` does not require as `maybe`), `can ToJson` and `can
+FromJson`, its purpose the class's docstring; a class a field names
+comes first. The worker builds a dataclass or a `NamedTuple` from the
+JSON object at the call, through the fields' own annotations, and
+renders one in the result back to an object; a `TypedDict` is a dict
+both ways, a `maybe` field that is nothing left out of it when the key
+is not required. A class stays `JsonValue`, with the reason in the
+comment, when it is generic, has no fields, has a field its
+constructor does not take, a field whose name is not a Renyi name as
+it is (`x`, `userName`, a reserved word: the JSON key must stay the
+Python name), a bare name that is not a type name or is taken by the
+prelude or by an earlier class, or names itself through its fields.
+Anything else, a missing annotation included, is `JsonValue`
 at that position, and a comment above the function says what stands as
 `JsonValue`, so that the file can be edited towards a record type where
 one serves better:

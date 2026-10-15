@@ -345,7 +345,44 @@ fn publish_refuses_a_project_with_python_modules() {
 /// keyword-only parameter, a private function.
 const GEOMETRY_PY: &str = r#""""Shapes, for the binder."""
 
-from typing import Sequence
+from dataclasses import dataclass
+from typing import NamedTuple, Sequence, TypedDict
+
+
+@dataclass
+class Point:
+    """A point on the grid."""
+
+    across: int
+    down: int
+
+
+class Size(NamedTuple):
+    width: float
+    height: float
+
+
+class Options(TypedDict, total=False):
+    label: str
+
+
+@dataclass
+class Box:
+    corner: Point
+    sizes: list[Size]
+
+
+def shift(point: Point, by: int) -> Point:
+    return Point(point.across + by, point.down + by)
+
+
+def scale(size: Size, factor: float) -> Size:
+    return Size(size.width * factor, size.height * factor)
+
+
+def describe(box: Box, options: Options) -> str:
+    label = options.get("label", "box")
+    return f"{label} at {box.corner.across},{box.corner.down} with {len(box.sizes)} sizes"
 
 
 def area(width: float, height: float = 1.0) -> float:
@@ -388,6 +425,55 @@ import std.python exposing PythonError
 import std.json exposing JsonValue
 
 # skipped: weird(*, key: str) -> str (a keyword-only parameter without a default: `key`)
+
+public type Point
+  purpose: A point on the grid.
+  has across: Integer
+  has down: Integer
+  can ToJson
+  can FromJson
+end
+
+public type Size
+  purpose: The Python class `geometry.Size`.
+  has width: Float
+  has height: Float
+  can ToJson
+  can FromJson
+end
+
+public type Box
+  purpose: The Python class `geometry.Box`.
+  has corner: Point
+  has sizes: List of Size
+  can ToJson
+  can FromJson
+end
+
+public type Options
+  purpose: The Python class `geometry.Options`.
+  has label: maybe Text
+  can ToJson
+  can FromJson
+end
+
+public function shift(point: Point, py_by: Integer)
+  returns Point
+  or fails with PythonError
+  needs python("geometry")
+  purpose: `shift(point: geometry.Point, by: int) -> geometry.Point`.
+
+public function scale(size: Size, factor: Float)
+  returns Size
+  or fails with PythonError
+  needs python("geometry")
+  purpose: `scale(size: geometry.Size, factor: float) -> geometry.Size`.
+
+public function describe(box: Box, options: Options)
+  returns Text
+  or fails with PythonError
+  needs python("geometry")
+  purpose: `describe(box: geometry.Box, options: geometry.Options) -> str`.
 
 public function area(width: Float, height: Float)
   returns Float
@@ -473,12 +559,22 @@ const SHAPES_RY: &str = r#"module shapes
 import std.console
 import std.json exposing JsonValue
 import std.python exposing PythonError
-import geometry
+import geometry exposing Point, Size, Box, Options
 import exports
 
 function main() or fails with PythonError needs console, python("geometry"), python("listed")
   purpose: Print what the generated declarations carry.
 
+  let moved be geometry.shift(point: Point(across: 1, down: 2), py_by: 10) otherwise fail
+  console.print("{moved.across} {moved.down}")
+  let scaled be geometry.scale(size: Size(width: 2.0, height: 3.0), factor: 1.5) otherwise fail
+  console.print("{scaled.width} {scaled.height}")
+  let box be Box(corner: Point(across: 4, down: 5), sizes: [Size(width: 1.0, height: 1.0), scaled])
+  let labelled be geometry.describe(box: box, options: Options(label: "crate")) otherwise fail
+  console.print(labelled)
+  let no_label: maybe Text be nothing
+  let plain be geometry.describe(box: box, options: Options(label: no_label)) otherwise fail
+  console.print(plain)
   let area be geometry.area(width: 2.5, height: 4.0) otherwise fail
   console.print("{area}")
   let labels be geometry.labels(names: ["a", "b"], upper: true) otherwise fail
@@ -564,7 +660,10 @@ fn bind_writes_a_module_from_a_python_package_and_the_manifest_entry() {
     write(&directory, "shapes.ry", SHAPES_RY);
     let output = renyi(&directory, &["run", "shapes.ry"], &[]);
     assert!(output.status.success(), "{}", text(&output.stderr));
-    assert_eq!(text(&output.stdout), "10.0\nA B\n2\n0\n[\"x\",null]\n40\n");
+    assert_eq!(
+        text(&output.stdout),
+        "11 12\n3.0 4.5\ncrate at 4,5 with 2 sizes\nbox at 4,5 with 2 sizes\n10.0\nA B\n2\n0\n[\"x\",null]\n40\n"
+    );
     let stderr = text(&output.stderr);
     assert!(stderr.contains("hi there"), "{stderr}");
     // what is refused: a package that does not import, a name that is
