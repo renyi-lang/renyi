@@ -74,6 +74,9 @@ pub struct ForeignModule {
 pub struct PythonModule {
     pub package: String,
     pub symbols: Vec<(String, String)>,
+    /// the entry's own deadline per call in milliseconds (decision AW49),
+    /// if it names one
+    pub deadline: Option<u64>,
 }
 
 /// A Python module as a file is tagged with it: the module, the
@@ -84,6 +87,9 @@ pub struct PythonBinding {
     pub module: PythonModule,
     pub interpreter: Option<String>,
     pub root: String,
+    /// the deadline per call in milliseconds (decision AW49): the entry's,
+    /// else the section's, else none
+    pub deadline: Option<u64>,
 }
 
 impl SourceFile {

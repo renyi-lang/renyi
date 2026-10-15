@@ -1,6 +1,7 @@
 # Handoff
 
-Last updated: 2026-10-14, session 14, on the owner's machine. Its work:
+Last updated: 2026-10-15, session 15, on the owner's machine (the paragraph's
+end has the session's work; its start is session 14's). Session 14's work:
 the design study of stage 29, the new backend for the VM (the section
 "Stage 29, the new backend: the design study (session 14)" below: the
 checker's image run attributed by category under callgrind, eleven
@@ -188,12 +189,23 @@ stage 40: "按顺序推1到3", the release first; `docs/RELEASE.md` section
 9: the nine crates, the tag, the release page with the three
 `renyi_c-v0.3.0-<target>` archives, the registry and Open VSX at
 0.3.0, Glama's auto-release; the Marketplace upload of
-`renyi-v0.3.0.vsix` is the owner's step). The work next, by the same
-order: (2) the Python binder's items of track E (record types from
-dataclasses, a deadline per Python call, one worker across a test
-run), then (3) the emitter's own round for the compile row, each with
-a design study first. The open items of AW45 stand beside them (the
-verified domain, the article's submission, now that 0.3.0 is out).
+`renyi-v0.3.0.vsix` is the owner's step). Then, by the same order, (2)
+the Python bridge's items of track E as stage 41: the design study is
+the section "Stage 41, the Python bridge's items: the design study
+(session 15)" below (the experiment: the tests of a file share one
+worker already), the owner's four answers are decision AW49 (the
+deadline from the manifest, `TimedOut(after)`, record types for
+dataclasses, `NamedTuple`s and `TypedDict`s, the worker item closed),
+and 41a is done (decision AW50; the bullet "The deadline per call" at
+the end of the section "The Python bridge as it exists" below): the
+manifest's `deadline`, the worker's output on a thread, the fifth
+variant, bytecode format 11 and encoding 9. The work next: 41b, the
+record types from Python classes in the binder and the worker (the
+study's "Item 1" paragraph is the design), then 41c, the roadmap's
+item closed (done in the roadmap's entry already), then (3) the
+emitter's own round for the compile row, its design study first. The
+open items of AW45 stand beside them (the verified domain, the
+article's submission, now that 0.3.0 is out).
 The session's record is "Done in session 14"
 below.
 Session 13, in the cloud environment, had as its last work the icon
@@ -2448,6 +2460,33 @@ recommended option); the pieces mirror the foreign function interface
   counts the library's files, and `tests/file.rs` refuses the next
   format by number; CI installed Python after `cargo test`, which the
   bridge's tests now need before it.
+
+- **The deadline per call (decision AW49, stage 41a, session 15,
+  2026-10-15).** `PythonModule` and `PythonBinding` of `renyi_syntax`
+  carry `deadline: Option<u64>` in milliseconds, the manifest's
+  `python` section a `deadline` of its own and each entry one
+  (`manifest.rs`: `optional_duration`, `duration_of`, `duration_text`;
+  a count and a unit among milliseconds, seconds and minutes, the
+  count whole, above zero and at most a thousand million; rendered as
+  the largest unit that divides, singular for one), the resolver
+  taking the entry's else the section's (`Project::python_module`),
+  the VM's `compile::Python` and the bytecode file (`"deadline"`, a
+  number, after `root`) and the binary encoding carrying it, and
+  `compiler/project.ry` (`optional_duration`, `duration_of`,
+  `first_present`), `declare.ry`, `bytecode.ry` and `emit.ry`
+  mirroring every step. In `natives/python.rs` the worker's output is
+  read by a thread (`read_lines`) into a channel; `Worker::call` takes
+  the deadline and waits with `recv_timeout`, answering `NoAnswer::
+  TimedOut(millis)` past it or `NoAnswer::Gone(detail)` when the
+  worker ended; `run` drops the worker on either (killed and waited
+  for in `Drop`, the thread ending at the pipe's end) and fails with
+  `TimedOut(after)` or `Unavailable`. The fixture's `analysis.stall(3)`
+  under `"deadline": "1 second"` prints `timed out after 1s` and the
+  next call `AGAIN!`; the binary test `a_call_past_the_deadline_fails_
+  with_timed_out` uses an entry's `250 milliseconds` under a section's
+  `1 minute`, checks the file carries 250 and that `"soon"` refuses
+  the manifest with the resolver's text. No process is left behind
+  (the count of Python processes before and after a run is the same).
 
 ## Release 0.1 engineering (decisions AI1 to AI4; session 8, 2026-10-07)
 

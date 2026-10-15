@@ -22,6 +22,7 @@ program says so in its grant.
   "version": "0.1.0",
   "python": {
     "interpreter": "python3",
+    "deadline": "5 seconds",
     "modules": {
       "analysis": {
         "package": "analysis",
@@ -46,7 +47,14 @@ environment, say; left out, the VM uses the environment variable
 `RENYI_PYTHON` when it is set, else `python3` and then `python` on the
 PATH (`python` first on Windows, where `python3` is usually the Store's
 stub). The first interpreter that starts and answers the bridge's
-greeting is kept for the run.
+greeting is kept for the run. `deadline` (decision AW49) bounds every
+call of the section's modules: a Duration text of a count and a unit,
+`"5 seconds"`, `"250 milliseconds"`, `"1 minute"`; a module's entry may
+carry its own, which wins for that module. Left out, a call may take as
+long as the Python function does. A call past the deadline fails with
+`TimedOut(after)` (section 5); the worker is killed with it, so the
+module-level state of the Python side is gone, and the next call starts
+a worker again.
 
 ## 2. The declaration file
 
@@ -218,6 +226,11 @@ an exception of its own:
   called `sys.exit`); the next call starts a worker again.
 - `PermissionDenied(package)`: the package is outside the effective
   grant.
+- `TimedOut(after)`: the call ran past the manifest's `deadline`
+  (section 1), `after` being that deadline as a Duration; the worker
+  was killed, so what the module kept between calls is gone, and the
+  next call starts a worker again. A recording holds it as any failure
+  and a replay answers it without Python.
 
 A project with Python modules cannot be published as a package (`renyi
 publish` refuses it): a package is written in Renyi, and Python stays in

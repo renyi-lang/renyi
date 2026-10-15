@@ -711,6 +711,25 @@ where one decided, the status. The dates are those of the decisions.
     through the C API, 51 to 58 us from Python, the load 3 ms and 10
     ms. 40c when a host asks: the screen callback, the value handles
     beside JSON.
+41. **The Python bridge's items** (session 15, opened 2026-10-15 by
+    the owner's order after stage 40, "按顺序推1到3"; the design study
+    in the handoff, its four questions answered, decision AW49). The
+    three candidates of track E since session 8. 41a done (decision
+    AW50, 2026-10-15): the deadline per call from the manifest's
+    `python` section (`"deadline": "5 seconds"`, a count and a unit,
+    an entry's own winning for its module), carried in the binding
+    through the checker into the bytecode file (`"deadline"` in
+    milliseconds) and the binary encoding, read the same way by the
+    resolver written in Renyi; the worker's output read by a thread of
+    its own so a call waits on a channel with the deadline, the worker
+    killed past it and started again at the next call; `TimedOut(after:
+    Duration)` the fifth variant of `PythonError`; the conformance
+    fixture's `stall` past a deadline of one second and a binary test
+    with an entry's deadline of 250 milliseconds. 41b next: the record
+    types from dataclasses, `NamedTuple`s and `TypedDict`s in the
+    binder and the worker. 41c: the item "one worker across a test run"
+    closed as done (the tests of a file share the `Vm` and its worker,
+    measured in the study; each file of a run keeps its own).
 
 ## 3. The tracks
 
@@ -754,9 +773,10 @@ state of each line.
   2.96, within the gate of 3); the round closed by the owner's decision
   (AW27, 2026-10-13: the switch of the front end deferred, the Rust
   front end kept).
-- **E. Packages, the FFI and Python**: stages 15, 18. Done; candidates
-  not decided: record types from dataclasses in the binder, a deadline
-  per Python call, one worker across a test run.
+- **E. Packages, the FFI and Python**: stages 15, 18, 41. The deadline
+  per Python call done (41a); the record types from Python classes in
+  the binder next (41b); one worker across a test run closed as done
+  (41c).
 - **F. The agent tooling and the integrations**: stages 5, 7 (the MCP
   server), 19 (the resident world, the language server, the watch, the
   embedding API), 35 (completion, references and rename in the

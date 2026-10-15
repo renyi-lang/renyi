@@ -3849,7 +3849,7 @@ function assemble(context: Context, modules: List of CheckedModule) returns Prog
     for each declared in world.abilities
     collect AbilityMeta(name: declared.name, methods: method_names(declared.methods))
   return Program(
-    format: 10,
+    format: 11,
     modules: module_sources(world: world, modules: modules),
     builtins: builtin_ids(world.builtins),
     types: context.types,
@@ -4051,7 +4051,7 @@ function foreign_binding(world: World, info: FunctionInfo) returns maybe Foreign
 end
 
 function python_binding(world: World, info: FunctionInfo) returns maybe PythonBinding
-  purpose: A Python function's binding (decision AL1): package, symbol, interpreter and root.
+  purpose: A Python function's binding (decision AL1): package, symbol, interpreter, root and the deadline (AW49).
 
   let owner_info be declare.module_at(world: world, id: info.owner)
   let binding be owner_info.python otherwise return nothing
@@ -4059,7 +4059,8 @@ function python_binding(world: World, info: FunctionInfo) returns maybe PythonBi
     package: binding.package,
     symbol: symbol_of(symbols: binding.symbols, name: info.name),
     interpreter: binding.interpreter,
-    root: binding.root
+    root: binding.root,
+    deadline: binding.deadline
   )
 end
 

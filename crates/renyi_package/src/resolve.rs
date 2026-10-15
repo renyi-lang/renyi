@@ -198,7 +198,8 @@ impl Project {
 
     /// The binding of a Python module of the project (decision AL1), by
     /// the module's qualified name: the manifest's entry with the
-    /// interpreter the manifest names and the project root.
+    /// interpreter the manifest names, the project root and the deadline
+    /// per call (decision AW49), the entry's else the section's.
     pub fn python_module(&self, name: &str) -> Option<PythonBinding> {
         let section = &self.manifest.as_ref()?.python;
         section
@@ -209,6 +210,7 @@ impl Project {
                 module: module.clone(),
                 interpreter: section.interpreter.clone(),
                 root: self.root.clone(),
+                deadline: module.deadline.or(section.deadline),
             })
     }
 

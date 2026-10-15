@@ -33,10 +33,11 @@ use crate::value::Value;
 /// The version of the encoding, its first integer; 5 added the read-only
 /// flags of a code object's parameters (decision AW5), 6 the jump tables
 /// of a code object (decision AW15), 7 the flag that says the last reads
-/// of the slots are moves already (decision AW17), and 8 the body of a
+/// of the slots are moves already (decision AW17), 8 the body of a
 /// code object as a block after its head, decoded at the first use
-/// (decision AW18).
-pub const FORMAT: u64 = 8;
+/// (decision AW18), and 9 the deadline of a Python binding (decision
+/// AW49).
+pub const FORMAT: u64 = 9;
 
 type Read<T> = Result<T, String>;
 
@@ -327,6 +328,9 @@ fn write_function(out: &mut Writer, meta: &FunctionMeta) {
             out.text(interpreter)
         });
         out.text(&python.root);
+        out.opt(python.deadline.as_ref(), |out, deadline| {
+            out.uint(*deadline)
+        });
     });
 }
 
@@ -830,6 +834,7 @@ fn read_function(input: &mut Reader) -> Read<FunctionMeta> {
                 symbol: input.text()?,
                 interpreter: input.opt(Reader::text)?,
                 root: input.text()?,
+                deadline: input.opt(Reader::uint)?,
             })
         })?,
     })

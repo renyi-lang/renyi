@@ -66,6 +66,7 @@ type Manifest
   has registry: maybe Text
   has foreign: List of ForeignEntry
   has interpreter: maybe Text
+  has deadline: maybe Integer
   has python: List of PythonEntry
 end
 
@@ -76,15 +77,17 @@ type ForeignEntry
 end
 
 type PythonEntry
-  purpose: One module of the manifest's `python` section (decision AL1): its package, its symbols.
+  purpose: One module of the manifest's `python` section (decision AL1): its package, its symbols, its own deadline per call in milliseconds (decision AW49), if any.
   has name: Text
   has package: Text
   has symbols: List of SymbolRename
+  has deadline: maybe Integer
 end
 
 type PythonSection
-  purpose: The manifest's `python` section (decision AL1): the interpreter, if any, and the modules.
+  purpose: The manifest's `python` section (decision AL1): the interpreter, if any, the deadline per call in milliseconds for every module without one (decision AW49), if any, and the modules.
   has interpreter: maybe Text
+  has deadline: maybe Integer
   has modules: List of PythonEntry
 end
 
@@ -723,16 +726,25 @@ function step_python(root: Root, step: Step, binding: maybe ForeignModule)
 end
 
 function python_of_module(root: Root, name: Text) returns maybe PythonModule
-  purpose: The binding of a Python module of the project (decision AL1), by its qualified name.
+  purpose: The binding of a Python module of the project (decision AL1), by its qualified name; the deadline the entry's, else the section's (AW49).
 
   let manifest be root.manifest otherwise return nothing
   let entry be python_named(modules: manifest.python, name: name) otherwise return nothing
+  let deadline be first_present(own: entry.deadline, default: manifest.deadline)
   return PythonModule(
     package: entry.package,
     symbols: entry.symbols,
     interpreter: manifest.interpreter,
-    root: root.directory
+    root: root.directory,
+    deadline: deadline
   )
+end
+
+function first_present(own: maybe Integer, default: maybe Integer) returns maybe Integer
+  purpose: The first of the two that is present: a module entry's own deadline, else the section's.
+
+  if own is not nothing then return own end
+  return default
 end
 
 function python_of_file(root: Root, file_name: Text) returns maybe PythonModule
@@ -1211,6 +1223,7 @@ function read_manifest(text: Text) returns Manifest or fails with Refused
     registry: registry,
     foreign: bindings,
     interpreter: section.interpreter,
+    deadline: section.deadline,
     python: section.modules
   )
 end
@@ -1218,20 +1231,22 @@ end
 function python_section(fields: Map of Text to JsonValue, what: Text)
   returns PythonSection
   or fails with Refused
-  purpose: The `python` section (decision AL1): the interpreter, each module's package and symbols.
+  purpose: The `python` section (decision AL1): the interpreter, the deadline (AW49), each module's package, deadline and symbols.
 
   let none: maybe Text be nothing
+  let no_deadline: maybe Integer be nothing
   let section be
     match fields.get("python")
       when some(JsonObject(fields: inner)) then inner
-      when some(JsonNull) then return PythonSection(interpreter: none, modules: [])
-      when nothing then return PythonSection(interpreter: none, modules: [])
+      when some(JsonNull) then
+        return PythonSection(interpreter: none, deadline: no_deadline, modules: [])
+      when nothing then return PythonSection(interpreter: none, deadline: no_deadline, modules: [])
       otherwise fail with Refused(detail: "`python` of {what} is not an object")
     end
   let section_what be "`python` of {what}"
   keys_known(
     fields: section,
-    allowed: ["interpreter", "modules"],
+    allowed: ["interpreter", "deadline", "modules"],
     what: section_what
   ) otherwise fail
   let interpreter be optional_text(
@@ -1239,12 +1254,72 @@ function python_section(fields: Map of Text to JsonValue, what: Text)
     name: "interpreter",
     what: section_what
   ) otherwise fail
+  let deadline be optional_duration(
+    fields: section,
+    name: "deadline",
+    what: section_what
+  ) otherwise fail
   let modules be python_modules(
     section: section,
     what: what,
     section_what: section_what
   ) otherwise fail
-  return PythonSection(interpreter: interpreter, modules: modules)
+  return PythonSection(interpreter: interpreter, deadline: deadline, modules: modules)
+end
+
+function optional_duration(fields: Map of Text to JsonValue, name: Text, what: Text)
+  returns maybe Integer
+  or fails with Refused
+  purpose: A Duration field (decision AW49): a text of a count and a unit, such as `5 seconds`, in milliseconds.
+
+  let text be optional_text(fields: fields, name: name, what: what) otherwise fail
+  let found be text otherwise return nothing
+  return duration_of(text: found, name: name, what: what) otherwise fail
+end
+
+function duration_of(text: Text, name: Text, what: Text) returns Integer or fails with Refused
+  purpose: The milliseconds of a Duration text, as the Rust manifest reads it: a whole count above zero and a unit.
+
+  let mutable words: List of Text be []
+  for each word in text.split(" ")
+    if not word.is_empty() then change words to words.append(word) end
+  end
+  if words.length() is not 2 then
+    fail with Refused(
+      detail: "`{name}` of {what} is not a count and a unit, such as `5 seconds`: `{text}`"
+    )
+  end
+  let count_text be words.at(0) otherwise ""
+  let unit be words.at(1) otherwise ""
+  for each character in count_text.characters()
+    if not "0123456789".contains(character) then
+      fail with Refused(detail: "`{name}` of {what} does not start with a whole number: `{text}`")
+    end
+  end
+  if count_text.length() is greater than 19 then
+    fail with Refused(detail: "`{name}` of {what} has a count too large: `{text}`")
+  end
+  let amount be count_text.to_integer() otherwise fail with Refused(
+    detail: "`{name}` of {what} does not start with a whole number: `{text}`"
+  )
+  if amount is 0 then fail with Refused(detail: "`{name}` of {what} is zero: `{text}`") end
+  if amount is greater than 1000000000 then
+    fail with Refused(detail: "`{name}` of {what} has a count too large: `{text}`")
+  end
+  let scale be
+    match unit
+      when "millisecond" then 1
+      when "milliseconds" then 1
+      when "second" then 1000
+      when "seconds" then 1000
+      when "minute" then 60000
+      when "minutes" then 60000
+      otherwise
+        fail with Refused(
+          detail: "`{name}` of {what} has a unit that is not milliseconds, seconds or minutes: `{text}`"
+        )
+    end
+  return amount * scale
 end
 
 function python_modules(section: Map of Text to JsonValue, what: Text, section_what: Text)
@@ -1277,19 +1352,20 @@ end
 function python_entry(name: Text, value: JsonValue, what: Text)
   returns PythonEntry
   or fails with Refused
-  purpose: One Python module of the manifest: its `package` (its own name when left out), `symbols`.
+  purpose: One Python module of the manifest: its `package` (its own name when left out), `deadline` (AW49), `symbols`.
 
   let entry be
     match value
       when JsonObject(fields: found) then found
       otherwise fail with Refused(detail: "{what} is not an object")
     end
-  keys_known(fields: entry, allowed: ["package", "symbols"], what: what) otherwise fail
+  keys_known(fields: entry, allowed: ["package", "deadline", "symbols"], what: what) otherwise fail
   let package be optional_text(fields: entry, name: "package", what: what) otherwise fail
   let import_name be package otherwise name
   if import_name.is_empty() then fail with Refused(detail: "`package` of {what} is empty") end
+  let deadline be optional_duration(fields: entry, name: "deadline", what: what) otherwise fail
   let symbols be symbol_renames(entry: entry, what: what) otherwise fail
-  return PythonEntry(name: name, package: import_name, symbols: symbols)
+  return PythonEntry(name: name, package: import_name, symbols: symbols, deadline: deadline)
 end
 
 function foreign_modules(fields: Map of Text to JsonValue, what: Text)

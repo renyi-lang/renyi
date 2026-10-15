@@ -3,9 +3,10 @@
 //! through the worker; a recording replays and reproduces without Python;
 //! `--deny python` refuses the program; an interpreter that is not there,
 //! an exception, a result of the wrong type and a worker that ends are
-//! failures of the bridge's type; `renyi publish` refuses a project with
-//! Python modules. The tests need a Python 3 on the PATH, as the
-//! conformance suite does.
+//! failures of the bridge's type; a call past the manifest's deadline is
+//! `TimedOut` and the next call starts a worker again (decision AW49);
+//! `renyi publish` refuses a project with Python modules. The tests need
+//! a Python 3 on the PATH, as the conformance suite does.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -55,6 +56,7 @@ fn manifest(interpreter: Option<&str>) -> String {
 }
 
 const HELPERS_PY: &str = "import sys
+import time
 
 
 def average(values):
@@ -80,6 +82,11 @@ def oddly():
 
 def quit(code):
     sys.exit(code)
+
+
+def stall(seconds):
+    time.sleep(seconds)
+    return seconds
 ";
 
 const HELPERS_RY: &str = "module helpers
@@ -117,6 +124,32 @@ public function oddly() returns Integer or fails with PythonError needs python(\
 
 public function quit(code: Integer) or fails with PythonError needs python(\"helpers\")
   purpose: Ends the worker.
+
+public function stall(seconds: Integer)
+  returns Integer
+  or fails with PythonError
+  needs python(\"helpers\")
+  purpose: Sleeps that many seconds.
+";
+
+const STALL_RY: &str = "module stall
+  purpose: Call Python past the manifest's deadline, then again.
+
+import std.console
+import std.python exposing PythonError
+import helpers
+
+function main() or fails with PythonError needs console, python(\"helpers\")
+  purpose: Print how a call past the deadline comes back, and that the next call is answered.
+
+  match helpers.stall(5)
+    when failure(TimedOut(after)) then console.print(\"timed out after {after}\")
+    when failure(other) then console.print(\"other: {other}\")
+    when success(seconds) then console.print(\"slept {seconds}\")
+  end
+  let shouted be helpers.shout(\"again\") otherwise fail
+  console.print(shouted)
+end
 ";
 
 const CALLS_RY: &str = "module calls
@@ -567,5 +600,58 @@ fn bind_writes_a_module_from_a_python_package_and_the_manifest_entry() {
         text(&output.stderr).contains("binds a package, not a header"),
         "{}",
         text(&output.stderr)
+    );
+}
+
+#[test]
+fn a_call_past_the_deadline_fails_with_timed_out() {
+    // decision AW49: the entry's deadline bounds every call of the module;
+    // the call past it fails with `TimedOut(after)`, the worker is killed
+    // and the next call starts one again; the bytecode file carries the
+    // deadline in milliseconds
+    let directory = scratch("deadline");
+    write(
+        &directory,
+        "renyi.json",
+        "{\n  \"name\": \"bridge_test\",\n  \"version\": \"0.1.0\",\n  \"python\": {\n    \"deadline\": \"1 minute\",\n    \"modules\": {\n      \"helpers\": {\n        \"deadline\": \"250 milliseconds\",\n        \"symbols\": {\n          \"mean\": \"average\"\n        }\n      }\n    }\n  }\n}\n",
+    );
+    write(&directory, "helpers.py", HELPERS_PY);
+    write(&directory, "helpers.ry", HELPERS_RY);
+    write(&directory, "stall.ry", STALL_RY);
+    let started = std::time::Instant::now();
+    let output = renyi(&directory, &["run", "stall.ry"], &[]);
+    let elapsed = started.elapsed();
+    assert!(output.status.success(), "{}", text(&output.stderr));
+    assert_eq!(text(&output.stdout), "timed out after 250ms\nAGAIN!\n");
+    assert!(
+        elapsed < std::time::Duration::from_secs(4),
+        "the run did not wait for the sleep: {elapsed:?}"
+    );
+    let output = renyi(
+        &directory,
+        &["compile", "stall.ry", "--to", "stall.ryc"],
+        &[],
+    );
+    assert!(output.status.success(), "{}", text(&output.stderr));
+    let bytecode = std::fs::read_to_string(directory.join("stall.ryc")).expect("the bytecode file");
+    assert!(
+        bytecode.contains("\"deadline\": 250"),
+        "the entry's deadline, not the section's, is in the file"
+    );
+    let output = renyi(&directory, &["run", "stall.ryc"], &[]);
+    assert!(output.status.success(), "{}", text(&output.stderr));
+    assert_eq!(text(&output.stdout), "timed out after 250ms\nAGAIN!\n");
+    // a deadline that is not a Duration text refuses the manifest
+    write(
+        &directory,
+        "renyi.json",
+        "{\n  \"name\": \"bridge_test\",\n  \"version\": \"0.1.0\",\n  \"python\": {\n    \"deadline\": \"soon\",\n    \"modules\": {\n      \"helpers\": {}\n    }\n  }\n}\n",
+    );
+    let output = renyi(&directory, &["check", "stall.ry"], &[]);
+    assert!(!output.status.success(), "the manifest is refused");
+    let stdout = text(&output.stdout);
+    assert!(
+        stdout.contains("[manifest-invalid]: renyi.json: `deadline` of `python` of the manifest is not a count and a unit, such as `5 seconds`: `soon`"),
+        "{stdout}"
     );
 }

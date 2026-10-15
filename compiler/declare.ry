@@ -48,11 +48,12 @@ public type SymbolRename
 end
 
 public type PythonModule
-  purpose: A Python module of the project (AL1): import name, symbols, interpreter and root.
+  purpose: A Python module of the project (AL1): import name, symbols, interpreter, root and the deadline per call in milliseconds (AW49), if any.
   has package: Text
   has symbols: List of SymbolRename
   has interpreter: maybe Text
   has root: Text
+  has deadline: maybe Integer
 end
 
 type Width

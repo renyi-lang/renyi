@@ -6,7 +6,7 @@ import std.python exposing PythonError
 import analysis exposing Sample
 
 function main() or fails with PythonError needs console, python("analysis")
-  purpose: Print what Python computes, how an exception comes back, and how a wrong result does.
+  purpose: Print what Python computes, how an exception, a wrong result and a call past the deadline come back.
 
   let mean be analysis.mean([1.0, 2.0, 4.5]) otherwise fail
   console.print("{mean}")
@@ -25,4 +25,11 @@ function main() or fails with PythonError needs console, python("analysis")
     when failure(other) then console.print("other: {other}")
     when success(value) then console.print("{value}")
   end
+  match analysis.stall(3)
+    when failure(TimedOut(after)) then console.print("timed out after {after}")
+    when failure(other) then console.print("other: {other}")
+    when success(value) then console.print("{value}")
+  end
+  let again be analysis.shout("again") otherwise fail
+  console.print(again)
 end

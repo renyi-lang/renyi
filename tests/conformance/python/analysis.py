@@ -1,6 +1,9 @@
 """The Python side of the bridge's conformance fixture: what `analysis.ry`
 declares. `mean` on the Renyi side is `average` here (the manifest's
-`symbols`); the others keep their names."""
+`symbols`); the others keep their names. `stall` sleeps past the
+manifest's deadline (decision AW49)."""
+
+import time
 
 
 def average(values):
@@ -25,3 +28,8 @@ def explode(message):
 
 def oddly(times):
     return "not a number"
+
+
+def stall(seconds):
+    time.sleep(seconds)
+    return seconds

@@ -9905,3 +9905,59 @@ the VM made per call), 57.7 and 51.1 us from Python, and 62.7 and
 microseconds the study expected, the VM's construction per call the
 larger part, as it said. Not in this stage: the screen callback and
 the value handles (40c, when a host asks). (Claude)
+
+**AW49. The owner's answers on stage 41, the Python bridge's items
+(2026-10-15, after the study in the handoff): a deadline per Python
+call comes from the manifest, a `deadline` of the `python` section
+that a module's entry may override, a Duration text such as `"5
+seconds"`, none meaning unbounded as before; a call past it fails with
+a new variant `TimedOut(after: Duration)` of `PythonError`, the worker
+killed and started again at the next call; the binder generates a
+record type for a dataclass, a `NamedTuple` and a `TypedDict`, the
+three kinds whose fields Python states, and the worker converts at
+the boundary by the function's annotations; the item "one worker
+across a test run" is closed as done, the tests of a file sharing the
+`Vm` and its worker already, each file of a run keeping its own.** The
+study's experiment: two tests of one file calling Python start one
+worker; the interpreter's start is about 245 ms per file. The
+alternatives the owner did not take: the enclosing `concurrently
+within` deadline as the source (it bounds only the calls inside such a
+block), both sources with the nearer taken (later, if a program asks),
+`Unavailable` with the time in its text (a program could not tell a
+slow call from a missing interpreter), dataclasses alone, plain
+annotated classes built through `__init__` (which holds for some
+classes and not others), and a worker shared across the files of one
+manifest (a quarter second per file, for moving the worker out of the
+`Vm`). The stages: 41a the deadline, 41b the record types, 41c the
+roadmap's item closed. (user)
+
+**AW50. Stage 41a built: the deadline per Python call (2026-10-15).**
+The manifest's `python` section takes `deadline`, a text of a count and
+a unit (`millisecond`, `second`, `minute`, singular or plural; the count
+whole, above zero, at most a thousand million), and so does each
+module's entry, the entry's winning for its module; the manifest
+renders it back as the largest unit that divides the milliseconds.
+`PythonModule` carries the entry's and `PythonBinding` the resolved
+deadline in milliseconds; the VM's binding, the bytecode file (format
+11: `"deadline"` after `root`, a number or null) and the binary
+encoding (9) carry it, and `compiler/project.ry`, `declare.ry`,
+`bytecode.ry` and `emit.ry` read and write the same. The worker's
+output is read by a thread of its own into a channel, so `Worker::call`
+waits with `recv_timeout` where a deadline is set and `recv` where
+none is; past it the call answers `NoAnswer::TimedOut`, the VM drops
+the worker (killed and waited for; the thread ends at the pipe's end)
+and the call fails with `TimedOut(after: Duration)`, the fifth variant
+of `PythonError`, the next call starting a worker again. The fixture's
+`analysis.stall(3)` under a deadline of one second prints `timed out
+after 1s` and the call after it `AGAIN!`; the binary test takes an
+entry's 250 milliseconds under a section's minute, a sleep of five
+seconds, a run under four seconds, the file carrying 250, and a
+`"deadline": "soon"` refused with the resolver's text. The gates:
+fmt, clippy with `-D warnings`, 67 suites green (the selfhost
+judges among them, the Renyi resolver reading the fixture's deadline),
+the lint, the token budget, the web crate for wasm32 (the thread
+compiles there and is never started, the page serving no Python). No
+Python process is left behind (the count before and after a run is
+the same). The documents: `docs/python.md` sections 1 and 5, the
+reference's bridge paragraph, the sketch's section 15, the roadmap's
+stage 41 and track E. (Claude)

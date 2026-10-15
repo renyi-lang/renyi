@@ -6,13 +6,20 @@
 //! standard output (decision AL2, the program `python_worker.py` beside
 //! this file): the arguments encoded as `std.json` renders them, by
 //! position, and the result decoded by the declared type. What goes wrong
-//! is the failure `PythonError` of `std.python` (decision AL4). The
-//! boundary (`Vm::call_primitive`) does the rest: the grant, the
-//! recording, the replay, which never starts the worker, and the guards.
-//! What the Python side does is outside every guarantee of the VM.
+//! is the failure `PythonError` of `std.python` (decision AL4). A call
+//! past the deadline the manifest sets (decision AW49) fails with
+//! `TimedOut`, the worker killed with it, the next call starting one
+//! again: the worker's output is read by a thread of its own, so a call
+//! waits on a channel with the deadline. The boundary
+//! (`Vm::call_primitive`) does the rest: the grant, the recording, the
+//! replay, which never starts the worker, and the guards. What the
+//! Python side does is outside every guarantee of the VM.
 
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+use std::thread;
+use std::time::Duration;
 
 use renyi_check::types::Ty;
 use renyi_check::FunctionId;
@@ -31,14 +38,41 @@ const WORKER: &str = include_str!("python_worker.py");
 pub const INTERPRETER_VARIABLE: &str = "RENYI_PYTHON";
 
 /// The worker process of a run: the interpreter that answered, its
-/// version, and the pipes the calls go through.
+/// version, the pipe the calls go down and the channel their answers come
+/// up, one line each, from the thread that reads the worker's output.
 pub struct Worker {
     child: Child,
     input: ChildStdin,
-    output: BufReader<ChildStdout>,
+    lines: Receiver<std::io::Result<String>>,
     pub interpreter: String,
     pub version: String,
     calls: u64,
+}
+
+/// Why a call got no answer: the worker ended or broke the protocol, or
+/// the deadline passed with the call still running (decision AW49).
+pub enum NoAnswer {
+    Gone(String),
+    TimedOut(u64),
+}
+
+/// The worker's output, a line at a time, to the channel; ends with the
+/// output or when nobody listens.
+fn read_lines(mut output: BufReader<ChildStdout>, sender: Sender<std::io::Result<String>>) {
+    loop {
+        let mut line = String::new();
+        let sent = match output.read_line(&mut line) {
+            Ok(0) => break,
+            Ok(_) => sender.send(Ok(line)),
+            Err(error) => {
+                let _ = sender.send(Err(error));
+                break;
+            }
+        };
+        if sent.is_err() {
+            break;
+        }
+    }
 }
 
 impl Drop for Worker {
@@ -75,9 +109,20 @@ pub fn run(
         }
     }
     let worker = vm.python.as_mut().expect("the worker just started");
-    let answer = match worker.call(&binding.package, &binding.symbol, arguments) {
+    let answer = match worker.call(
+        &binding.package,
+        &binding.symbol,
+        arguments,
+        binding.deadline,
+    ) {
         Ok(answer) => answer,
-        Err(detail) => {
+        Err(NoAnswer::TimedOut(millis)) => {
+            // the call is still running: the worker is killed with its
+            // state, and the next call starts one again (decision AW49)
+            vm.python = None;
+            return fail(vm, "TimedOut", vec![Value::Duration(millis as i64)]);
+        }
+        Err(NoAnswer::Gone(detail)) => {
             // a worker that stopped answering is not asked again
             vm.python = None;
             return unavailable(vm, format!("`{qualified}`: {detail}"));
@@ -215,13 +260,14 @@ impl Worker {
             .spawn()
             .map_err(|error| error.to_string())?;
         let input = child.stdin.take().expect("the worker's input is piped");
-        let mut output = BufReader::new(child.stdout.take().expect("the worker's output is piped"));
-        let mut line = String::new();
-        let greeting = match output.read_line(&mut line) {
-            Ok(0) => Err("it ended without the bridge's greeting".to_string()),
-            Ok(_) => read_json(line.trim_end())
+        let output = BufReader::new(child.stdout.take().expect("the worker's output is piped"));
+        let (sender, lines) = mpsc::channel();
+        thread::spawn(move || read_lines(output, sender));
+        let greeting = match lines.recv() {
+            Err(_) => Err("it ended without the bridge's greeting".to_string()),
+            Ok(Ok(line)) => read_json(line.trim_end())
                 .map_err(|(detail, _)| format!("its first line is not JSON: {detail}")),
-            Err(error) => Err(format!("cannot read from it: {error}")),
+            Ok(Err(error)) => Err(format!("cannot read from it: {error}")),
         };
         let version = greeting.and_then(|json| match &json {
             Json::Object(fields) => match (field(fields, "ready"), field(fields, "version")) {
@@ -234,7 +280,7 @@ impl Worker {
             Ok(version) => Ok(Worker {
                 child,
                 input,
-                output,
+                lines,
                 interpreter: interpreter.to_string(),
                 version,
                 calls: 0,
@@ -247,13 +293,15 @@ impl Worker {
         }
     }
 
-    /// One request and its answer.
+    /// One request and its answer, waited for within the deadline in
+    /// milliseconds when there is one (decision AW49).
     pub fn call(
         &mut self,
         module: &str,
         function: &str,
         arguments: Vec<Json>,
-    ) -> Result<Json, String> {
+        deadline: Option<u64>,
+    ) -> Result<Json, NoAnswer> {
         self.calls += 1;
         let request = Json::Object(vec![
             ("call".to_string(), Json::Number(self.calls.to_string())),
@@ -267,15 +315,25 @@ impl Worker {
         self.input
             .write_all(text.as_bytes())
             .and_then(|_| self.input.flush())
-            .map_err(|error| format!("cannot write to the Python worker: {error}"))?;
-        let mut line = String::new();
-        match self.output.read_line(&mut line) {
-            Ok(0) => return Err("the Python worker ended".to_string()),
-            Ok(_) => {}
-            Err(error) => return Err(format!("cannot read from the Python worker: {error}")),
-        }
+            .map_err(|error| {
+                NoAnswer::Gone(format!("cannot write to the Python worker: {error}"))
+            })?;
+        let ended = || NoAnswer::Gone("the Python worker ended".to_string());
+        let read = match deadline {
+            Some(millis) => match self.lines.recv_timeout(Duration::from_millis(millis)) {
+                Ok(read) => read,
+                Err(RecvTimeoutError::Timeout) => return Err(NoAnswer::TimedOut(millis)),
+                Err(RecvTimeoutError::Disconnected) => return Err(ended()),
+            },
+            None => self.lines.recv().map_err(|_| ended())?,
+        };
+        let line = read.map_err(|error| {
+            NoAnswer::Gone(format!("cannot read from the Python worker: {error}"))
+        })?;
         let answer = read_json(line.trim_end()).map_err(|(detail, _)| {
-            format!("the Python worker answered with something that is not JSON: {detail}")
+            NoAnswer::Gone(format!(
+                "the Python worker answered with something that is not JSON: {detail}"
+            ))
         })?;
         let answered = match &answer {
             Json::Object(fields) => match field(fields, "call") {
@@ -285,13 +343,13 @@ impl Worker {
             _ => None,
         };
         if answered != Some(self.calls) {
-            return Err(format!(
+            return Err(NoAnswer::Gone(format!(
                 "the Python worker answered call {} for call {}",
                 answered
                     .map(|n| n.to_string())
                     .unwrap_or_else(|| "?".to_string()),
                 self.calls
-            ));
+            )));
         }
         Ok(answer)
     }

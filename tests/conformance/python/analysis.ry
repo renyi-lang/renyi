@@ -44,3 +44,9 @@ public function oddly(times: Integer)
   or fails with PythonError
   needs python("analysis")
   purpose: Gives back a text where an Integer is declared.
+
+public function stall(seconds: Integer)
+  returns Integer
+  or fails with PythonError
+  needs python("analysis")
+  purpose: Sleeps that many seconds, past the manifest's deadline of one second.

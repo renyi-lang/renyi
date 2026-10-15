@@ -545,9 +545,11 @@ fn a_python_module_declares_within_the_bridge() {
         module: renyi_syntax::PythonModule {
             package: "analysis".to_string(),
             symbols: Vec::new(),
+            deadline: None,
         },
         interpreter: None,
         root: String::new(),
+        deadline: None,
     };
     let declarations = "module analysis\n  purpose: Bound to Python.\n\nimport std.python exposing PythonError\n\npublic type Opaque\n  purpose: A record without `can ToJson`.\n  has value: Integer\nend\n\npublic function mean(values: List of Float) returns Float or fails with PythonError needs python(\"analysis\")\n  purpose: Fine.\n\npublic function elsewhere(value: Integer) returns Integer or fails with PythonError needs python(\"other\")\n  purpose: Another package.\n\npublic function quiet(value: Integer) returns Integer needs python(\"analysis\")\n  purpose: No failure.\n\npublic function opaque(value: Opaque) returns Map of Integer to Text or fails with PythonError needs python(\"analysis\")\n  purpose: Neither side crosses.\n";
     let file = SourceFile::new("analysis.ry", declarations).in_python(binding);

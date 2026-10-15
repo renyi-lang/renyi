@@ -4,6 +4,7 @@
   "purpose": "The conformance program that calls a Python module of the project through the bridge.",
   "dependencies": {},
   "python": {
+    "deadline": "1 second",
     "modules": {
       "analysis": {
         "symbols": {

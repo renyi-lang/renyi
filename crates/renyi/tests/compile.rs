@@ -3,6 +3,7 @@
 //! from it, the manifest's code hash is the file's, and a file that does
 //! not fit is refused naming the place.
 
+use renyi_vm::file::FORMAT;
 use std::path::PathBuf;
 use std::process::{Command, Output};
 
@@ -49,7 +50,7 @@ fn a_program_runs_records_and_reproduces_from_its_bytecode_file() {
     );
     let written = std::fs::read_to_string(&file).expect("the file");
     assert!(
-        written.starts_with("{\n  \"format\": 10,\n  \"modules\": [\n"),
+        written.starts_with(&format!("{{\n  \"format\": {FORMAT},\n  \"modules\": [\n")),
         "{}",
         &written[..60]
     );
@@ -104,11 +105,18 @@ fn tests_run_from_a_bytecode_file_and_find_their_fixtures() {
 fn a_file_that_does_not_fit_is_refused() {
     let directory = scratch("bad");
     let wrong_format = path(&directory.join("format.ryc"));
-    std::fs::write(&wrong_format, "{\n  \"format\": 11\n}\n").expect("the file");
+    std::fs::write(
+        &wrong_format,
+        format!("{{\n  \"format\": {}\n}}\n", FORMAT + 1),
+    )
+    .expect("the file");
     let run = renyi(&["run", &wrong_format]);
     assert_eq!(run.status.code(), Some(1));
     assert!(
-        text(&run.stderr).contains("is format 11; this VM reads format 10"),
+        text(&run.stderr).contains(&format!(
+            "is format {}; this VM reads format {FORMAT}",
+            FORMAT + 1
+        )),
         "{}",
         text(&run.stderr)
     );

@@ -161,11 +161,12 @@ public type ForeignBinding
 end
 
 public type PythonBinding
-  purpose: A Python function's binding (decision AL1): package, symbol, interpreter and root.
+  purpose: A Python function's binding (decision AL1): package, symbol, interpreter, root and the deadline per call in milliseconds (AW49), if any.
   has package: Text
   has symbol: Text
   has interpreter: maybe Text
   has root: Text
+  has deadline: maybe Integer
   can ToJson
 end
 

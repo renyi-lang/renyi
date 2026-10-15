@@ -269,6 +269,7 @@ pub(super) fn bind(
         PythonModule {
             package: package.to_string(),
             symbols,
+            deadline: None,
         },
     ))
 }
@@ -592,7 +593,8 @@ public function greet(names: List of Text) or fails with PythonError needs pytho
                 "stats",
                 &PythonModule {
                     package: "scipy.stats".to_string(),
-                    symbols: Vec::new()
+                    symbols: Vec::new(),
+                    deadline: None
                 }
             ),
             "{\"stats\": {\"package\": \"scipy.stats\"}}"

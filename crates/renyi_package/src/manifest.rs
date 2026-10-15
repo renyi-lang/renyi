@@ -47,6 +47,9 @@ pub struct Manifest {
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct PythonSection {
     pub interpreter: Option<String>,
+    /// the deadline per call in milliseconds for every module without
+    /// one of its own (decision AW49)
+    pub deadline: Option<u64>,
     pub modules: Vec<(String, PythonModule)>,
 }
 
@@ -150,6 +153,68 @@ fn optional_text(fields: &Fields, name: &str, what: &str) -> Result<Option<Strin
         Some(Json::Null) | None => Ok(None),
         Some(_) => Err(format!("`{name}` of {what} is not a string")),
     }
+}
+
+/// A Duration field (decision AW49): a text of a count and a unit, such
+/// as `5 seconds`, in milliseconds.
+fn optional_duration(fields: &Fields, name: &str, what: &str) -> Result<Option<u64>, String> {
+    match optional_text(fields, name, what)? {
+        Some(text) => duration_of(&text)
+            .map(Some)
+            .map_err(|detail| format!("`{name}` of {what} {detail}")),
+        None => Ok(None),
+    }
+}
+
+/// The milliseconds of a Duration text of the manifest: a count and a
+/// unit (`millisecond`, `second`, `minute`, singular or plural), such as
+/// `5 seconds` or `250 milliseconds`; the count whole, above zero and at
+/// most a thousand million. `compiler/project.ry` reads it the same way.
+pub fn duration_of(text: &str) -> Result<u64, String> {
+    let words: Vec<&str> = text.split(' ').filter(|word| !word.is_empty()).collect();
+    let [count, unit] = words[..] else {
+        return Err(format!(
+            "is not a count and a unit, such as `5 seconds`: `{text}`"
+        ));
+    };
+    if count.is_empty() || !count.bytes().all(|byte| byte.is_ascii_digit()) {
+        return Err(format!("does not start with a whole number: `{text}`"));
+    }
+    let count: u64 = count
+        .parse()
+        .map_err(|_| format!("has a count too large: `{text}`"))?;
+    if count == 0 {
+        return Err(format!("is zero: `{text}`"));
+    }
+    if count > 1_000_000_000 {
+        return Err(format!("has a count too large: `{text}`"));
+    }
+    let scale = match unit {
+        "millisecond" | "milliseconds" => 1,
+        "second" | "seconds" => 1000,
+        "minute" | "minutes" => 60_000,
+        _ => {
+            return Err(format!(
+                "has a unit that is not milliseconds, seconds or minutes: `{text}`"
+            ))
+        }
+    };
+    Ok(count * scale)
+}
+
+/// The Duration text the manifest renders for milliseconds: the largest
+/// of minutes, seconds and milliseconds that divides them, singular
+/// for one.
+pub fn duration_text(millis: u64) -> String {
+    let (count, unit) = if millis.is_multiple_of(60_000) {
+        (millis / 60_000, "minute")
+    } else if millis.is_multiple_of(1000) {
+        (millis / 1000, "second")
+    } else {
+        (millis, "millisecond")
+    };
+    let plural = if count == 1 { "" } else { "s" };
+    format!("{count} {unit}{plural}")
 }
 
 fn optional_number(fields: &Fields, name: &str, what: &str) -> Result<Option<usize>, String> {
@@ -327,17 +392,24 @@ fn symbols_json(symbols: &[(String, String)]) -> Json {
 }
 
 /// The `python` section (decision AL1): the interpreter, when the project
-/// names one, and each Python module of the project by module name, with
-/// the name the Python side imports it by (`package`, the module's own
-/// name when left out) and the functions whose Python name differs from
-/// their Renyi name; sorted by module name.
+/// names one, the deadline per call for every module (decision AW49), when
+/// the project sets one, and each Python module of the project by module
+/// name, with the name the Python side imports it by (`package`, the
+/// module's own name when left out), its own deadline, if any, and the
+/// functions whose Python name differs from their Renyi name; sorted by
+/// module name.
 fn python_of(fields: &Fields, what: &str) -> Result<PythonSection, String> {
     let Some(section) = optional_object(fields, "python", what)? else {
         return Ok(PythonSection::default());
     };
     let section_what = format!("`python` of {what}");
-    only(section, &["interpreter", "modules"], &section_what)?;
+    only(
+        section,
+        &["interpreter", "deadline", "modules"],
+        &section_what,
+    )?;
     let interpreter = optional_text(section, "interpreter", &section_what)?;
+    let deadline = optional_duration(section, "deadline", &section_what)?;
     let mut modules: Vec<(String, PythonModule)> = Vec::new();
     if let Some(object) = optional_object(section, "modules", &section_what)? {
         for (name, json) in object {
@@ -355,19 +427,28 @@ fn python_of(fields: &Fields, what: &str) -> Result<PythonSection, String> {
             let Json::Object(entry) = json else {
                 return Err(format!("{entry_what} is not an object"));
             };
-            only(entry, &["package", "symbols"], &entry_what)?;
+            only(entry, &["package", "deadline", "symbols"], &entry_what)?;
             let package =
                 optional_text(entry, "package", &entry_what)?.unwrap_or_else(|| name.clone());
             if package.is_empty() {
                 return Err(format!("`package` of {entry_what} is empty"));
             }
+            let deadline = optional_duration(entry, "deadline", &entry_what)?;
             let symbols = symbols_of(entry, &entry_what)?;
-            modules.push((name.clone(), PythonModule { package, symbols }));
+            modules.push((
+                name.clone(),
+                PythonModule {
+                    package,
+                    symbols,
+                    deadline,
+                },
+            ));
         }
         modules.sort_by(|a, b| a.0.cmp(&b.0));
     }
     Ok(PythonSection {
         interpreter,
+        deadline,
         modules,
     })
 }
@@ -376,6 +457,9 @@ fn python_json(section: &PythonSection) -> Json {
     let mut fields = Vec::new();
     if let Some(interpreter) = &section.interpreter {
         fields.push(("interpreter".to_string(), Json::Text(interpreter.clone())));
+    }
+    if let Some(deadline) = section.deadline {
+        fields.push(("deadline".to_string(), Json::Text(duration_text(deadline))));
     }
     if !section.modules.is_empty() {
         fields.push((
@@ -388,6 +472,12 @@ fn python_json(section: &PythonSection) -> Json {
                         let mut entry = Vec::new();
                         if module.package != *name {
                             entry.push(("package".to_string(), Json::Text(module.package.clone())));
+                        }
+                        if let Some(deadline) = module.deadline {
+                            entry.push((
+                                "deadline".to_string(),
+                                Json::Text(duration_text(deadline)),
+                            ));
                         }
                         if !module.symbols.is_empty() {
                             entry.push(("symbols".to_string(), symbols_json(&module.symbols)));
@@ -725,18 +815,55 @@ mod tests {
     #[test]
     fn a_python_section_reads_and_renders_the_same() {
         // decision AL1: the interpreter and the modules, `package` left out
-        // when it is the module's own name
-        let text = "{\n  \"name\": \"bridge\",\n  \"version\": \"0.1.0\",\n  \"dependencies\": {},\n  \"python\": {\n    \"interpreter\": \"python3\",\n    \"modules\": {\n      \"analysis\": {\n        \"symbols\": {\n          \"mean\": \"average\"\n        }\n      },\n      \"stats\": {\n        \"package\": \"scipy.stats\"\n      }\n    }\n  }\n}\n";
+        // when it is the module's own name; decision AW49: the deadline of
+        // the section and of an entry
+        let text = "{\n  \"name\": \"bridge\",\n  \"version\": \"0.1.0\",\n  \"dependencies\": {},\n  \"python\": {\n    \"interpreter\": \"python3\",\n    \"deadline\": \"5 seconds\",\n    \"modules\": {\n      \"analysis\": {\n        \"deadline\": \"250 milliseconds\",\n        \"symbols\": {\n          \"mean\": \"average\"\n        }\n      },\n      \"stats\": {\n        \"package\": \"scipy.stats\"\n      }\n    }\n  }\n}\n";
         let manifest = Manifest::read(text).expect("a manifest");
         assert_eq!(manifest.python.interpreter.as_deref(), Some("python3"));
+        assert_eq!(manifest.python.deadline, Some(5000));
         assert_eq!(manifest.python.modules.len(), 2);
         assert_eq!(manifest.python.modules[0].1.package, "analysis");
+        assert_eq!(manifest.python.modules[0].1.deadline, Some(250));
         assert_eq!(
             manifest.python.modules[0].1.symbols,
             vec![("mean".to_string(), "average".to_string())]
         );
         assert_eq!(manifest.python.modules[1].1.package, "scipy.stats");
+        assert_eq!(manifest.python.modules[1].1.deadline, None);
         assert_eq!(manifest.render(), text);
+        for (text, detail) in [
+            (
+                "\"soon\"",
+                "is not a count and a unit, such as `5 seconds`: `soon`",
+            ),
+            ("\"0 seconds\"", "is zero: `0 seconds`"),
+            (
+                "\"-5 seconds\"",
+                "does not start with a whole number: `-5 seconds`",
+            ),
+            (
+                "\"5 hours\"",
+                "has a unit that is not milliseconds, seconds or minutes: `5 hours`",
+            ),
+            (
+                "\"99999999999 seconds\"",
+                "has a count too large: `99999999999 seconds`",
+            ),
+            ("5", "is not a string"),
+        ] {
+            let manifest = format!(
+                "{{\"name\": \"a\", \"version\": \"1.0.0\", \"python\": {{\"deadline\": {text}}}}}"
+            );
+            let error = Manifest::read(&manifest).expect_err("refused");
+            assert_eq!(
+                error,
+                format!("`deadline` of `python` of the manifest {detail}")
+            );
+        }
+        assert_eq!(duration_text(60_000), "1 minute");
+        assert_eq!(duration_text(90_000), "90 seconds");
+        assert_eq!(duration_text(1500), "1500 milliseconds");
+        assert_eq!(duration_text(1), "1 millisecond");
         let error = Manifest::read(
             "{\"name\": \"a\", \"version\": \"1.0.0\", \"python\": {\"modules\": {\"Bad\": {}}}}",
         )

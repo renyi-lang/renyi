@@ -112,13 +112,15 @@ pub struct Foreign {
 
 /// A Python function's binding (decision AL1): the name the worker imports
 /// the module by, the function's name on the Python side, the interpreter
-/// the manifest names, if any, and the project root.
+/// the manifest names, if any, the project root and the deadline per call
+/// in milliseconds (decision AW49), if the manifest sets one.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Python {
     pub package: String,
     pub symbol: String,
     pub interpreter: Option<String>,
     pub root: String,
+    pub deadline: Option<u64>,
 }
 
 /// The binding of a function of a Python module (decision AL1): the
@@ -140,6 +142,7 @@ fn python_binding(
         symbol,
         interpreter: binding.interpreter.clone(),
         root: binding.root.clone(),
+        deadline: binding.deadline,
     })
 }
 

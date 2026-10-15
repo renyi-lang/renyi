@@ -3,3 +3,5 @@ RENYI 2 agents lang
 HELLO!
 ValueError: boom
 not carried
+timed out after 1s
+AGAIN!

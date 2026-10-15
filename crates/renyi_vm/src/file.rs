@@ -35,9 +35,10 @@ use crate::value::Value;
 /// The version of the format, the first field of the file; 8 added the
 /// read-only flags of a code object's parameters (decision AW5), 9
 /// holds a loop's iterator in two slots, the source and the position
-/// (decision AW14), and 10 adds the jump tables of a code object and
-/// `JumpByTag` (decision AW15).
-pub const FORMAT: usize = 10;
+/// (decision AW14), 10 adds the jump tables of a code object and
+/// `JumpByTag` (decision AW15), and 11 the deadline of a Python binding
+/// (decision AW49).
+pub const FORMAT: usize = 11;
 
 /// The extension of a bytecode file.
 pub const EXTENSION: &str = "ryc";
@@ -321,6 +322,12 @@ fn python_json(python: &Python) -> Out {
             }),
         ),
         ("root", string(&python.root)),
+        (
+            "deadline",
+            optional(python.deadline.as_ref(), |deadline| {
+                number(*deadline as usize)
+            }),
+        ),
     ])
 }
 
@@ -1053,6 +1060,9 @@ fn read_python(json: &In, at: &str) -> Read<Python> {
             text_of(json, at).map(str::to_string)
         })?,
         root: text_at(fields, "root", at)?,
+        deadline: optional_at(fields, "deadline", at, |json, at| {
+            usize_of(json, at).map(|millis| millis as u64)
+        })?,
     })
 }
 

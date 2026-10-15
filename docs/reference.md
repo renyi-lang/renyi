@@ -1175,7 +1175,11 @@ message)` when the function let an exception escape,
 JSON does not carry it, `Unavailable(detail)` when no interpreter
 answers, the module does not import, the function is not there or the
 worker ended (the next call starts one again), `PermissionDenied(package)`
-for a package outside the grant. The call is recorded like any primitive
+for a package outside the grant, `TimedOut(after)` when the call ran past
+the deadline the manifest's `python` section sets (decision AW49:
+`"deadline": "5 seconds"`, a count and a unit, for the section or for one
+module's entry; the worker is killed and the next call starts one
+again). The call is recorded like any primitive
 and a replay answers it without starting the worker; a guarded value
 refuses to cross; `python` takes a scope and no budget; `renyi run` says
 "this program can run Python through `analysis`" on its standard error
