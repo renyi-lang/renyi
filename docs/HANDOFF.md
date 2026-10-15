@@ -205,13 +205,16 @@ section): the inspect script's classes, the binder's record types, the
 worker's conversions; and 41c is closed in the roadmap's entry (the
 tests of a file share one worker already). Stage 41 is closed. The
 work next: (3) the emitter's own round for the compile row, its
-design study first (the compile row is the Renyi compiler's
-`compile.ry` on `compiler/bodies.ry` against `renyi compile`, 13.25 by
-instructions at AU58's study, the emitter's linear searches
-`type_index` and `function_at` about 110 million of it, the Rust side
-spending its wall time on the 6 MB bytecode file; AW27 left the round
-unscheduled because the ratio had no consumer, so the study's first
-question is what the round is for). The open items of AW45 stand
+design study written (the section "Stage 42, the emitter's own round
+for the compile row: the design study (session 15)" below: the compile
+row 2,590.8 million instructions on d18ec06, 7.09 against the reference,
+the emitter 42.4% of it, the JSON rendering 7.9%; eight findings, the
+references grouped by quadratic copies 12.2%, the type table's linear
+search 5.4%, the keys as texts 7.9%; stages 42a to 42f with estimates,
+42a to 42c Renyi only, about -550 million) and the four questions put
+to the owner (what the round is for, the grouping, the keys, the VM
+items); the owner's answers are the next decision entry. The open
+items of AW45 stand
 beside it (the verified domain, the article's submission, now that
 0.3.0 is out).
 The session's record is "Done in session 14"
@@ -4208,6 +4211,156 @@ iterator in two slots, the Rust front end's name sets).
 Then the first stage the owner confirms. Done in session 14: the study is
 the section "Stage 29, the new backend: the design study (session 14)"
 below, and the owner's answers are decision AW1.
+
+## Stage 42, the emitter's own round for the compile row: the design study (session 15)
+
+**What the owner ordered (2026-10-15, after stage 40).** "按顺序推1到3":
+release 0.3.0, the Python bridge's items (stage 41, closed), then the
+emitter's own round for the compile row, its design study first. The
+compile row is `compiler/compile.ry` run from its image on
+`compiler/bodies.ry` against `renyi compile` on the same file, the
+third row of AU36 (iii). Decision AW27 left the round unscheduled: the
+rows served the ratio of the switch to the self-hosted front end, the
+switch was deferred at the gate, and the ratio has no consumer. So the
+study's first question is what the round is for; the measure below
+says what it would buy.
+
+**The measure (2026-10-15, d18ec06, the Linux release build
+`renyi_41b` of the perf lane, callgrind on the image, the lane's
+`measure_stage.sh 41b` into `study/41b/`).** The three rows: check
+1,291.6 million instructions, parse 631.7, compile 2,590.8; the Rust
+rows of the same binary: check 177.3, parse 247.7, compile 467.7. The
+compile row against the reference binary of AU34 (`compile` 365.6, the
+convention of every speed entry): 7.09, down from 13.25 at AU58's study
+(4,844.9) through the rounds that followed; against this binary 5.54.
+Stage 32's study measured the compile row at 2,468.1 (`study/cuts2/`);
+the 122.7 million since are not traced (the references the checker
+records for the language server since AW39 and AW44, which the emitter
+groups and looks up, are the likely source; the bytecode file grew
+from 6,349,051 to 6,375,317 bytes). By category: generated code 977.2
+(37.7%), natives 506.4 (19.5%), counts and drops 247.7 (9.6%), VM other
+169.4 (6.5%, `release_last` 97.5 of it), the allocator 161.5 (6.2%),
+hashing and equality 140.5 (5.4%), texts and memory copies 136.9
+(5.3%), the load and the JSON writer 80.1 (3.1%), records 67.8,
+comparisons 63.7.
+
+**The row's parts, by the inclusive cost of the generated code
+(`study_incl.py`, `study/41b/incl_compile.txt`).** The front end:
+lexing and parsing the 25 files 720.9 million (27.8%), checking
+477.5 (18.4%), together 1,198.4 (46.3%); these are the check row's
+work, cut by stages 25 to 32 and not this round's. The emitter,
+`compile_project`, 1,098.4 (42.4%). The rendering of the program as
+JSON and the write, measured by `perf stat` on a variant of
+`compile.ry` whose `rendered` is a one-word text in place of
+`json.render_indented(program)` (`study42.sh`, three runs each, the
+spread under 1 million): 2,576.1 against 2,371.5, 204.6 million
+(7.9%). The rest, about 90 million, is the load and the frees at
+the end.
+
+**The emitter's shape (`study_map.py`, `study/41b/map_compile.txt`, the
+self cost; `incl_compile.txt`, the inclusive).** Eight findings:
+
+1. *`type_index` is a linear search.* The program's table of the
+   types the ops name is a list, and `type_index` walks it comparing
+   each entry with `is` (structural equality through the helper, `Value
+   as PartialEq` 1,774,315 calls, 71.5 million): 19,067 calls, 58.2
+   million self, 140.0 inclusive (5.4% of the row), 7,342 instructions
+   a call. The Rust emitter keeps a map from the type to its index
+   beside the list (`compile/mod.rs`, `result_types` and its index);
+   the transcription left the map out. `known_type_index`, the same
+   walk for a parameter's type, 1,842 calls, 23.4 million.
+2. *`function_at` is a linear search.* The declared function whose
+   body is at a location is found by walking every function of the
+   world: 571 calls, 43.9 million (1.7%), 76,880 a call. A map from
+   the owner and the body to the id, built once in `new_context`,
+   makes it a lookup.
+3. *The references are grouped by appending to a list the map still
+   holds.* `new_context` groups every module's references by body
+   with `refs.get(key) otherwise []`, `existing.append(reference)`,
+   `refs.set(...)`: the list is held by the map while it is appended,
+   so every append copies it, and a body of n references costs n²/2
+   element copies; 203.9 million for the one call (7.9%). `targets_of`
+   groups one body's references by span the same way: 596 calls,
+   111.1 million (4.3%). Together 315.0 million (12.2%); the clones
+   of `Value` (8,311,219 calls, 93.0 million), the memory copies
+   (4,388,276 calls, 85.9 million) and the frees of lists
+   (`Rc<Vec<Value>>::drop_slow` 283,318 calls) are mostly these. The
+   checker records a body's references together (AW39), so one pass
+   that keeps the current body's list and stores it when the key
+   changes is linear; so is a `group by` query, which the VM groups in
+   one pass (`for each reference in references group by key`, a `Map
+   of K to List of T`), the idiomatic form.
+4. *The map keys are texts built per lookup.* `span_key` formats
+   `"{span.start}:{span.stop}"`: 71,461 calls, 121.1 million inclusive
+   (4.7%), 1,695 a call, the digits pushed and the texts joined
+   (`push_digits` 216,566 calls, `op_concat` 171,336, `rt_to_text`
+   283,516); `refs_key` with `body_key` 35,040 calls, 83.3 million
+   (3.2%); the constants' `"{owner}:{name}"`. Then the map hashes the
+   text. A `Map of Span to List of Target` with `can Hash` derived on
+   `Span` (the reference's rule: `Hash` derives from the structure; no
+   corpus program derives it on a record yet, so the stage's first
+   program checks it) and a record of the owner and the body as the
+   references' key hash their words through the VM's hasher of AW7,
+   with no text built.
+5. *The liveness walk.* `last_uses`, the walk of AU55's rule over
+   every body: 571 calls, 111.1 million (4.3%), 194,636 a call;
+   `own_mentions` and `own_bound` rebuild a set of names per statement
+   and `walk_nested` carries them; the sets are of texts. A smaller
+   item: the names as the tokens they are (the start offset) and the
+   sets kept across the walk.
+6. *`emit` is already in place.* The three appends of `emit` (`ops`,
+   `spans`, `types`) go through the `Takes` plan of AU11 at the
+   `return` (`with_in_slot`), each field taken out of the record and
+   the record updated in its slot: 29,840 calls, 17.0 million self,
+   570 an op; nothing to cut there. The rest of the emitter's self cost
+   is spread over the rules (`emit_expr` 5.9, `expr_mentions` 8.8,
+   `expr_bound` 8.6, `walk_block` 6.7, `body_key` 7.2), none above 1%.
+7. *The JSON writer.* The 204.6 million of the rendering are in the
+   VM: `json::walk` builds a `Json` tree from the value (243,760 calls,
+   17.1 million self, with the clones and the texts, `Value::text`
+   523,789 calls, 23.6 million), then `renyi_json` writes it:
+   `newline` allocates `" ".repeat(indent)` per line (356,542 calls,
+   33.3 million), `write_string` scans per character (211,818 calls,
+   34.4 million), `core::fmt::write` 267,845 calls. A writer that pads
+   from a fixed run of spaces, writes a text's plain runs whole and
+   renders the value into the text without the tree serves every
+   program that renders JSON (`std.json`, the C API's texts, the
+   bridge's lines, the recordings); about half of the 204.6 is the
+   estimate.
+8. *The frees at the end.* `release_last` 1,136,898 calls, 97.5
+   million self, and `free_block` 912,130 calls, 60.1 million; what part
+   of them is the drop of the program and the context when the run
+   ends is not measured. The `renyi` command could leave that drop to
+   the process's exit (a budgeted or embedded run keeps it); a stage
+   measures first.
+
+**The stages and their estimates.** 42a, the emitter's tables
+(findings 1 and 2): the type index and the functions by map, mirroring
+the Rust emitter; about -150 million (5.8%). 42b, the references
+grouped in one pass and the targets per span the same (finding 3):
+about -250 of the 315 (9.7%). 42c, the keys as records (finding 4):
+about -150 of the 204 (5.8%). 42a to 42c are Renyi only, in
+`compiler/emit.ry`, held by the compile judge (Z3) to the byte; about
+-550 million together, the row 2,590.8 to about 2,040, the ratio
+against the reference 7.09 to about 5.6, the emitter's own part 1,098
+to about 550. 42d, the JSON writer in the VM (finding 7): about -100
+(3.9%), every program. 42e, the frees at the end (finding 8): measured
+first, up to -100. 42f, the liveness walk (finding 5): about -50,
+optional. With 42d and 42e the row is about 1,840, the ratio about
+5.0. The front end's 1,198 stays: the check row is at its gate (AW26)
+and its next cuts are the checker's, not this round's.
+
+**What the round is for.** The ratio has no consumer (AW27). What the
+stages buy without one: the quadratic copies of finding 3 and the
+searches of findings 1 and 2 are the shape of `compiler/emit.ry`, the
+program the language's users read as its reference program and the
+VM's largest test, and the fixes read as the language intends (`group
+by`, a record as a key, a map beside a list); 42d and 42e serve every
+program's JSON and exit; and if self-hosting is reopened, the compile
+row is one of the three rows of AU36 (iii). The questions put to the
+owner with this study: whether to run the round and with what measure;
+the references' grouping by a query or by a hand-written pass; the keys
+as records or as packed Integers; the VM items 42d and 42e in or out.
 
 ## Stage 41, the Python bridge's items: the design study (session 15)
 

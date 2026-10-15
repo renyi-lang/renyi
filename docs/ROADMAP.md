@@ -739,6 +739,22 @@ where one decided, the status. The dates are those of the decisions.
     closed as done (the tests of a file share the `Vm` and its worker,
     measured in the study; each file of a run keeps its own).
 
+42. **The emitter's own round for the compile row** (session 15,
+    2026-10-15, the study; the handoff's section "Stage 42, the
+    emitter's own round for the compile row: the design study (session
+    15)"). The compile row 2,590.8 million instructions on d18ec06
+    (7.09 against the reference, 13.25 at AU58's study), the emitter
+    1,098.4 of it (42.4%), the front end 1,198.4, the JSON rendering
+    204.6 (7.9%). Eight findings: the type table searched linearly
+    (140.0 million), `function_at` linear (43.9), the references
+    grouped by appending to a list the map holds, quadratic (315.0,
+    12.2%), the map keys built as texts per lookup (204.4), the
+    liveness walk (111.1), `emit` already in place, the JSON writer's
+    allocations, the frees at the end. Stages 42a to 42f with
+    estimates, 42a to 42c in `compiler/emit.ry` alone (about -550
+    million). Four questions put to the owner; not scheduled until
+    answered.
+
 ## 3. The tracks
 
 The same stages grouped by the line of work they belong to, with the
@@ -918,6 +934,8 @@ target); 40a (AW47: the crate, the header, the C example in CI) and
 40b (AW48: the Python binding, the archive per target, the ninth
 crate, the measure) are done, and the crate goes to crates.io with
 the next release; 40c, the screen callback and the value handles,
-waits for a host that asks. Not scheduled: the
-Python binder's items of track E, the Rust front end's name sets as
-bits, the emitter's own round for the compile row.
+waits for a host that asks. Stage 41, the Python
+bridge's items, is closed (AW49 to AW51). Stage 42, the emitter's own
+round for the compile row, has its study and waits on the owner's
+answers to its four questions. Not scheduled: the Rust front end's
+name sets as bits.
