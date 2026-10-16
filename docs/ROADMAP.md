@@ -1062,7 +1062,7 @@ the bitcode of fat LTO on Linux and macOS (`docs/RELEASE.md` section
 9); release 0.4.0 went out the same night (section 10), the article's
 numbers are 0.4.0's and the arXiv endorsement request is written. The
 project is at its stable version. What remains is the owner's: the
-Marketplace upload of `renyi-v0.4.0.vsix`, the article's submission
-with the endorsement, the announcements; and the open items listed
+article's submission with the endorsement, the announcements (the
+extension is on the Marketplace at 0.4.0 since 2026-10-16); and the open items listed
 above by track (R3-1, 40c, the switch of the front end, the verified
 domain), none of them scheduled.

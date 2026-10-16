@@ -455,8 +455,9 @@ open item). Section 3 ran in order; the lane is
    (15 tests), the article's reproduction claim on its stable version.
 6. Open VSX with the lane's `ovsx_publish.py`: "Published
    renyi-lang.renyi v0.4.0". Glama's Auto-Release took the GitHub
-   release: the server's page names 0.4.0. The Marketplace upload is
-   the owner's step as before (section 7 item 5).
+   release: the server's page names 0.4.0. The Marketplace upload was
+   the owner's step as before (section 7 item 5), done the same
+   evening: the gallery listed 0.4.0 at 01:19 UTC on 2026-10-16.
 
 After the release: the article's numbers brought to 0.4.0 (the
 repository's counts, the module's size, the benchmark table from the

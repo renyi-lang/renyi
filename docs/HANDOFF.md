@@ -268,8 +268,9 @@ archive checked by hand, the five workflows reproduced on the Linux
 binary installed through `install.sh`; the handoff's section "Release
 0.4.0"), and the article's numbers brought to 0.4.0 with the
 endorsement request written (`paper/endorsement.md`). The project is at
-its stable version; what remains is the owner's (the Marketplace upload
-of the `.vsix`, the arXiv submission, the announcements). The watch rounds
+its stable version; what remains is the owner's (the arXiv submission,
+the announcements; the Marketplace upload was done on 2026-10-16, the
+gallery listing 0.4.0 at 01:19 UTC). The watch rounds
 (Gmail, the notifications, the ten list pull requests, the Glama
 badge) were a cron of session 15, stopped on the owner's word of
 2026-10-15 evening ("如果有回复或者更新我通知你": the owner reports
@@ -4292,11 +4293,15 @@ owner's word (the introduction no longer repeats the design section;
 5,115 to 4,643 words by `wc`; sci-paper's `ai_ism_lint.py` clean of
 blockers, its colon advisories kept as before, `perf/ai_lint_040.log`);
 `paper/endorsement.md` is the request the owner sends with the
-submission's link. The announcements' texts at 0.4.0 are the lane's
+submission's link; the arXiv procedure was explained to the owner (the
+endorsement link from the submission form, the endorsers found through
+a cited paper's "Which authors of this paper are endorsers?" link, the
+email sent from the owner's mailbox by the session on the owner's word,
+Zenodo as the road without a contact). The announcements' texts at 0.4.0 are the lane's
 `announcements_0.4.0.md` (the 0.2.0 texts with the C API, the memory
 budget, the registry and the stable version), for the owner to post. The owner's steps: the
-Marketplace upload (section 7 item 5 of the release document), the
-arXiv submission with the endorsement, the announcements.
+arXiv submission with the endorsement and the announcements (the
+Marketplace upload is done).
 
 ## Stage 46, the liveness walk's residue on both sides (session 15, night)
 
