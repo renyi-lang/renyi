@@ -282,7 +282,11 @@ it, 30f6ba8; the effort tiers and the vision flag read from `/models`,
 295fd0c; the 25 reviewed UI strings, b225de7; the record is
 `D:/Projects/.worktrees/autoshade/ui-text/handoff_2026-10-16.md`, with
 the review beside it; left out: the fit's engineering-log hovers behind
-a toggle, the review's closing suggestion). The watch rounds
+a toggle, the review's closing suggestion), then released it as
+AutoShade v1.10.0 by that repository's standard procedure (the tag on
+the bump commit 0b1c60f, release run 38943381781 six jobs green, the
+assets, the site and the local install verified; the lane
+`D:/Projects/.worktrees/autoshade/rel1100/`). The watch rounds
 (Gmail, the notifications, the ten list pull requests, the Glama
 badge) were a cron of session 15, stopped on the owner's word of
 2026-10-15 evening ("如果有回复或者更新我通知你": the owner reports
