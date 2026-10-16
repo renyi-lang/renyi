@@ -11393,6 +11393,12 @@ on a fresh clone).
   rust-unofficial/awesome-rust#2926 (autoshade, 2026-10-15); open:
   ai-for-developers/awesome-ai-coding-tools#963 (CodeEraser),
   awesome-mcp-servers 16459, 16488, 16489, winget 452920;
+  hashgraph-online/awesome-ai-plugins#816 (CodeEraser, 2026-10-16: it
+  is a Claude Code plugin too, left out of the 15th's four by oversight;
+  its scan was 79, one under the list's 80, until SECURITY.md and
+  plugin/LICENSE went in, CodeEraser fed3adc0, after which it is 87;
+  the private vulnerability reporting the five policies link to is
+  off on every repository, the owner's setting);
   `krispo/awesome-haskell` has no
   contributing rules and was last pushed on 2026-08-03, so CodeEraser
   was not submitted there.
