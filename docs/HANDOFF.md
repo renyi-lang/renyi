@@ -275,14 +275,14 @@ condensed the article (3f3559e), put CodeEraser on the plugin list
 (hashgraph-online/awesome-ai-plugins#816, after its scan went 79 to 87
 with a security policy, CodeEraser fed3adc0), turned on private
 vulnerability reporting on the owner's five plugin repositories, and
-began a work package in the owner's AutoShade repository (the toast
-wrap, commit 98329d1 there, done; three parts left, written for the
-next session in
-`D:/Projects/.worktrees/autoshade/ui-text/handoff_2026-10-16.md`:
-the image role over chat completions with automatic detection, the
-effort tiers read from `/models`, the 25 reviewed strings). The
-session paused on the owner's word ("暂停，保存进度，准备交接") with
-the three trees clean and pushed. The watch rounds
+did a work package in the owner's AutoShade repository, all four
+parts committed and pushed there (the toast wrap 98329d1; the image
+role over chat completions with the family detected and a setting for
+it, 30f6ba8; the effort tiers and the vision flag read from `/models`,
+295fd0c; the 25 reviewed UI strings, b225de7; the record is
+`D:/Projects/.worktrees/autoshade/ui-text/handoff_2026-10-16.md`, with
+the review beside it; left out: the fit's engineering-log hovers behind
+a toggle, the review's closing suggestion). The watch rounds
 (Gmail, the notifications, the ten list pull requests, the Glama
 badge) were a cron of session 15, stopped on the owner's word of
 2026-10-15 evening ("如果有回复或者更新我通知你": the owner reports
