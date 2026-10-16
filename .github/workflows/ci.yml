@@ -109,6 +109,11 @@ jobs:
       - name: Corpus lint
         run: python tools/lint_examples.py
 
+      # the authority gap (decision AX2): the measure's output on the
+      # pinned data must be the pinned output
+      - name: Authority gap
+        run: python -I tools/authority_gap/authority_gap.py tests/authority/tasks_v1.json | diff - tests/authority/expected.txt
+
       - name: Cheat-sheet token gate
         run: |
           pip install tiktoken

@@ -98,12 +98,15 @@ GROUPS = [
         ("Positioning", "docs/design/08-positioning.md"),
         ("Roadmap", "docs/ROADMAP.md"),
         ("Decisions", "docs/design/01-decisions.md"),
+        ("Authority gap", "docs/research/authority-gap.md"),
+        ("Three statements", "docs/research/core-calculus.md"),
         ("GitHub", REPOSITORY),
     ]),
 ]
 
 # The group a page outside the navigation is shown under, by path prefix.
-SECTIONS = [("docs/design/", "Design record"), ("examples/", "Examples"), ("docs/", "Project")]
+SECTIONS = [("docs/design/", "Design record"), ("docs/research/", "Research"),
+            ("examples/", "Examples"), ("docs/", "Project")]
 
 # One sentence under each page's title; an example's lead is its module's purpose.
 LEADS = {
@@ -145,6 +148,12 @@ LEADS = {
                                        "sandboxing and checked live update.",
     "docs/GAPS.md": "The audit of 2026-10-06: what the design promised and the implementation did "
                     "not yet deliver, with the order of work it proposed.",
+    "docs/research/authority-gap.md": "How often an injected goal needs an authority the benign "
+                                      "task's program would never declare: measured on AgentDojo, "
+                                      "pair by pair, before any model runs.",
+    "docs/research/core-calculus.md": "The authority bound, the guards' explicit-flow property and "
+                                      "the replay theorem, stated over the VM's rules with the "
+                                      "assumptions each rests on.",
     "docs/RELEASE.md": "How a release is made: what a version tag automates and what the owner "
                        "does by hand.",
     CORPUS: "Complete programs, one per file, that fixed the surface of the language; the test "

@@ -10522,3 +10522,77 @@ what the second walk cost; the bytecode written byte for byte the same
 Gates: fmt, clippy, cargo test 67 suites ok, format check of compiler/
 and bench/, lint, tokens, wasm build and wasm clippy, all exit 0
 (gates46.log, 22:22:19). (Claude)
+
+## AX. The research track (session 15)
+
+**AX1. The research track opened: a research result as a selling
+point, the security measure with two theorems as its line, the free
+parts first (2026-10-16 evening).** The owner, after the article gained
+its second author and its passages of principle and its related work
+the three 2025 languages for agents (Quasar, Pel, composable effect
+handling): "现在来看arxiv背书的问题 … 我们现在这个文章的深度，放arxiv上合适吗",
+then "那我们现在要突破'研究'这个坎。不是工程，不是应用，而是正儿八经的研究突破，
+结合到我们的语言中，作为卖点之一". Four lines were put to the owner (the
+security measure on AgentDojo with a core calculus and two theorems; a
+mechanized formalization alone; a controlled readability experiment
+across models; a static analysis of budgets), with the first
+recommended; the owner's answers: the first line, "以突破性和创新性为最优先",
+and the parts that cost nothing first (the static measure, the calculus
+and its statements, the tool bindings), a run with a model in the loop
+only after the owner approves the spend. The lane is
+`D:/Projects/.worktrees/Renyi/research/` (the AgentDojo checkout, the
+scripts before they moved into `tools/authority_gap/`, the data). (user)
+
+**AX2. The authority gap measured on AgentDojo: 90.5% of the
+benchmark's attacks need an authority the benign task's program would
+never declare (2026-10-16 evening).** The question: for a pair of a
+user task and an injection task, does the injection's ground truth fit
+inside the smallest grant the user task's program can declare in the
+`needs` of `main`? AgentDojo's `v1` suites at commit `089ed468` (86
+user tasks, 27 injection tasks, every user task of a suite paired with
+every injection task of it, 567 pairs; the benchmark's own paper counts
+97 and 629 over a later version), the task files read as syntax trees
+and never run (`tools/authority_gap/extract_tasks.py`), a tool a
+capability kind with the argument naming a recipient, a URL, a channel,
+a hotel, a file or a participant list as its scope, and four grants: the
+kinds alone; a scope declared when every call's scope is a literal the
+user's prompt spells out (what the program can write); the same with
+`at most n per run`, `n` the ground truth's count; and every literal as
+a scope, an upper bound. Blocked: 475 of 567 (83.8%) by kinds, 513
+(90.5%) with the prompt's scopes, 515 (90.8%) with the counts, 539
+(95.1%) at the ceiling; 20 pairs (3.5%) are one speech-only injection
+against travel's tasks, which no grant touches; the 32 that fit the
+third grant are 11 where the task's own sink is the attack's (banking
+`UserTask15` names the attacker's account as the new landlord, 7;
+`UserTask14` changes the password, 1; three slack tasks message Alice,
+3) and 21 where the task itself reads the sink from untrusted data (a
+bill's recipient, a page's address in a channel, people found by name,
+a file found by listing, calendar events without a scope), which no
+authority fixed before the run can separate, by construction. What
+the measure argues for: a budget on an amount (`send_money` of
+1,000,000 at once), which Renyi's budgets, counting calls, do not
+express; the one extension it names. The result, its model and its
+limits are `docs/research/authority-gap.md`; the data and the output
+are `tests/authority/` and CI holds the output to the script. (Claude)
+
+**AX3. The three statements written on paper: the authority bound, the
+guards' explicit-flow property, the replay theorem, with their eight
+assumptions named (2026-10-16 evening).** `docs/research/core-calculus.md`:
+capabilities as kinds of the tree with scopes under a partial order and
+coverage as the order on pairs, the grant stack as the intersection of
+`main`'s narrowed grant with the needs of every frame below the call
+(Theorem 1: every effect that happens is covered by the run's grant, and
+its kind by `main`'s needs; Proposition 1a: within a checked program a
+primitive is refused only on its scope), the origins as a word and
+explicit provenance as the least relation closed under the VM's rules
+(Theorem 2: every guard in the provenance of an outgoing call's
+arguments has a sink covering the effect; implicit flow stated as
+outside it), and a run as pure steps and primitive calls answered by the
+world or by the recording (Theorem 3: the replay of a recording makes the
+same calls with the same answers and the same output, by induction on the
+steps; the corollary is what `reproduce` checks). The assumptions A1 to
+A8 (no ambient effect, time and random as calls, insertion order, the
+standards' arithmetic, tasks in order, no observable identity, budgets
+and guards decided by the state, the library's scope read from the
+arguments) are each a sentence of the reference or a decision. Nothing is
+mechanized; section 6 says what would be. (Claude)

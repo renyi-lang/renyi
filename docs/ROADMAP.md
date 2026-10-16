@@ -850,6 +850,25 @@ where one decided, the status. The dates are those of the decisions.
     a `Noted` pair in place of the two walks; the compile row 1,926.4 to
     1,916.6 million, -0.5%, the bytecode byte for byte the same, the
     judge passing). The stage closed.
+47. **The research track: the authority gap and the three statements**
+    (session 15, 2026-10-16 evening; decisions AX1 to AX3). The owner's
+    order for a research result as a selling point, the security line
+    chosen with novelty first and the parts that cost nothing done:
+    the authority gap on AgentDojo's `v1` suites (567 pairs; 83.8%
+    blocked by the kinds a task's program declares, 90.5% with the
+    scopes its prompt spells out, 90.8% with per-run counts, 95.1% the
+    ceiling; the 32 that fit named pair by pair, 11 where the task's
+    sink is the attack's and 21 where the task reads its sink from the
+    attacker's data; `docs/research/authority-gap.md`, the scripts
+    `tools/authority_gap/`, the data and the pinned output
+    `tests/authority/` under CI) and the three statements on paper
+    with their assumptions (`docs/research/core-calculus.md`). Open:
+    the half with a model in the loop (an agent writing Renyi programs
+    for the tasks with the tools bound through the Python bridge;
+    utility and attack success under the grant, guards and budgets),
+    which waits for the owner's word on the spend; a budget on an
+    amount as a language extension (a decision entry first, V11); the
+    mechanization if asked.
 
 ## 3. The tracks
 
@@ -927,6 +946,10 @@ state of each line.
   open.
 - **H. Readability**: stages 2, 6, 8. Four rounds exist under
   `tests/readability/`; they run only on request (V1).
+- **I. Research**: stage 47 (the authority gap and the three
+  statements, AX1 to AX3). Open: the measure with a model in the loop
+  (the owner's word on the spend), the amount budget, the
+  mechanization.
 
 ## 4. What is next
 
@@ -1065,4 +1088,8 @@ project is at its stable version. What remains is the owner's: the
 article's submission with the endorsement, the announcements (the
 extension is on the Marketplace at 0.4.0 since 2026-10-16); and the open items listed
 above by track (R3-1, 40c, the switch of the front end, the verified
-domain), none of them scheduled.
+domain), none of them scheduled. The research track opened on
+2026-10-16 evening (AX1): the authority gap and the three statements
+are done (stage 47); next, when the owner says so, the measure with a
+model in the loop, and the amount budget as a surface change under
+V11.

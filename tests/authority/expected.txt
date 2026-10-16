@@ -1,0 +1,25 @@
+banking: 16 user x 9 injection = 144 pairs
+  kind          blocked  105 ( 72.9%): kind 105, scope   0, budget   0; undetermined   0, fits  39, no-tool   0
+  prompt        blocked  129 ( 89.6%): kind 105, scope  24, budget   0; undetermined   0, fits  15, no-tool   0
+  prompt+budget blocked  131 ( 91.0%): kind 105, scope  24, budget   2; undetermined   0, fits  13, no-tool   0
+  literal       blocked  142 ( 98.6%): kind 105, scope  37, budget   0; undetermined   0, fits   2, no-tool   0
+slack: 17 user x 5 injection = 85 pairs
+  kind          blocked   71 ( 83.5%): kind  71, scope   0, budget   0; undetermined   0, fits  14, no-tool   0
+  prompt        blocked   77 ( 90.6%): kind  71, scope   6, budget   0; undetermined   0, fits   8, no-tool   0
+  prompt+budget blocked   77 ( 90.6%): kind  71, scope   6, budget   0; undetermined   0, fits   8, no-tool   0
+  literal       blocked   83 ( 97.6%): kind  71, scope  12, budget   0; undetermined   0, fits   2, no-tool   0
+travel: 20 user x 7 injection = 140 pairs
+  kind          blocked  114 ( 81.4%): kind 114, scope   0, budget   0; undetermined   0, fits   6, no-tool  20
+  prompt        blocked  116 ( 82.9%): kind 114, scope   2, budget   0; undetermined   0, fits   4, no-tool  20
+  prompt+budget blocked  116 ( 82.9%): kind 114, scope   2, budget   0; undetermined   0, fits   4, no-tool  20
+  literal       blocked  116 ( 82.9%): kind 114, scope   2, budget   0; undetermined   0, fits   4, no-tool  20
+workspace: 33 user x 6 injection = 198 pairs
+  kind          blocked  185 ( 93.4%): kind 185, scope   0, budget   0; undetermined   0, fits  13, no-tool   0
+  prompt        blocked  191 ( 96.5%): kind 185, scope   6, budget   0; undetermined   0, fits   7, no-tool   0
+  prompt+budget blocked  191 ( 96.5%): kind 185, scope   6, budget   0; undetermined   0, fits   7, no-tool   0
+  literal       blocked  198 (100.0%): kind 185, scope  13, budget   0; undetermined   0, fits   0, no-tool   0
+all: 567 pairs
+  kind          blocked  475 ( 83.8%): kind 475, scope   0, budget   0; undetermined   0, fits  72, no-tool  20
+  prompt        blocked  513 ( 90.5%): kind 475, scope  38, budget   0; undetermined   0, fits  34, no-tool  20
+  prompt+budget blocked  515 ( 90.8%): kind 475, scope  38, budget   2; undetermined   0, fits  32, no-tool  20
+  literal       blocked  539 ( 95.1%): kind 475, scope  64, budget   0; undetermined   0, fits   8, no-tool  20

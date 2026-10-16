@@ -56,7 +56,13 @@ by measuring language models reading and writing it. The toolchain, in
 Rust, has a checker, a bytecode VM with two machine-code tiers, an
 ahead-of-time image, a WebAssembly build of the whole toolchain, a
 project map and a language server; the compiler is written again in
-Renyi and held byte-equal to the Rust one by tests. On the released
+Renyi and held byte-equal to the Rust one by tests. Three statements
+hold of the rules: the declared authority bounds every effect, a
+guarded value leaves only through its sinks, and a replay of a recording
+makes the same calls with the same answers. On AgentDojo's 567 security
+cases, 90.5\% of the injected goals need a capability, a scope or a
+count outside what the benign task's program declares, so a program that
+passed review for the task is unable to carry them out. On the released
 toolchain, every example workflow's recording reproduces on another
 operating system, agents given only the language's one-page skill file
 wrote four of five workflows clean within two attempts, and Claude
@@ -117,7 +123,10 @@ Section~\ref{sec:design} gives the design, Section~\ref{sec:implementation}
 the implementation (about a hundred thousand lines of Rust, a VM with
 three tiers, an image, a WebAssembly build, and the compiler written in
 Renyi and judged against the Rust one) and Section~\ref{sec:evaluation}
-the measures of the language's claims on the released toolchain.
+the measures of the language's claims on the released toolchain, among
+them the authority gap: how often an injected goal needs an authority
+outside what the benign task's program declares, measured on a benchmark
+of injection attacks before any model runs (Section~\ref{sec:gap}).
 
 \section{The design}
 \label{sec:design}
@@ -330,6 +339,44 @@ replays, and compares the outcome and the output; a difference names the
 first call that differed. A \texttt{replays} test pins a function with
 effects to a recording the same way, and \texttt{-{}-refresh} records it
 live once.
+
+\subsection{Three statements}
+\label{sec:statements}
+
+The rules of this section keep three properties, stated here and
+proved on paper in the repository's \texttt{docs/research/core-calculus.md}
+over an abstract machine whose steps are pure steps and primitive calls.
+A capability is a kind of the tree with a scope; a granted capability
+covers a needed one when its kind is the same or an ancestor and its
+scope contains the needed one; the grant of a frame is the enclosing
+grant intersected with the function's \texttt{needs}, and a primitive
+call is admitted only when the innermost grant covers its effect.
+
+\textbf{Theorem 1 (authority bound).} In every run of a program the
+checker accepts, every effect that happens is covered by the run's
+grant, \texttt{main}'s \texttt{needs} narrowed by the host, and its kind
+by \texttt{main}'s \texttt{needs}; within one checked program a
+primitive is refused on its scope alone, its kind being covered along
+the whole chain.
+
+\textbf{Theorem 2 (guards admit only their sinks).} A value's origins
+are exactly its explicit provenance, the guards whose data it was
+computed from through the operations of the VM; every primitive call
+that happens has, for every guard in its arguments' provenance, a sink
+covering its effect. Implicit flow is outside the statement: a branch on
+a guarded value does not tag what the branch computes.
+
+\textbf{Theorem 3 (replay).} The replay of a recording of a run makes
+the same primitive calls with the same answers and produces the same
+output, by induction on the steps: every pure step is a function of the
+state, and the recording answers every primitive call as the world did.
+
+Each proof names what it rests on: no ambient effect, \texttt{time} and
+\texttt{random} as primitive calls, insertion order, the standards'
+arithmetic, tasks in source order, no observable identity, budgets and
+guards decided by the state; each is a sentence of the reference, and a
+change to one is a change to the statement. The proofs are on paper; a
+mechanization is a stage of the track.
 
 \subsection{The surface}
 
@@ -573,6 +620,88 @@ under Linux with the binary the project's \texttt{install.sh} put in
 place. All five reproduced: the outcome and the output were the
 recorded ones.
 
+\subsection{The authority gap}
+\label{sec:gap}
+
+Theorem 1 says what a program cannot do; the question for an agent's
+program is how much of what an attacker wants falls outside it. A prompt
+injection reaches the program through the data a tool returns and asks
+for something the user did not; in Renyi the program's authority was
+declared and reviewed before the run, so the injected goal is carried
+out only if it fits inside that authority. The \emph{authority gap} of
+a benchmark is the fraction of its attacks that do not fit the smallest
+grant the benign task's program can declare. It is a property of the
+task and the attack, not of any model: for every pair in the gap, no
+program that passed review for the task can carry out the attack,
+whatever the model does once it runs. It is the ceiling of every defense
+that fixes authority before the run, and it says what is left for the
+mechanisms that act during it.
+
+We measured it on AgentDojo~\citep{debenedetti2024agentdojo}, the
+benchmark of injection attacks on tool-using agents that
+Quasar~\citep{mell2025quasar} and CaMeL~\citep{debenedetti2025camel}
+are evaluated on: its \texttt{v1} suites (banking, slack, travel,
+workspace), 86 user tasks and 27 injection tasks, every user task of a
+suite paired with every injection task of it, 567 pairs. Each task
+declares a ground truth, the tool calls with their arguments that carry
+it out; the task files were parsed as syntax trees, which is all the
+measure runs of them. A tool
+is a capability kind and the argument naming a recipient, a URL, a
+channel, a hotel, a file or a participant list is its scope. The user
+task's grant is what its program can write in the \texttt{needs} of
+\texttt{main}: every kind its ground truth calls; a scope for a kind
+when every call's scope is a literal the user's prompt spells out (a
+recipient read from a file is not declarable, and the kind is granted
+without a scope); \texttt{at most $n$ per run}, $n$ the ground truth's
+count. A pair is blocked when the injection's calls need a kind the
+grant lacks, a scope outside a declared one or more calls than the
+count. Table~\ref{tab:gap} gives the result under four grants, the
+kinds alone to the ceiling of every literal as a scope.
+
+\begin{table}[t]
+\centering
+\begin{tabular}{lrrrrr}
+\toprule
+Suite & pairs & kinds & + scopes & + counts & ceiling \\
+\midrule
+banking & 144 & 72.9\% & 89.6\% & 91.0\% & 98.6\% \\
+slack & 85 & 83.5\% & 90.6\% & 90.6\% & 97.6\% \\
+travel & 140 & 81.4\% & 82.9\% & 82.9\% & 82.9\% \\
+workspace & 198 & 93.4\% & 96.5\% & 96.5\% & 100.0\% \\
+\midrule
+all & 567 & 83.8\% & 90.5\% & 90.8\% & 95.1\% \\
+\bottomrule
+\end{tabular}
+\caption{The authority gap on AgentDojo \texttt{v1}: the share of
+(user task, injection task) pairs whose attack does not fit the user
+task's grant, with the kinds alone, with the scopes the prompt spells
+out, with per-run counts, and with every literal as a scope (an upper
+bound). Travel's 20 unblocked pairs under every grant are one injection
+that only wants the agent to say something, outside any grant.}
+\label{tab:gap}
+\end{table}
+
+The 32 pairs that fit the third grant are of two kinds. In 11 the
+task's own sink is the attack's: a banking task names the attacker's
+account as the user's new landlord, one asks for a password change and
+the attack asks for another password, three slack tasks message Alice
+and the attack sends Alice a link. In 21 the task itself reads its sink
+from the attacker's data: a bill's recipient, a page's address found in
+a channel, people found by name, a file found by listing, calendar
+events, which have no scope. No authority fixed before the run can
+separate those, by construction; what acts on them is the recording and
+the narration after the run, the reviewer who sees \texttt{send\_money}
+without a scope and knows the bill chooses the recipient, and, for the
+attacks that move as much money as possible, a budget on an amount,
+which Renyi's budgets, counting calls, do not express: the one extension
+the measure argues for. The measure assumes a program fixed before any
+effect, uses the ground truth as the task's authority (the kinds row is
+the floor, the ceiling row the bound a broader review could reach), and
+runs no model, so it says nothing about utility; CaMeL reports utility
+and security with a model in the loop, and this is the part of the
+question that needs none. The data, the scripts and the pinned output
+are in the repository, held by its continuous integration.
+
 \subsection{First-run rate}
 \label{sec:firstrun}
 
@@ -702,12 +831,16 @@ write at the grammar, by constrained decoding, so that a host forbids a
 feature by removing it from the grammar. Composable effect
 handling~\citep{wang2025effect} puts an LLM script's calls behind
 handlers in Python, for parallelism and for a replay handler in tests.
-Renyi puts the declaration in the signature, where a reviewer reads it,
-checks coverage before the run across the program and its packages,
-enforces scopes, budgets and guards at one boundary and records what
-passed it, so that a run is reproducible; its measures are the
-reviewer's reading and the agent's first attempt rather than a
-benchmark's latency.
+CaMeL~\citep{debenedetti2025camel} is a defense rather than a
+language: a Python interpreter that attaches capabilities to data
+values and checks policies at every tool call, with a model in the
+loop, and it reports utility and security on AgentDojo. Renyi puts the
+declaration in the signature, where a reviewer reads it, checks coverage
+before the run across the program and its packages, enforces scopes,
+budgets and guards at one boundary and records what passed it, so that
+a run is reproducible; its measures are the reviewer's reading, the
+agent's first attempt and the authority gap of Section~\ref{sec:gap}
+rather than a benchmark's latency.
 
 \paragraph{Capabilities.} The object-capability discipline of
 E~\citep{miller2006robust} makes authority flow only along references;

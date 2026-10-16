@@ -1,4 +1,4 @@
-\begin{thebibliography}{19}
+\begin{thebibliography}{21}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -43,6 +43,22 @@ Sylvan Clebsch, Sophia Drossopoulou, Sebastian Blessing, and Andy McNeil.
 \newblock In \emph{Proceedings of the 5th International Workshop on Programming
   Based on Actors, Agents, and Decentralized Control (AGERE! 2015)}, pages
   1--12. ACM, 2015.
+
+\bibitem[Debenedetti et~al.(2024)Debenedetti, Zhang, Balunovi{\'c},
+  Beurer-Kellner, Fischer, and Tram{\`e}r]{debenedetti2024agentdojo}
+Edoardo Debenedetti, Jie Zhang, Mislav Balunovi{\'c}, Luca Beurer-Kellner, Marc
+  Fischer, and Florian Tram{\`e}r.
+\newblock {AgentDojo}: A dynamic environment to evaluate prompt injection
+  attacks and defenses for {LLM} agents.
+\newblock \emph{arXiv preprint arXiv:2406.13352}, 2024.
+
+\bibitem[Debenedetti et~al.(2025)Debenedetti, Shumailov, Fan, Hayes, Carlini,
+  Fabian, Kern, Shi, Terzis, and Tram{\`e}r]{debenedetti2025camel}
+Edoardo Debenedetti, Ilia Shumailov, Tianqi Fan, Jamie Hayes, Nicholas Carlini,
+  Daniel Fabian, Christoph Kern, Chongyang Shi, Andreas Terzis, and Florian
+  Tram{\`e}r.
+\newblock Defeating prompt injections by design.
+\newblock \emph{arXiv preprint arXiv:2503.18813}, 2025.
 
 \bibitem[{Deno Land Inc.}(2026)]{deno}
 {Deno Land Inc.}

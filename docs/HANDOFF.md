@@ -4343,7 +4343,25 @@ related-work paragraph on them and one sentence in the introduction,
 6,276 words, 13 pages, the lint unchanged. The endorsement routes the
 owner has: the owner's own institutional email did not auto-endorse; a
 cold request to an endorser among the cited authors (one at a time,
-the PDF and the repository attached) or Zenodo and a workshop. `paper/endorsement.md` is the request the owner sends with the
+the PDF and the repository attached) or Zenodo and a workshop. After
+that the owner asked for a research result as a selling point (AX1,
+"正儿八经的研究突破"); the session opened the research track and did its
+free half the same evening: the authority gap on AgentDojo (AX2:
+`docs/research/authority-gap.md`; `tools/authority_gap/` the two
+scripts, `tests/authority/` the extracted tasks and the pinned output,
+which CI's "Authority gap" step compares; the lane
+`D:/Projects/.worktrees/Renyi/research/` holds the AgentDojo checkout
+at `089ed468` and the scripts' first copies; the headline 513 of 567
+pairs, 90.5%, with the prompt's scopes, 83.8% by kinds alone, 95.1% the
+ceiling, 32 pairs named as the residue), the three statements on paper
+(AX3: `docs/research/core-calculus.md`, assumptions A1 to A8), and the
+article carrying both (the statements in the design section, the gap
+as an evaluation subsection with its table, AgentDojo and CaMeL cited;
+the site's navigation lists the two research pages under "Research").
+Open on the track: the half with a model in the loop (the owner's word
+on the spend first; the design is in the roadmap's stage 47), the
+amount budget as a surface change under V11, the mechanization.
+`paper/endorsement.md` is the request the owner sends with the
 submission's link; the arXiv procedure was explained to the owner (the
 endorsement link from the submission form, the endorsers found through
 a cited paper's "Which authors of this paper are endorsers?" link, the
