@@ -271,7 +271,9 @@ endorsement request written (`paper/endorsement.md`). The project is at
 its stable version; what remains is the owner's (the arXiv submission,
 the announcements; the Marketplace upload was done on 2026-10-16, the
 gallery listing 0.4.0 at 01:19 UTC). On 2026-10-16 the session also
-condensed the article (3f3559e), put CodeEraser on the plugin list
+condensed the article (3f3559e) and, in the evening on the owner's
+word, gave it its second author and its eight passages of principle
+(see "the article" below), put CodeEraser on the plugin list
 (hashgraph-online/awesome-ai-plugins#816, after its scan went 79 to 87
 with a security policy, CodeEraser fed3adc0), turned on private
 vulnerability reporting on the owner's five plugin repositories, and
@@ -4307,8 +4309,31 @@ article (`paper/renyi.tex`) carries 0.4.0's numbers from the lane's
 dated on 0.2.0 in the text, and was condensed for the submission on the
 owner's word (the introduction no longer repeats the design section;
 5,115 to 4,643 words by `wc`; sci-paper's `ai_ism_lint.py` clean of
-blockers, its colon advisories kept as before, `perf/ai_lint_040.log`);
-`paper/endorsement.md` is the request the owner sends with the
+blockers, its colon advisories kept as before, `perf/ai_lint_040.log`).
+On 2026-10-16 evening the owner added Brandon Mocco as the second
+author (both authors Renyi-lang, the GitHub organisation; Zhe Zhang the
+only correspondence; "the author" became "the first author" where it
+names a measure or a choice and "the authors" in the AI statement; no
+contribution statement, on the owner's word) and asked for deeper
+technical content: the article gained eight passages, each read from a
+design document or the source in the same turn (the four foundations
+after the program's figure, with the trade-offs they settle, from
+`07-system-design.md`; the coverage order and the grant stack as one
+intersection with the budgets' counters, from reference section 11 and
+`grant.rs`; the guards' mechanism, the 64-bit origin set, the union per
+operation and the check at the boundary, from `06-runtime-guarantees.md`
+section 3 and `vm.rs`; the determinism claim behind recording and the
+replay's matching rule with the grant check of Y2; "The edges of the
+guarantees" closing the design section; "Memory" after the VM, decision
+O1 with Perceus cited; content addressing at the head of "Tooling",
+from `renyi_index/src/hash.rs` with Unison cited; "Checked live update"
+after it, from `07-system-design.md` section 5 with Armstrong's thesis
+cited; and a related-work paragraph on the three), 4,643 to 6,071 words
+by `wc`, 12 pages, three bibliography entries added (Perceus PLDI 2021
+verified through Crossref, the thesis's title page read, Unison's page
+fetched); the lint again 0 blockers and 0 strong advisories after three
+sentences it flagged were rewritten. The PDF is rebuilt and committed
+with the `.bbl`. `paper/endorsement.md` is the request the owner sends with the
 submission's link; the arXiv procedure was explained to the owner (the
 endorsement link from the submission form, the endorsers found through
 a cited paper's "Which authors of this paper are endorsers?" link, the

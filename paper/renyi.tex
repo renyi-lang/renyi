@@ -29,7 +29,8 @@
 \title{Renyi: A Scripting Language for AI Agents\\
   with Declared, Enforced and Recorded Effects}
 \author{Zhe Zhang\thanks{Renyi-lang, \url{https://renyi-lang.org}.
-  Correspondence: \texttt{zhezhang.dev@gmail.com}.}}
+  Correspondence: \texttt{zhezhang.dev@gmail.com}.}
+  \and Brandon Mocco\thanks{Renyi-lang.}}
 \date{October 2026}
 
 \begin{document}
@@ -176,7 +177,41 @@ calls declares the host it needs, which the grant covers.}
 \label{fig:program}
 \end{figure}
 
+\subsection{Four foundations}
+\label{sec:foundations}
+
+Everything the following sections promise rests on four properties of
+the language, each a decision taken before any tool was written.
+
+\begin{enumerate}
+\item \textbf{Effects are in the type system, with scopes.} A function
+  without a \texttt{needs} clause is pure; time and randomness are
+  capabilities. The runtime therefore sees every effect at one
+  boundary, which is what makes a run recordable, countable and
+  taggable (Sections~\ref{sec:capabilities} and~\ref{sec:recording}).
+\item \textbf{Every value is immutable and every binding owns its value.} A
+  function is passed by name and captures nothing, a top-level binding
+  is a constant, and a value reaches another only by being copied or
+  moved into it. The value graph is acyclic, a race is unwritable, and a
+  service's state lives outside the program (Sections~\ref{sec:memory} and~\ref{sec:live}).
+\item \textbf{Definitions are content-addressed.} A definition's
+  identity is the hash of its canonical form, so a rename changes
+  nothing and a changed body changes everything that depends on it
+  (Section~\ref{sec:identity}).
+\item \textbf{Documentation is syntax.} Every module and every public
+  definition carries a \texttt{purpose} line, so a run can be narrated
+  and a definition retrieved in the words its author wrote.
+\end{enumerate}
+
+The trade-offs a scripting language usually settles by choosing a side
+are settled here by one of these properties: memory without pauses and
+without lifetimes by the second, reproducibility and isolation inside
+one process by the first, dependencies whose effects are known by the
+first and the third, live update with static safety by the second and
+the third.
+
 \subsection{Capabilities in signatures}
+\label{sec:capabilities}
 
 A \texttt{needs} clause lists capabilities. The kinds are those of the
 standard library's primitives: \texttt{console}, \texttt{environment},
@@ -186,27 +221,54 @@ standard library's primitives: \texttt{console}, \texttt{environment},
 \texttt{foreign} and \texttt{python}. A capability may carry a \emph{scope} (a path, a host, or
 a parameter of the function, so that a library function can say
 \texttt{needs network.http(host)}), a \emph{budget} (\texttt{at most $n$
-per} second, minute, hour, day or run) and a \emph{guard} (\texttt{only to},
-which marks every value that comes in through the guarded capability
-with its origin and refuses it at any outgoing call but the one named).
+per} second, minute, hour, day or run) and a \emph{guard} (\texttt{only to} a sink, below).
 
-The static rule is coverage: a function's body may use, directly or
-through a call, only the capabilities its signature declares; a test's
-head covers its body likewise; the grant of \texttt{main} must cover
-every function the program reaches, in its own files and in its
+Capabilities form a tree (\texttt{filesystem} covers
+\texttt{filesystem.read}) and scopes an order: a path prefix contains
+its sub-paths, a host, a variable or a program name contains only
+itself, and a capability without a scope contains every scope. A
+granted capability covers a needed one when its path is the needed
+one's or an ancestor of it and its scope contains the needed scope. The
+static rule is coverage under this order: a function's body may use,
+directly or through a call, only capabilities its signature covers; a
+test's head covers its body likewise; the grant of \texttt{main} must
+cover every function the program reaches, in its own files and in its
 packages. The diagnostic names the callee, the capability and the fix
 (\texttt{capability-missing}: \texttt{write `needs network.http`}).
+Across a package boundary only the kind is checked statically, since a
+library cannot know its caller's hosts; the scope is left to the run.
 
 The dynamic rule is the grant stack. The effective grant of a running
 function is the intersection of the program's grant with the scopes
 declared along the call chain, and every primitive checks the actual
 host or path against it at the moment of the call, so a general HTTP
 client package that declares \texttt{network.http} without a scope
-serves a program that grants one host. The same mechanism serves the
-command-line narrowing \texttt{renyi run -{}-deny network} and the
-embedding API's sandbox, where a host loads a Renyi module under a grant
-narrower than the module's own \texttt{main} declares, with a memory
-budget kept by a counting allocator.
+serves a program that grants one host. Every narrowing from outside
+the program is the same intersection: \texttt{renyi run -{}-deny},
+\texttt{-{}-allow-host} and \texttt{-{}-at-most}, and the embedding
+API's sandbox, where a host loads a module under a grant narrower than
+its own \texttt{main} declares, with a memory budget kept by a counting
+allocator. Nothing from outside can widen a grant. A budget keeps a
+counter per capability and scope, a sliding window of time stamps for a
+unit of time and a plain count for the run.
+
+A guard is a run-time taint of constant cost. The guards of a run are
+the capabilities of the declared grant that carry \texttt{only to}, in
+declaration order, at most 64; the position of a guard is a bit, and a
+value's origin is one word. A primitive call under a guarded capability
+tags its result with the bit of every guard that covers the call's
+effect and with its arguments' origins; every operation of the VM
+(arithmetic, interpolation, construction, field access, the items of a
+loop, the clauses of a query) tags its result with the union of its
+operands' origins, and a container carries the union of its items'.
+Before an outgoing primitive call the boundary takes the union of the
+arguments' origins and requires every guard set in it to name a sink
+that covers the call; otherwise the call fails with
+\texttt{Guarded(origin, sink)} before anything leaves. A recording
+stores plain values and spells the guards in its grant header, so a
+replay derives the same origins and enforces the same guards. Guards
+track explicit flow only: a branch taken on a guarded value does not
+tag what the branch computes (Section~\ref{sec:limits}).
 
 \subsection{Packages}
 
@@ -226,15 +288,28 @@ dependency uses. A package that calls native code needs \texttt{foreign};
 a program that grants it is told so the first time it runs.
 
 \subsection{Recording, replay, narration, reproduction}
+\label{sec:recording}
 
-A Renyi run is a deterministic function of its code, its dependencies
-and its effects: time and randomness are effects and are recorded like
-any other, maps and sets iterate in insertion order, decimal and float
-arithmetic follow the standards, and tasks run one after the other.
+The claim behind the four commands of this section is that a Renyi run
+is a function of three things: its code, its dependencies and the
+sequence of answers its primitive calls received. It holds because
+everything outside the primitive calls is pure. There is no ambient
+I/O, no reflection and no foreign call without a capability; time and
+randomness are capabilities, answered at the boundary like any other;
+maps and sets iterate in insertion order; decimal and float arithmetic
+follow their standards; and tasks run one after the other, so the
+order of their calls is the order of the text. A recording is therefore
+an oracle for the run, and a replay checks that the same code with the
+same answers gives the same output.
+
 \texttt{renyi record} writes a run as a JSON document, one entry per
 primitive call with its arguments and its outcome, and \texttt{renyi run
--{}-replay} answers every primitive call from it, matched by arguments,
-touching nothing outside the process. Arguments and outcomes are encoded
+-{}-replay} answers every primitive call from it, touching nothing
+outside the process: a call is matched by primitive and arguments
+first and by sequence only when several entries match, and before the
+first call the recording's grant must be covered by the grant it is
+replayed under, so a recording cannot bring an effect past a test's
+\texttt{needs}. Arguments and outcomes are encoded
 by the library's JSON rules, so a recording is readable and editable by
 a person or an agent, and a replay decodes it against the program's
 declared types: a response whose shape no longer fits fails the replay
@@ -291,6 +366,25 @@ Every rule is a diagnostic with a code and a fix. The reference lists
 argument of every diagnostic they raise, so none can be added without
 one. Section~\ref{sec:readability} says how the rules were chosen.
 
+\subsection{The edges of the guarantees}
+\label{sec:limits}
+
+Each guarantee stops somewhere, and the design documents say where. Guards
+stop the wholesale exfiltration a prompt injection aims at, not a
+covert channel: implicit flow, timing and the size of what is sent are
+not tracked, so a program can leak one bit per run through a branch,
+and the budget on the sink is what bounds the rate. A path scope
+contains a path by its text, with nothing resolved on disk, so a
+symbolic link under a scope reaches wherever it points. What a
+\texttt{foreign} or a \texttt{python} function does, once granted, is
+outside every guarantee of the VM, which is why both are capabilities a
+reviewer reads in the grant. The sandbox isolates effects, time and
+memory; it does not hide timing or scheduling from the module, and the
+module's console output goes to the process's streams. A recording
+holds what the primitives answered, not what the world would answer
+today: \texttt{reproduce} shows that the program still computes the
+same output from the same answers, not that the answers are still true.
+
 \section{The implementation}
 \label{sec:implementation}
 
@@ -344,6 +438,26 @@ executable. \texttt{renyi run} keeps two caches: the image of a program it
 compiled machine code for, and the compiled program keyed by the content
 hashes of every file the front end read.
 
+\subsection{Memory}
+\label{sec:memory}
+
+The value graph of a Renyi program is acyclic, since a value is
+immutable and reaches another only by copy or move, so no value can
+contain itself. The VM therefore counts references, which suffices
+without a tracing collector. A value is freed when its count reaches zero, so a
+file or a connection closes as soon as it is dropped and there are no
+pauses; a value whose count is one is updated in place, so that
+\texttt{change items to items.append(item)} is a constant-time append
+when nothing else holds the list; and the compiler marks the last read
+of every local as a move, so an argument is handed over rather than
+copied and the count it would have raised stays at one. This is the
+model of Perceus~\citep{reinking2021perceus}, with the acyclicity given
+by the language rather than assumed. Because the checked tree carries
+the types, the emitters turn a \texttt{with} on a uniquely held record
+into an update of the block where it lies, and the generated code
+raises and lowers the counts in place. The language and its diagnostics
+speak of values only; ownership and lifetimes stay inside the VM.
+
 \subsection{The toolchain in the browser}
 
 The front end, the checker and the interpreter build for
@@ -354,7 +468,7 @@ resumed by the page with the keys held and the time elapsed, which is how
 the project's demonstration game, a Doom-style raycaster of 2,814 lines
 of Renyi in sixteen modules, plays on the project's site; the same
 program plays at the terminal under \texttt{renyi run}, where the frames
-are drawn as text. In a headless Chrome on the author's machine it ran
+are drawn as text. In a headless Chrome on the first author's machine it ran
 at 55 to 60 frames a second with 3.0 to 3.8 ms a frame spent in the
 interpreted VM (2026-10-13).
 
@@ -379,10 +493,22 @@ times the Rust front end's instructions on checking the compiler's own
 largest module; the VM's rounds (the typed round, the template tier,
 operands in registers, updates in place, frames made lazy) and two
 rounds of cuts in the compiler's own sources brought the ratio to 2.96,
-and the author chose to keep the Rust front end in the binary and the
+and the first author chose to keep the Rust front end in the binary and the
 Renyi one as the judged twin.
 
 \subsection{Tooling}
+\label{sec:identity}
+
+Every definition is content-addressed, after Unison~\citep{unison}: its
+identity is the SHA-256 of its canonical text with its own name replaced
+by a placeholder, every name that refers to another definition of the
+project replaced by that definition's hash, and the library definitions
+it uses appended with the library's version; definitions that depend on
+each other are hashed as one component. A rename changes no hash; a
+changed body changes the hash of everything that depends on it. The
+same hash is the code hash of the run manifest and the identity of
+every record of the map, by which the semantic diff tells a rename from
+a change.
 
 \texttt{renyi index} builds the map from the checked program: for every
 module and definition, the signature, the effects, the failure types,
@@ -402,6 +528,24 @@ what changed. \texttt{renyi lsp} serves diagnostics, hover, outline,
 references, rename, completion, signature help and workspace symbols to
 editors, with a rename refused when the project checked with the edits
 applied gains an error.
+
+\subsection{Checked live update}
+\label{sec:live}
+
+\texttt{renyi serve -{}-watch} runs a service and, when a file of its
+project changes, compiles the program again, checks the whole of it and
+runs \texttt{main} again on the new version between two requests, with
+the listening socket handed over; a request that arrives meanwhile
+waits in the socket's backlog and is answered by the new version. There
+is nothing to migrate, because a module has no mutable state at the top
+level and no mutable value escapes a function: the state of a service
+lives in its database, its files and its requests, so running
+\texttt{main} again is the swap. The reload's message is the semantic
+diff, the definitions that changed and any signature among them; a
+version with errors is reported and the last good one keeps serving.
+This is Erlang's hot code loading~\citep{armstrong2003} without its
+hard part, a replacement on a running stack, and with the whole program
+type-checked before it serves.
 
 \section{Evaluation}
 \label{sec:evaluation}
@@ -477,7 +621,7 @@ The surface syntax was measured before it was frozen by a protocol of
 four tasks over the thirty programs of the corpus, with the one-page
 cheat sheet as the model's whole knowledge of the language: \emph{Predict}
 the output of a program, \emph{Explain} a program (graded by a second
-model against the author's description of its purpose, inputs, outputs,
+model against the first author's description of its purpose, inputs, outputs,
 effects and failures), \emph{Complete} a program with one function
 removed (judged by the checker and the program's tests) and \emph{Write}
 a program for a task not in the corpus (judged the same way). Five
@@ -567,6 +711,18 @@ declarations, readable and editable as JSON, and carries a manifest that
 names the code, the dependencies and the grant, which is what
 \texttt{renyi reproduce} checks.
 
+\paragraph{Memory, identity and live update.}
+Perceus~\citep{reinking2021perceus} gives Koka precise reference
+counting with reuse in place; Renyi adopts the model and gets the
+absence of cycles from immutable values without references.
+Unison~\citep{unison} identifies a definition by the hash of its
+syntax tree and makes names metadata; Renyi hashes canonical text with
+references replaced by hashes and uses the identity for the manifest
+and the diff rather than for a codebase store. Erlang~\citep{armstrong2003}
+loads code into a running system and keeps two versions of a module
+alive; Renyi's reload runs \texttt{main} again on a checked program
+between two requests, since a service has no state to carry across.
+
 \paragraph{Scripting and embedding.} Lua~\citep{ierusalimschy1996lua}
 set the pattern of a small language embedded by a host that chooses
 what to expose; Renyi's embedding API follows it with the grant as the
@@ -585,7 +741,7 @@ reaches the agent.
 \section{How this work was done}
 
 AI was used for the code and the text, within the framework and the
-instructions the author set by hand.
+instructions the authors set by hand.
 
 \section{Conclusion}
 

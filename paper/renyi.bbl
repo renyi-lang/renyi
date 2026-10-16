@@ -1,4 +1,4 @@
-\begin{thebibliography}{13}
+\begin{thebibliography}{16}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -9,6 +9,13 @@
 {Anthropic}.
 \newblock Model context protocol: Specification 2024-11-05.
 \newblock \url{https://modelcontextprotocol.io/specification/2024-11-05}, 2024.
+
+\bibitem[Armstrong(2003)]{armstrong2003}
+Joe Armstrong.
+\newblock \emph{Making Reliable Distributed Systems in the Presence of Software
+  Errors}.
+\newblock PhD thesis, The Royal Institute of Technology, Stockholm, Sweden,
+  2003.
 
 \bibitem[Brachth{\"a}user et~al.(2020)Brachth{\"a}user, Schuster, and
   Ostermann]{brachthauser2020effekt}
@@ -80,12 +87,26 @@ Robert O'Callahan, Chris Jones, Nathan Froyd, Kyle Huey, Albert Noll, and
   2017.
 \newblock Extended technical report: arXiv:1705.05937.
 
+\bibitem[Reinking et~al.(2021)Reinking, Xie, de~Moura, and
+  Leijen]{reinking2021perceus}
+Alex Reinking, Ningning Xie, Leonardo de~Moura, and Daan Leijen.
+\newblock Perceus: Garbage free reference counting with reuse.
+\newblock In \emph{Proceedings of the 42nd ACM SIGPLAN International Conference
+  on Programming Language Design and Implementation (PLDI 2021)}, pages
+  96--111, 2021.
+\newblock \doi{10.1145/3453483.3454032}.
+
 \bibitem[Schick et~al.(2023)Schick, Dwivedi-Yu, Dess{\`\i}, Raileanu, Lomeli,
   Zettlemoyer, Cancedda, and Scialom]{schick2023toolformer}
 Timo Schick, Jane Dwivedi-Yu, Roberto Dess{\`\i}, Roberta Raileanu, Maria
   Lomeli, Luke Zettlemoyer, Nicola Cancedda, and Thomas Scialom.
 \newblock Toolformer: Language models can teach themselves to use tools.
 \newblock \emph{arXiv preprint arXiv:2302.04761}, 2023.
+
+\bibitem[{Unison Computing}(2026)]{unison}
+{Unison Computing}.
+\newblock The unison programming language: The big idea.
+\newblock \url{https://www.unison-lang.org/docs/the-big-idea/}, 2026.
 
 \bibitem[Yao et~al.(2023)Yao, Zhao, Yu, Du, Shafran, Narasimhan, and
   Cao]{yao2023react}
