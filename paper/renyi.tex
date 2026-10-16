@@ -84,7 +84,10 @@ process (Deno's permission flags~\citep{deno}, containers, WebAssembly
 runtimes), and the second not at all. Effect systems answer the first
 from the inside~\citep{leijen2014koka,brachthauser2020effekt}, but the
 languages that have them were designed for a different writer and a
-different reader, and they say nothing about what a run did.
+different reader, and they say nothing about what a run did. The
+languages designed for an agent's programs (Section~\ref{sec:related})
+separate the logic from the calls, for approval or for speed, and
+answer neither question at the signature.
 
 Renyi is designed around those answers. Every
 function's signature lists what it needs (\texttt{needs console,
@@ -684,6 +687,26 @@ round. The project's decisions document records every stage's measure,
 the ones measured and left off among them.
 
 \section{Related work}
+\label{sec:related}
+
+\paragraph{Languages for agents.} Three recent languages start from the
+premise Renyi starts from, that an agent's program should separate its
+logic from its effects, and take it elsewhere.
+Quasar~\citep{mell2025quasar} annotates external calls with the
+resources they touch and uses the annotations at run time to batch the
+user's approvals and to run the calls in parallel; the program is
+transpiled from a subset of Python, and the transpiler's is the only
+static check. Pel~\citep{mohammadi2025pel} restricts what a model can
+write at the grammar, by constrained decoding, so that a host forbids a
+feature by removing it from the grammar. Composable effect
+handling~\citep{wang2025effect} puts an LLM script's calls behind
+handlers in Python, for parallelism and for a replay handler in tests.
+Renyi puts the declaration in the signature, where a reviewer reads it,
+checks coverage before the run across the program and its packages,
+enforces scopes, budgets and guards at one boundary and records what
+passed it, so that a run is reproducible; its measures are the
+reviewer's reading and the agent's first attempt rather than a
+benchmark's latency.
 
 \paragraph{Capabilities.} The object-capability discipline of
 E~\citep{miller2006robust} makes authority flow only along references;

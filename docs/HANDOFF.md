@@ -4333,7 +4333,17 @@ by `wc`, 12 pages, three bibliography entries added (Perceus PLDI 2021
 verified through Crossref, the thesis's title page read, Unison's page
 fetched); the lint again 0 blockers and 0 strong advisories after three
 sentences it flagged were rewritten. The PDF is rebuilt and committed
-with the `.bbl`. `paper/endorsement.md` is the request the owner sends with the
+with the `.bbl`. Later that evening the owner asked about the arXiv
+endorsement; the search for endorsers found three 2025 cs.PL papers on
+the same premise the article had not cited (Quasar, arXiv:2506.12202,
+Penn, Zdancewic and Bastani among the authors; Pel, arXiv:2505.13453;
+composable effect handling for LLM scripts, arXiv:2507.22048, Di Wang),
+none named anywhere in `docs/design/` (grep); the article gained a
+related-work paragraph on them and one sentence in the introduction,
+6,276 words, 13 pages, the lint unchanged. The endorsement routes the
+owner has: the owner's own institutional email did not auto-endorse; a
+cold request to an endorser among the cited authors (one at a time,
+the PDF and the repository attached) or Zenodo and a workshop. `paper/endorsement.md` is the request the owner sends with the
 submission's link; the arXiv procedure was explained to the owner (the
 endorsement link from the submission form, the endorsers found through
 a cited paper's "Which authors of this paper are endorsers?" link, the
