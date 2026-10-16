@@ -1,7 +1,7 @@
 # Handoff
 
-Last updated: 2026-10-15, session 15, on the owner's machine (the paragraph's
-end has the session's work; its start is session 14's). Session 14's work:
+Last updated: 2026-10-16, session 15 paused on the owner's word (the
+paragraph's end has the session's work; its start is session 14's). Session 14's work:
 the design study of stage 29, the new backend for the VM (the section
 "Stage 29, the new backend: the design study (session 14)" below: the
 checker's image run attributed by category under callgrind, eleven
@@ -270,7 +270,19 @@ binary installed through `install.sh`; the handoff's section "Release
 endorsement request written (`paper/endorsement.md`). The project is at
 its stable version; what remains is the owner's (the arXiv submission,
 the announcements; the Marketplace upload was done on 2026-10-16, the
-gallery listing 0.4.0 at 01:19 UTC). The watch rounds
+gallery listing 0.4.0 at 01:19 UTC). On 2026-10-16 the session also
+condensed the article (3f3559e), put CodeEraser on the plugin list
+(hashgraph-online/awesome-ai-plugins#816, after its scan went 79 to 87
+with a security policy, CodeEraser fed3adc0), turned on private
+vulnerability reporting on the owner's five plugin repositories, and
+began a work package in the owner's AutoShade repository (the toast
+wrap, commit 98329d1 there, done; three parts left, written for the
+next session in
+`D:/Projects/.worktrees/autoshade/ui-text/handoff_2026-10-16.md`:
+the image role over chat completions with automatic detection, the
+effort tiers read from `/models`, the 25 reviewed strings). The
+session paused on the owner's word ("暂停，保存进度，准备交接") with
+the three trees clean and pushed. The watch rounds
 (Gmail, the notifications, the ten list pull requests, the Glama
 badge) were a cron of session 15, stopped on the owner's word of
 2026-10-15 evening ("如果有回复或者更新我通知你": the owner reports
@@ -4301,7 +4313,11 @@ Zenodo as the road without a contact). The announcements' texts at 0.4.0 are the
 `announcements_0.4.0.md` (the 0.2.0 texts with the C API, the memory
 budget, the registry and the stable version), for the owner to post. The owner's steps: the
 arXiv submission with the endorsement and the announcements (the
-Marketplace upload is done).
+Marketplace upload is done; the Marketplace's verified-domain badge
+needs six months listed, from 2027-04-13; the HOL claim links of the
+five plugin repositories are optional; the awesome-claude-code form
+for cc-tree waits for that repository's daily watch to open its
+issue).
 
 ## Stage 46, the liveness walk's residue on both sides (session 15, night)
 
