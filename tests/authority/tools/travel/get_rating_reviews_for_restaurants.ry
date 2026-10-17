@@ -1,0 +1,10 @@
+module get_rating_reviews_for_restaurants
+  purpose: The tool `get_rating_reviews_for_restaurants` of the environment: Get the rating and reviews for the given restaurants.
+
+import std.python exposing PythonError
+
+public function get_rating_reviews_for_restaurants(restaurant_names: List of Text)
+  returns Map of Text to Text
+  or fails with PythonError
+  needs python("tools.get_rating_reviews_for_restaurants")
+  purpose: Get the rating and reviews for the given restaurants.

@@ -1,0 +1,10 @@
+module get_cuisine_type_for_restaurants
+  purpose: The tool `get_cuisine_type_for_restaurants` of the environment: Get the cuisine type of the given restaurants, could be: Italian, Chines.
+
+import std.python exposing PythonError
+
+public function get_cuisine_type_for_restaurants(restaurant_names: List of Text)
+  returns Map of Text to Text
+  or fails with PythonError
+  needs python("tools.get_cuisine_type_for_restaurants")
+  purpose: Get the cuisine type of the given restaurants, could be: Italian, Chines.

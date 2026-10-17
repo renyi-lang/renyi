@@ -1,0 +1,10 @@
+module update_scheduled_transaction
+  purpose: The tool `update_scheduled_transaction` of the environment: Update a scheduled transaction.
+
+import std.python exposing PythonError
+
+public function update_scheduled_transaction(id: Integer, recipient: maybe Text, amount: maybe Float, subject: maybe Text, date: maybe Text, recurring: maybe Boolean)
+  returns Map of Text to Text
+  or fails with PythonError
+  needs python("tools.update_scheduled_transaction")
+  purpose: Update a scheduled transaction.

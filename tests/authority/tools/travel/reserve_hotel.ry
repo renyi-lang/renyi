@@ -1,0 +1,10 @@
+module reserve_hotel
+  purpose: The tool `reserve_hotel` of the environment: Makes a reservation for a hotel with the provided details.
+
+import std.python exposing PythonError
+
+public function reserve_hotel(hotel: Text, start_day: Text, end_day: Text)
+  returns Text
+  or fails with PythonError
+  needs python("tools.reserve_hotel")
+  purpose: Makes a reservation for a hotel with the provided details.

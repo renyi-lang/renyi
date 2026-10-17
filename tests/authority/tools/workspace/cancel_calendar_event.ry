@@ -1,0 +1,10 @@
+module cancel_calendar_event
+  purpose: The tool `cancel_calendar_event` of the environment: Cancels the event with the given `event_id`.
+
+import std.python exposing PythonError
+
+public function cancel_calendar_event(event_id: Text)
+  returns Text
+  or fails with PythonError
+  needs python("tools.cancel_calendar_event")
+  purpose: Cancels the event with the given `event_id`.

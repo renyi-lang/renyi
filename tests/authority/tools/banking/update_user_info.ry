@@ -1,0 +1,10 @@
+module update_user_info
+  purpose: The tool `update_user_info` of the environment: Update the user information.
+
+import std.python exposing PythonError
+
+public function update_user_info(first_name: maybe Text, last_name: maybe Text, street: maybe Text, city: maybe Text)
+  returns Map of Text to Text
+  or fails with PythonError
+  needs python("tools.update_user_info")
+  purpose: Update the user information.

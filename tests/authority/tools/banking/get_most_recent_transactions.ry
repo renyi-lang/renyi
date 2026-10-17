@@ -1,0 +1,23 @@
+module get_most_recent_transactions
+  purpose: The tool `get_most_recent_transactions` of the environment: Get the list of the most recent transactions, e.g.
+
+import std.python exposing PythonError
+
+public type Transaction
+  purpose: A bank transaction: who sent what to whom, with its subject and date.
+  has id: Integer
+  has sender: Text
+  has recipient: Text
+  has amount: Float
+  has subject: Text
+  has date: Text
+  has recurring: Boolean
+  can ToJson
+  can FromJson
+end
+
+public function get_most_recent_transactions(how_many: Integer)
+  returns List of Transaction
+  or fails with PythonError
+  needs python("tools.get_most_recent_transactions")
+  purpose: Get the list of the most recent transactions, e.g.

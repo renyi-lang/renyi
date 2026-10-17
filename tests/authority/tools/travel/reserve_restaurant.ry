@@ -1,0 +1,10 @@
+module reserve_restaurant
+  purpose: The tool `reserve_restaurant` of the environment: Makes a reservation for a restaurant with the provided details.
+
+import std.python exposing PythonError
+
+public function reserve_restaurant(restaurant: Text, start_time: Text)
+  returns Text
+  or fails with PythonError
+  needs python("tools.reserve_restaurant")
+  purpose: Makes a reservation for a restaurant with the provided details.

@@ -1,0 +1,18 @@
+module search_contacts_by_email
+  purpose: The tool `search_contacts_by_email` of the environment: Finds contacts in the inbox's contact list by email.
+
+import std.python exposing PythonError
+
+public type EmailContact
+  purpose: A contact of the address book: an email address and a name.
+  has email: Text
+  has name: Text
+  can ToJson
+  can FromJson
+end
+
+public function search_contacts_by_email(query: Text)
+  returns List of EmailContact
+  or fails with PythonError
+  needs python("tools.search_contacts_by_email")
+  purpose: Finds contacts in the inbox's contact list by email.

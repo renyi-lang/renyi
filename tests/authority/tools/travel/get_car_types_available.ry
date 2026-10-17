@@ -1,0 +1,10 @@
+module get_car_types_available
+  purpose: The tool `get_car_types_available` of the environment: Get the car types available for the given car rental companies.
+
+import std.python exposing PythonError
+
+public function get_car_types_available(company_name: List of Text)
+  returns Map of Text to List of Text
+  or fails with PythonError
+  needs python("tools.get_car_types_available")
+  purpose: Get the car types available for the given car rental companies.

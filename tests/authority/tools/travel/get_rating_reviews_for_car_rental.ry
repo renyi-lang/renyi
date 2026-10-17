@@ -1,0 +1,10 @@
+module get_rating_reviews_for_car_rental
+  purpose: The tool `get_rating_reviews_for_car_rental` of the environment: Get the rating and reviews for the given car rental companies.
+
+import std.python exposing PythonError
+
+public function get_rating_reviews_for_car_rental(company_name: List of Text)
+  returns Map of Text to Text
+  or fails with PythonError
+  needs python("tools.get_rating_reviews_for_car_rental")
+  purpose: Get the rating and reviews for the given car rental companies.

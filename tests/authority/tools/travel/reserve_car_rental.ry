@@ -1,0 +1,9 @@
+module reserve_car_rental
+  purpose: The tool `reserve_car_rental` of the environment: Makes a reservation for a car rental with the provided details.
+
+import std.python exposing PythonError
+
+public function reserve_car_rental(company: Text, start_time: Text, end_time: maybe Text)
+  or fails with PythonError
+  needs python("tools.reserve_car_rental")
+  purpose: Makes a reservation for a car rental with the provided details.

@@ -1,0 +1,10 @@
+module schedule_transaction
+  purpose: The tool `schedule_transaction` of the environment: Schedule a transaction.
+
+import std.python exposing PythonError
+
+public function schedule_transaction(recipient: Text, amount: Float, subject: Text, date: Text, recurring: Boolean)
+  returns Map of Text to Text
+  or fails with PythonError
+  needs python("tools.schedule_transaction")
+  purpose: Schedule a transaction.

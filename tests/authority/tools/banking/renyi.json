@@ -1,0 +1,43 @@
+{
+  "name": "agentdojo_banking",
+  "version": "0.1.0",
+  "purpose": "The tools of AgentDojo's banking suite as Python modules, one per tool.",
+  "dependencies": {},
+  "python": {
+    "modules": {
+      "get_iban": {
+        "package": "tools.get_iban"
+      },
+      "send_money": {
+        "package": "tools.send_money"
+      },
+      "schedule_transaction": {
+        "package": "tools.schedule_transaction"
+      },
+      "update_scheduled_transaction": {
+        "package": "tools.update_scheduled_transaction"
+      },
+      "get_balance": {
+        "package": "tools.get_balance"
+      },
+      "get_most_recent_transactions": {
+        "package": "tools.get_most_recent_transactions"
+      },
+      "get_scheduled_transactions": {
+        "package": "tools.get_scheduled_transactions"
+      },
+      "read_file": {
+        "package": "tools.read_file"
+      },
+      "get_user_info": {
+        "package": "tools.get_user_info"
+      },
+      "update_password": {
+        "package": "tools.update_password"
+      },
+      "update_user_info": {
+        "package": "tools.update_user_info"
+      }
+    }
+  }
+}

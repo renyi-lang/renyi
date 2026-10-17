@@ -1,0 +1,19 @@
+module read_inbox
+  purpose: The tool `read_inbox` of the environment: Read the messages from the given user inbox.
+
+import std.python exposing PythonError
+
+public type Message
+  purpose: A Slack message: its sender, its recipient (a user or a channel) and its body.
+  has sender: Text
+  has recipient: Text
+  has body: Text
+  can ToJson
+  can FromJson
+end
+
+public function read_inbox(user: Text)
+  returns List of Message
+  or fails with PythonError
+  needs python("tools.read_inbox")
+  purpose: Read the messages from the given user inbox.

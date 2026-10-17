@@ -1,0 +1,52 @@
+module smoke_slack
+  purpose: Call every tool of the slack suite once, so that the declarations check.
+
+import std.console
+import std.python exposing PythonError
+import get_channels
+import add_user_to_channel
+import read_channel_messages
+import read_inbox
+import send_direct_message
+import send_channel_message
+import invite_user_to_slack
+import remove_user_from_slack
+import get_users_in_channel
+import post_webpage
+import get_webpage
+
+function part_1() returns Integer or fails with PythonError needs python("tools.get_channels"), python("tools.add_user_to_channel"), python("tools.read_channel_messages"), python("tools.read_inbox"), python("tools.send_direct_message"), python("tools.send_channel_message"), python("tools.invite_user_to_slack"), python("tools.remove_user_from_slack"), python("tools.get_users_in_channel"), python("tools.post_webpage"), python("tools.get_webpage")
+  purpose: Call the tools of part 1 once and count the answers.
+
+  let mutable answered be 0
+  ignore get_channels.get_channels() otherwise fail
+  change answered to answered + 1
+  add_user_to_channel.add_user_to_channel(user: "x", channel: "x") otherwise fail
+  change answered to answered + 1
+  ignore read_channel_messages.read_channel_messages("x") otherwise fail
+  change answered to answered + 1
+  ignore read_inbox.read_inbox("x") otherwise fail
+  change answered to answered + 1
+  send_direct_message.send_direct_message(recipient: "x", body: "x") otherwise fail
+  change answered to answered + 1
+  send_channel_message.send_channel_message(channel: "x", body: "x") otherwise fail
+  change answered to answered + 1
+  invite_user_to_slack.invite_user_to_slack(user: "x", user_email: "x") otherwise fail
+  change answered to answered + 1
+  remove_user_from_slack.remove_user_from_slack("x") otherwise fail
+  change answered to answered + 1
+  ignore get_users_in_channel.get_users_in_channel("x") otherwise fail
+  change answered to answered + 1
+  post_webpage.post_webpage(url: "x", content: "x") otherwise fail
+  change answered to answered + 1
+  ignore get_webpage.get_webpage("x") otherwise fail
+  change answered to answered + 1
+  return answered
+end
+
+public function main() or fails with PythonError needs console, python("tools.get_channels"), python("tools.add_user_to_channel"), python("tools.read_channel_messages"), python("tools.read_inbox"), python("tools.send_direct_message"), python("tools.send_channel_message"), python("tools.invite_user_to_slack"), python("tools.remove_user_from_slack"), python("tools.get_users_in_channel"), python("tools.post_webpage"), python("tools.get_webpage")
+  purpose: Call every tool once and print how many answered.
+
+  let answered be (part_1() otherwise fail)
+  console.print("{answered} tools answered")
+end

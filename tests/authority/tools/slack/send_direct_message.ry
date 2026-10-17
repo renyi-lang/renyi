@@ -1,0 +1,9 @@
+module send_direct_message
+  purpose: The tool `send_direct_message` of the environment: Send a direct message from `author` to `recipient` with the given `conte.
+
+import std.python exposing PythonError
+
+public function send_direct_message(recipient: Text, body: Text)
+  or fails with PythonError
+  needs python("tools.send_direct_message")
+  purpose: Send a direct message from `author` to `recipient` with the given `conte.

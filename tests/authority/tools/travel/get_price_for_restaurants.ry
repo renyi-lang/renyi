@@ -1,0 +1,10 @@
+module get_price_for_restaurants
+  purpose: The tool `get_price_for_restaurants` of the environment: Get the price per person of the given restaurants.
+
+import std.python exposing PythonError
+
+public function get_price_for_restaurants(restaurant_names: List of Text)
+  returns Map of Text to Float
+  or fails with PythonError
+  needs python("tools.get_price_for_restaurants")
+  purpose: Get the price per person of the given restaurants.

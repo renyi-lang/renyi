@@ -1,0 +1,52 @@
+module smoke_banking
+  purpose: Call every tool of the banking suite once, so that the declarations check.
+
+import std.console
+import std.python exposing PythonError
+import get_iban
+import send_money
+import schedule_transaction
+import update_scheduled_transaction
+import get_balance
+import get_most_recent_transactions
+import get_scheduled_transactions
+import read_file
+import get_user_info
+import update_password
+import update_user_info
+
+function part_1() returns Integer or fails with PythonError needs python("tools.get_iban"), python("tools.send_money"), python("tools.schedule_transaction"), python("tools.update_scheduled_transaction"), python("tools.get_balance"), python("tools.get_most_recent_transactions"), python("tools.get_scheduled_transactions"), python("tools.read_file"), python("tools.get_user_info"), python("tools.update_password"), python("tools.update_user_info")
+  purpose: Call the tools of part 1 once and count the answers.
+
+  let mutable answered be 0
+  ignore get_iban.get_iban() otherwise fail
+  change answered to answered + 1
+  ignore send_money.send_money(recipient: "x", amount: 1.0, subject: "x", date: "x") otherwise fail
+  change answered to answered + 1
+  ignore schedule_transaction.schedule_transaction(recipient: "x", amount: 1.0, subject: "x", date: "x", recurring: true) otherwise fail
+  change answered to answered + 1
+  ignore update_scheduled_transaction.update_scheduled_transaction(id: 1, recipient: nothing, amount: nothing, subject: nothing, date: nothing, recurring: nothing) otherwise fail
+  change answered to answered + 1
+  ignore get_balance.get_balance() otherwise fail
+  change answered to answered + 1
+  ignore get_most_recent_transactions.get_most_recent_transactions(1) otherwise fail
+  change answered to answered + 1
+  ignore get_scheduled_transactions.get_scheduled_transactions() otherwise fail
+  change answered to answered + 1
+  ignore read_file.read_file("x") otherwise fail
+  change answered to answered + 1
+  ignore get_user_info.get_user_info() otherwise fail
+  change answered to answered + 1
+  ignore update_password.update_password("x") otherwise fail
+  change answered to answered + 1
+  ignore update_user_info.update_user_info(first_name: nothing, last_name: nothing, street: nothing, city: nothing) otherwise fail
+  change answered to answered + 1
+  return answered
+end
+
+public function main() or fails with PythonError needs console, python("tools.get_iban"), python("tools.send_money"), python("tools.schedule_transaction"), python("tools.update_scheduled_transaction"), python("tools.get_balance"), python("tools.get_most_recent_transactions"), python("tools.get_scheduled_transactions"), python("tools.read_file"), python("tools.get_user_info"), python("tools.update_password"), python("tools.update_user_info")
+  purpose: Call every tool once and print how many answered.
+
+  let answered be (part_1() otherwise fail)
+  console.print("{answered} tools answered")
+end

@@ -4358,9 +4358,19 @@ ceiling, 32 pairs named as the residue), the three statements on paper
 article carrying both (the statements in the design section, the gap
 as an evaluation subsection with its table, AgentDojo and CaMeL cited;
 the site's navigation lists the two research pages under "Research").
-Open on the track: the half with a model in the loop (the owner's word
-on the spend first; the design is in the roadmap's stage 47), the
-amount budget as a surface change under V11, the mechanization.
+The half with a model in the loop followed the same night on the
+owner's word for the subscription's `claude -p` (AX4): the suites' tools
+as Renyi projects of one Python module per tool
+(`tests/authority/tools/`, `tools/authority_gap/gen_tool_modules.py`),
+Sonnet 5.5 writing each task's program with up to three checked attempts
+(`model_loop.py`), 85 of 86 clean, 67 exactly the ground truth's tools,
+83.4% of 560 pairs blocked under the model's grants against 83.2% under
+the ground truth's (`tests/authority/model_loop.json`,
+`model_loop_expected.txt`, CI's step "Authority gap with a model in the
+loop"); the lane's `runs/b/` holds every answer and diagnostic. Open on
+the track: utility (the programs run against the environments through
+the bridge), the amount budget as a surface change under V11, the
+mechanization.
 `paper/endorsement.md` is the request the owner sends with the
 submission's link; the arXiv procedure was explained to the owner (the
 endorsement link from the submission form, the endorsers found through

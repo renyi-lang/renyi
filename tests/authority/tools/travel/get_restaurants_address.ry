@@ -1,0 +1,10 @@
+module get_restaurants_address
+  purpose: The tool `get_restaurants_address` of the environment: Get the address of the given restaurants.
+
+import std.python exposing PythonError
+
+public function get_restaurants_address(restaurant_names: List of Text)
+  returns Map of Text to Text
+  or fails with PythonError
+  needs python("tools.get_restaurants_address")
+  purpose: Get the address of the given restaurants.

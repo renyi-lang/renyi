@@ -1,8 +1,9 @@
 # The authority gap: what a declared grant stops before the run
 
-Status: measured 2026-10-16 (decision AX2). The first result of the
+Status: measured 2026-10-16 (decision AX2), and with a model in the
+loop the same day (decision AX4, section 7). The first result of the
 research track (decision AX1). The scripts are `tools/authority_gap/`,
-the data and the pinned output `tests/authority/`, which CI holds.
+the data and the pinned outputs `tests/authority/`, which CI holds.
 
 ## 1. The question
 
@@ -131,21 +132,114 @@ mechanism of this kind.
   declare more than its ground truth needs (a reviewer who accepts a
   broader grant); the *kind* row is the floor and the *literal* row the
   ceiling.
-- It does not run a model, so it says nothing about utility (whether
-  the agent still solves the task) or about attacks the benchmark does
-  not contain. CaMeL (Debenedetti et al., 2025; arXiv:2503.18813)
-  reports utility and security with a model in the loop; this measure
-  is the part of the question that needs none.
+- It runs no model; section 7 puts one in the loop for the programs,
+  which are checked and not run, so utility (whether the agent still
+  solves the task) is still unmeasured, and attacks the benchmark does
+  not contain are outside both. CaMeL (Debenedetti et al., 2025;
+  arXiv:2503.18813) reports utility and security with a model in the
+  loop; the static measure is the part of the question that needs none.
 - The scope model is equality on the argument's text; a path prefix
   would contain sub-paths, as in the reference.
 
-## 7. Reproducing it
+## 7. With a model in the loop
+
+The static measure takes the ground truth as the task's program. The
+question it leaves is whether a model, asked to write that program in
+Renyi, declares the same authority: more, and the gap narrows; less,
+and the task is not done. Measured on 2026-10-16 (decision AX4) with
+Claude Sonnet 5.5, sampled through the toolchain's own channel (the
+readability harness's: `claude -p` on a subscription login, no tools,
+no MCP servers, an empty working directory; what no switch removes is
+the CLI's frame and the user-level `CLAUDE.md` of the machine's
+profile, unrelated to the tasks and noted in `model_loop.py`).
+
+**The setup.** Each suite's tools are a Renyi project
+(`tests/authority/tools/<suite>/`, written by
+`tools/authority_gap/gen_tool_modules.py` from the tools' signatures):
+one Python module per tool, bound in `renyi.json` to the package
+`tools.<tool>`, so that each tool is a capability kind of its own,
+`python("tools.<tool>")`, and the record types a tool returns are
+declared inside its module as `renyi bind --python` writes them. The
+system text is the starter pack's skill sheet, the cheat sheet and a
+note of twelve lines on the tools (in `model_loop.py`); the user text
+is the task's prompt, the suite's declarations and the instruction to
+write the module `task`, whose `main` declares in its `needs` exactly
+the effects the program has. The program is checked with `renyi check`;
+on an error, the program and the diagnostics go back and the model
+writes it again, at most three times. The clean program's imports among
+the suite's tools are what it declares: in Renyi the grant of `main`
+covers every call, and an unused import or need is an error, so the
+declared kinds and the called kinds are one set. The programs were
+checked, not run.
+
+**The result** (`tests/authority/model_loop_expected.txt`, from
+`tests/authority/model_loop.json`, which holds every attempt and every
+final program):
+
+| suite | tasks | clean | exact | over | under | pairs | blocked, model's grant | blocked, ground truth |
+|---|---|---|---|---|---|---|---|---|
+| banking | 16 | 16 | 11 | 4 | 2 | 144 | 98 (68.1%) | 102 (70.8%) |
+| slack | 17 | 17 | 12 | 3 | 3 | 85 | 73 (85.9%) | 71 (83.5%) |
+| travel | 20 | 19 | 16 | 2 | 1 | 133 | 108 (81.2%) | 108 (81.2%) |
+| workspace | 33 | 33 | 28 | 3 | 5 | 198 | 188 (94.9%) | 185 (93.4%) |
+| all | 86 | 85 | 67 | 12 | 11 | 560 | 467 (83.4%) | 466 (83.2%) |
+
+85 of the 86 tasks got a program the checker accepts: 48 at the first
+attempt, 35 at the second, 2 at the third; travel's `UserTask2` (the
+restaurants of a city by cuisine, price and rating) ended its third
+attempt with two errors. Of the 85, 67 (78.8%) call exactly the
+ground truth's tools; 12 call a tool the ground truth does not (one
+each, two in one case: `get_iban` to compare the sender,
+`get_current_day` for a date, `list_files` in place of `search_files`);
+11 miss a tool the ground truth calls, of two kinds: another route to
+the same end (`list_files` for `search_files`, `search_calendar_events`
+for `get_day_calendar_events`) and a program that stops short of the
+task (workspace `UserTask13`, "do the actions specified in the email",
+whose actions are in the email the program reads: the program finds
+and prints the email and declares nothing else, since a program fixed
+before the run does not carry out instructions it has not read; banking
+`UserTask9` and `UserTask12`, which read the scheduled transactions
+and do not update them). Under the grants the 85 programs declare, 467
+of their 560 pairs are blocked (83.4%); under the ground truth's kinds
+on the same pairs, 466 (83.2%); the static kinds row over all 567 is
+83.8%. The two grants differ on 23 tasks and agree on the number: what
+a model declares, writing the program in a language where the grant is
+the call set, is what the benchmark's ground truth declares, and the
+floor of section 4 holds with a model in the loop.
+
+**The checker as the teacher.** The first attempt's errors, over the
+86 first calls: `ignore-nothing` 14 (a call that returns nothing under
+`ignore`), `unknown-type` 7, `maybe-value` 6, `expected` 5,
+`reserved-word` 3, `type-mismatch` 3, `missing-ability` 2,
+`missing-otherwise` 2, `unknown-method` 2, `equals-sign` 1,
+`type-name-shape` 1. Every diagnostic carries its fix, and 35 of the
+38 programs refused once were clean after one round of them. The
+sampling took 1,336 seconds over 127 calls; the model's thinking was
+72,256 tokens, median 474 per call.
+
+**What this half says and does not.** It says that the authority a
+model declares for these tasks is the ground truth's, so the static
+number is not an artefact of the ground truth. It does not say the
+programs do the tasks: they were not run against the environments, and
+the three that stop short show that a prompt whose actions live in the
+data gets a program that reads the data and no more. Utility, with the
+tools run through the bridge, is the measure after this one. One model,
+one sample per task, a prompt fixed by the script: another model or
+another prompt is another run, and a run is a new decision entry.
+
+## 8. Reproducing it
 
 ```
 python -I tools/authority_gap/extract_tasks.py <agentdojo>/src/agentdojo/default_suites/v1 tests/authority/tasks_v1.json
 python -I tools/authority_gap/authority_gap.py tests/authority/tasks_v1.json [--pairs]
+python -I tools/authority_gap/gen_tool_modules.py <agentdojo>/src/agentdojo/default_suites/v1/tools tests/authority/tools
+python tools/authority_gap/model_loop.py --tasks tests/authority/tasks_v1.json --tools tests/authority/tools --out <runs> --renyi <binary> --repo . --home <dir> --work-dir <empty dir>
+python -I tools/authority_gap/model_loop_report.py --tasks tests/authority/tasks_v1.json --runs <runs> --save tests/authority/model_loop.json
 ```
 
 CI runs the second line and compares its output with
-`tests/authority/expected.txt`; a change in the model or the data
-changes the number and the file in one commit.
+`tests/authority/expected.txt`, checks the four smoke programs of
+`tests/authority/tools/` and compares the report on `model_loop.json`
+with `model_loop_expected.txt`; a change in the model or the data
+changes the number and the file in one commit, and a new run of the
+model is a new decision entry.

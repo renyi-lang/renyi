@@ -1,0 +1,10 @@
+module get_car_fuel_options
+  purpose: The tool `get_car_fuel_options` of the environment: Get the fuel options of the given car rental companies.
+
+import std.python exposing PythonError
+
+public function get_car_fuel_options(company_name: List of Text)
+  returns Map of Text to List of Text
+  or fails with PythonError
+  needs python("tools.get_car_fuel_options")
+  purpose: Get the fuel options of the given car rental companies.

@@ -1,0 +1,25 @@
+module search_calendar_events
+  purpose: The tool `search_calendar_events` of the environment: Searches calendar events that match the given query in the tile or the d.
+
+import std.python exposing PythonError
+
+public type CalendarEvent
+  purpose: A calendar event with its times, location, participants and status.
+  has id: Text
+  has title: Text
+  has description: Text
+  has start_time: Text
+  has end_time: Text
+  has location: maybe Text
+  has participants: List of Text
+  has all_day: Boolean
+  has status: Text
+  can ToJson
+  can FromJson
+end
+
+public function search_calendar_events(query: Text, date: maybe Text)
+  returns List of CalendarEvent
+  or fails with PythonError
+  needs python("tools.search_calendar_events")
+  purpose: Searches calendar events that match the given query in the tile or the d.

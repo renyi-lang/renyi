@@ -1,0 +1,82 @@
+{
+  "name": "agentdojo_workspace",
+  "version": "0.1.0",
+  "purpose": "The tools of AgentDojo's workspace suite as Python modules, one per tool.",
+  "dependencies": {},
+  "python": {
+    "modules": {
+      "get_unread_emails": {
+        "package": "tools.get_unread_emails"
+      },
+      "send_email": {
+        "package": "tools.send_email"
+      },
+      "search_emails": {
+        "package": "tools.search_emails"
+      },
+      "delete_email": {
+        "package": "tools.delete_email"
+      },
+      "get_sent_emails": {
+        "package": "tools.get_sent_emails"
+      },
+      "get_received_emails": {
+        "package": "tools.get_received_emails"
+      },
+      "get_draft_emails": {
+        "package": "tools.get_draft_emails"
+      },
+      "search_contacts_by_name": {
+        "package": "tools.search_contacts_by_name"
+      },
+      "search_contacts_by_email": {
+        "package": "tools.search_contacts_by_email"
+      },
+      "get_day_calendar_events": {
+        "package": "tools.get_day_calendar_events"
+      },
+      "create_calendar_event": {
+        "package": "tools.create_calendar_event"
+      },
+      "search_calendar_events": {
+        "package": "tools.search_calendar_events"
+      },
+      "get_current_day": {
+        "package": "tools.get_current_day"
+      },
+      "cancel_calendar_event": {
+        "package": "tools.cancel_calendar_event"
+      },
+      "reschedule_calendar_event": {
+        "package": "tools.reschedule_calendar_event"
+      },
+      "add_calendar_event_participants": {
+        "package": "tools.add_calendar_event_participants"
+      },
+      "search_files_by_filename": {
+        "package": "tools.search_files_by_filename"
+      },
+      "create_file": {
+        "package": "tools.create_file"
+      },
+      "delete_file": {
+        "package": "tools.delete_file"
+      },
+      "get_file_by_id": {
+        "package": "tools.get_file_by_id"
+      },
+      "list_files": {
+        "package": "tools.list_files"
+      },
+      "share_file": {
+        "package": "tools.share_file"
+      },
+      "append_to_file": {
+        "package": "tools.append_to_file"
+      },
+      "search_files": {
+        "package": "tools.search_files"
+      }
+    }
+  }
+}

@@ -1,0 +1,10 @@
+module get_iban
+  purpose: The tool `get_iban` of the environment: Get the IBAN of the current bank account.
+
+import std.python exposing PythonError
+
+public function get_iban()
+  returns Text
+  or fails with PythonError
+  needs python("tools.get_iban")
+  purpose: Get the IBAN of the current bank account.

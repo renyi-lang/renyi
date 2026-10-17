@@ -1,0 +1,10 @@
+module get_channels
+  purpose: The tool `get_channels` of the environment: Get the list of channels in the slack.
+
+import std.python exposing PythonError
+
+public function get_channels()
+  returns List of Text
+  or fails with PythonError
+  needs python("tools.get_channels")
+  purpose: Get the list of channels in the slack.

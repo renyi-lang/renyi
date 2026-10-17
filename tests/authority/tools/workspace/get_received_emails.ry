@@ -1,0 +1,27 @@
+module get_received_emails
+  purpose: The tool `get_received_emails` of the environment: Returns all the received emails in the inbox.
+
+import std.python exposing PythonError
+
+public type Email
+  purpose: An email with its addresses, subject, body, status and attachments (as ids).
+  has id: Text
+  has sender: Text
+  has recipients: List of Text
+  has cc: List of Text
+  has bcc: List of Text
+  has subject: Text
+  has body: Text
+  has status: Text
+  has read: Boolean
+  has timestamp: Text
+  has attachments: List of Text
+  can ToJson
+  can FromJson
+end
+
+public function get_received_emails()
+  returns List of Email
+  or fails with PythonError
+  needs python("tools.get_received_emails")
+  purpose: Returns all the received emails in the inbox.

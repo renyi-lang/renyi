@@ -862,12 +862,18 @@ where one decided, the status. The dates are those of the decisions.
     attacker's data; `docs/research/authority-gap.md`, the scripts
     `tools/authority_gap/`, the data and the pinned output
     `tests/authority/` under CI) and the three statements on paper
-    with their assumptions (`docs/research/core-calculus.md`). Open:
-    the half with a model in the loop (an agent writing Renyi programs
-    for the tasks with the tools bound through the Python bridge;
-    utility and attack success under the grant, guards and budgets),
-    which waits for the owner's word on the spend; a budget on an
-    amount as a language extension (a decision entry first, V11); the
+    with their assumptions (`docs/research/core-calculus.md`); and,
+    the same night on the owner's word for the subscription's `claude
+    -p`, the half with a model in the loop (AX4: Claude Sonnet 5.5
+    writing the program of each of the 86 tasks against the suite's
+    tools as Python modules, one kind each, up to three attempts with
+    the checker's diagnostics fed back; 85 clean, 67 calling exactly
+    the ground truth's tools; 83.4% of 560 pairs blocked under the
+    model's grants against 83.2% under the ground truth's, the floor
+    holding; `tools/authority_gap/model_loop.py`, `tests/authority/tools/`
+    and `model_loop.json` under CI). Open: utility, the programs run
+    against the environments through the bridge; a budget on an amount
+    as a language extension (a decision entry first, V11); the
     mechanization if asked.
 
 ## 3. The tracks

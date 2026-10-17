@@ -1,0 +1,23 @@
+module get_file_by_id
+  purpose: The tool `get_file_by_id` of the environment: Get a file from a cloud drive by its ID.
+
+import std.python exposing PythonError
+
+public type CloudDriveFile
+  purpose: A file of the cloud drive with its content and who it is shared with.
+  has id: Text
+  has filename: Text
+  has content: Text
+  has owner: Text
+  has last_modified: Text
+  has shared_with: Map of Text to Text
+  has size: Integer
+  can ToJson
+  can FromJson
+end
+
+public function get_file_by_id(file_id: Text)
+  returns CloudDriveFile
+  or fails with PythonError
+  needs python("tools.get_file_by_id")
+  purpose: Get a file from a cloud drive by its ID.

@@ -1,0 +1,10 @@
+module get_user_information
+  purpose: The tool `get_user_information` of the environment: Get the user information, could be: first name, last name, ID number, em.
+
+import std.python exposing PythonError
+
+public function get_user_information()
+  returns Map of Text to Text
+  or fails with PythonError
+  needs python("tools.get_user_information")
+  purpose: Get the user information, could be: first name, last name, ID number, em.

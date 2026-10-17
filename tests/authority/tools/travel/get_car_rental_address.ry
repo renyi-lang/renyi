@@ -1,0 +1,10 @@
+module get_car_rental_address
+  purpose: The tool `get_car_rental_address` of the environment: Get the address of the given car rental companies.
+
+import std.python exposing PythonError
+
+public function get_car_rental_address(company_name: List of Text)
+  returns Map of Text to Text
+  or fails with PythonError
+  needs python("tools.get_car_rental_address")
+  purpose: Get the address of the given car rental companies.

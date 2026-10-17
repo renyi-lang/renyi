@@ -1,0 +1,9 @@
+module invite_user_to_slack
+  purpose: The tool `invite_user_to_slack` of the environment: Invites a user to the Slack workspace.
+
+import std.python exposing PythonError
+
+public function invite_user_to_slack(user: Text, user_email: Text)
+  or fails with PythonError
+  needs python("tools.invite_user_to_slack")
+  purpose: Invites a user to the Slack workspace.

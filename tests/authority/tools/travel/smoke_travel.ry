@@ -1,0 +1,126 @@
+module smoke_travel
+  purpose: Call every tool of the travel suite once, so that the declarations check.
+
+import std.console
+import std.python exposing PythonError
+import get_user_information
+import get_all_hotels_in_city
+import get_hotels_prices
+import get_hotels_address
+import get_rating_reviews_for_hotels
+import get_all_restaurants_in_city
+import get_restaurants_address
+import get_rating_reviews_for_restaurants
+import get_cuisine_type_for_restaurants
+import get_dietary_restrictions_for_all_restaurants
+import get_contact_information_for_restaurants
+import get_price_for_restaurants
+import check_restaurant_opening_hours
+import get_all_car_rental_companies_in_city
+import get_car_types_available
+import get_rating_reviews_for_car_rental
+import get_car_rental_address
+import get_car_fuel_options
+import get_car_price_per_day
+import reserve_hotel
+import reserve_restaurant
+import reserve_car_rental
+import get_flight_information
+import send_email
+import get_day_calendar_events
+import create_calendar_event
+import search_calendar_events
+import get_current_day
+import cancel_calendar_event
+import reschedule_calendar_event
+import add_calendar_event_participants
+
+function part_1() returns Integer or fails with PythonError needs python("tools.get_user_information"), python("tools.get_all_hotels_in_city"), python("tools.get_hotels_prices"), python("tools.get_hotels_address"), python("tools.get_rating_reviews_for_hotels"), python("tools.get_all_restaurants_in_city"), python("tools.get_restaurants_address"), python("tools.get_rating_reviews_for_restaurants"), python("tools.get_cuisine_type_for_restaurants"), python("tools.get_dietary_restrictions_for_all_restaurants"), python("tools.get_contact_information_for_restaurants"), python("tools.get_price_for_restaurants")
+  purpose: Call the tools of part 1 once and count the answers.
+
+  let mutable answered be 0
+  ignore get_user_information.get_user_information() otherwise fail
+  change answered to answered + 1
+  ignore get_all_hotels_in_city.get_all_hotels_in_city("x") otherwise fail
+  change answered to answered + 1
+  ignore get_hotels_prices.get_hotels_prices([]) otherwise fail
+  change answered to answered + 1
+  ignore get_hotels_address.get_hotels_address("x") otherwise fail
+  change answered to answered + 1
+  ignore get_rating_reviews_for_hotels.get_rating_reviews_for_hotels([]) otherwise fail
+  change answered to answered + 1
+  ignore get_all_restaurants_in_city.get_all_restaurants_in_city("x") otherwise fail
+  change answered to answered + 1
+  ignore get_restaurants_address.get_restaurants_address([]) otherwise fail
+  change answered to answered + 1
+  ignore get_rating_reviews_for_restaurants.get_rating_reviews_for_restaurants([]) otherwise fail
+  change answered to answered + 1
+  ignore get_cuisine_type_for_restaurants.get_cuisine_type_for_restaurants([]) otherwise fail
+  change answered to answered + 1
+  ignore get_dietary_restrictions_for_all_restaurants.get_dietary_restrictions_for_all_restaurants([]) otherwise fail
+  change answered to answered + 1
+  ignore get_contact_information_for_restaurants.get_contact_information_for_restaurants([]) otherwise fail
+  change answered to answered + 1
+  ignore get_price_for_restaurants.get_price_for_restaurants([]) otherwise fail
+  change answered to answered + 1
+  return answered
+end
+
+function part_2() returns Integer or fails with PythonError needs python("tools.check_restaurant_opening_hours"), python("tools.get_all_car_rental_companies_in_city"), python("tools.get_car_types_available"), python("tools.get_rating_reviews_for_car_rental"), python("tools.get_car_rental_address"), python("tools.get_car_fuel_options"), python("tools.get_car_price_per_day"), python("tools.reserve_hotel"), python("tools.reserve_restaurant"), python("tools.reserve_car_rental"), python("tools.get_flight_information"), python("tools.send_email")
+  purpose: Call the tools of part 2 once and count the answers.
+
+  let mutable answered be 0
+  ignore check_restaurant_opening_hours.check_restaurant_opening_hours([]) otherwise fail
+  change answered to answered + 1
+  ignore get_all_car_rental_companies_in_city.get_all_car_rental_companies_in_city("x") otherwise fail
+  change answered to answered + 1
+  ignore get_car_types_available.get_car_types_available([]) otherwise fail
+  change answered to answered + 1
+  ignore get_rating_reviews_for_car_rental.get_rating_reviews_for_car_rental([]) otherwise fail
+  change answered to answered + 1
+  ignore get_car_rental_address.get_car_rental_address([]) otherwise fail
+  change answered to answered + 1
+  ignore get_car_fuel_options.get_car_fuel_options([]) otherwise fail
+  change answered to answered + 1
+  ignore get_car_price_per_day.get_car_price_per_day([]) otherwise fail
+  change answered to answered + 1
+  ignore reserve_hotel.reserve_hotel(hotel: "x", start_day: "x", end_day: "x") otherwise fail
+  change answered to answered + 1
+  ignore reserve_restaurant.reserve_restaurant(restaurant: "x", start_time: "x") otherwise fail
+  change answered to answered + 1
+  reserve_car_rental.reserve_car_rental(company: "x", start_time: "x", end_time: nothing) otherwise fail
+  change answered to answered + 1
+  ignore get_flight_information.get_flight_information(departure_city: "x", arrival_city: "x") otherwise fail
+  change answered to answered + 1
+  ignore send_email.send_email(recipients: [], subject: "x", body: "x", attachments: nothing, cc: nothing, bcc: nothing) otherwise fail
+  change answered to answered + 1
+  return answered
+end
+
+function part_3() returns Integer or fails with PythonError needs python("tools.get_day_calendar_events"), python("tools.create_calendar_event"), python("tools.search_calendar_events"), python("tools.get_current_day"), python("tools.cancel_calendar_event"), python("tools.reschedule_calendar_event"), python("tools.add_calendar_event_participants")
+  purpose: Call the tools of part 3 once and count the answers.
+
+  let mutable answered be 0
+  ignore get_day_calendar_events.get_day_calendar_events("x") otherwise fail
+  change answered to answered + 1
+  ignore create_calendar_event.create_calendar_event(title: "x", start_time: "x", end_time: "x", description: "x", participants: nothing, location: nothing) otherwise fail
+  change answered to answered + 1
+  ignore search_calendar_events.search_calendar_events(query: "x", date: nothing) otherwise fail
+  change answered to answered + 1
+  ignore get_current_day.get_current_day() otherwise fail
+  change answered to answered + 1
+  ignore cancel_calendar_event.cancel_calendar_event("x") otherwise fail
+  change answered to answered + 1
+  ignore reschedule_calendar_event.reschedule_calendar_event(event_id: "x", new_start_time: "x", new_end_time: nothing) otherwise fail
+  change answered to answered + 1
+  ignore add_calendar_event_participants.add_calendar_event_participants(event_id: "x", participants: []) otherwise fail
+  change answered to answered + 1
+  return answered
+end
+
+public function main() or fails with PythonError needs console, python("tools.get_user_information"), python("tools.get_all_hotels_in_city"), python("tools.get_hotels_prices"), python("tools.get_hotels_address"), python("tools.get_rating_reviews_for_hotels"), python("tools.get_all_restaurants_in_city"), python("tools.get_restaurants_address"), python("tools.get_rating_reviews_for_restaurants"), python("tools.get_cuisine_type_for_restaurants"), python("tools.get_dietary_restrictions_for_all_restaurants"), python("tools.get_contact_information_for_restaurants"), python("tools.get_price_for_restaurants"), python("tools.check_restaurant_opening_hours"), python("tools.get_all_car_rental_companies_in_city"), python("tools.get_car_types_available"), python("tools.get_rating_reviews_for_car_rental"), python("tools.get_car_rental_address"), python("tools.get_car_fuel_options"), python("tools.get_car_price_per_day"), python("tools.reserve_hotel"), python("tools.reserve_restaurant"), python("tools.reserve_car_rental"), python("tools.get_flight_information"), python("tools.send_email"), python("tools.get_day_calendar_events"), python("tools.create_calendar_event"), python("tools.search_calendar_events"), python("tools.get_current_day"), python("tools.cancel_calendar_event"), python("tools.reschedule_calendar_event"), python("tools.add_calendar_event_participants")
+  purpose: Call every tool once and print how many answered.
+
+  let answered be (part_1() otherwise fail) + (part_2() otherwise fail) + (part_3() otherwise fail)
+  console.print("{answered} tools answered")
+end

@@ -1,0 +1,23 @@
+module search_files
+  purpose: The tool `search_files` of the environment: Search for files in the cloud drive by content.
+
+import std.python exposing PythonError
+
+public type CloudDriveFile
+  purpose: A file of the cloud drive with its content and who it is shared with.
+  has id: Text
+  has filename: Text
+  has content: Text
+  has owner: Text
+  has last_modified: Text
+  has shared_with: Map of Text to Text
+  has size: Integer
+  can ToJson
+  can FromJson
+end
+
+public function search_files(query: Text)
+  returns List of CloudDriveFile
+  or fails with PythonError
+  needs python("tools.search_files")
+  purpose: Search for files in the cloud drive by content.

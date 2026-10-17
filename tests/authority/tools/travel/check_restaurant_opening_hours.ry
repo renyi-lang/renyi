@@ -1,0 +1,10 @@
+module check_restaurant_opening_hours
+  purpose: The tool `check_restaurant_opening_hours` of the environment: Get the openning hours of the given restaurants, check if the restaurant.
+
+import std.python exposing PythonError
+
+public function check_restaurant_opening_hours(restaurant_names: List of Text)
+  returns Map of Text to Text
+  or fails with PythonError
+  needs python("tools.check_restaurant_opening_hours")
+  purpose: Get the openning hours of the given restaurants, check if the restaurant.

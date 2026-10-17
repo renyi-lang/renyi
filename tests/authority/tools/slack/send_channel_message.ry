@@ -1,0 +1,9 @@
+module send_channel_message
+  purpose: The tool `send_channel_message` of the environment: Send a channel message from `author` to `channel` with the given `conten.
+
+import std.python exposing PythonError
+
+public function send_channel_message(channel: Text, body: Text)
+  or fails with PythonError
+  needs python("tools.send_channel_message")
+  purpose: Send a channel message from `author` to `channel` with the given `conten.

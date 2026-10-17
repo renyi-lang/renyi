@@ -1,0 +1,19 @@
+module read_channel_messages
+  purpose: The tool `read_channel_messages` of the environment: Read the messages from the given channel.
+
+import std.python exposing PythonError
+
+public type Message
+  purpose: A Slack message: its sender, its recipient (a user or a channel) and its body.
+  has sender: Text
+  has recipient: Text
+  has body: Text
+  can ToJson
+  can FromJson
+end
+
+public function read_channel_messages(channel: Text)
+  returns List of Message
+  or fails with PythonError
+  needs python("tools.read_channel_messages")
+  purpose: Read the messages from the given channel.

@@ -1,0 +1,9 @@
+module post_webpage
+  purpose: The tool `post_webpage` of the environment: Posts a webpage at a given URL with the given content.
+
+import std.python exposing PythonError
+
+public function post_webpage(url: Text, content: Text)
+  or fails with PythonError
+  needs python("tools.post_webpage")
+  purpose: Posts a webpage at a given URL with the given content.

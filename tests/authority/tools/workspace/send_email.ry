@@ -1,0 +1,27 @@
+module send_email
+  purpose: The tool `send_email` of the environment: Sends an email with the given `body` to the given `address`.
+
+import std.python exposing PythonError
+
+public type Email
+  purpose: An email with its addresses, subject, body, status and attachments (as ids).
+  has id: Text
+  has sender: Text
+  has recipients: List of Text
+  has cc: List of Text
+  has bcc: List of Text
+  has subject: Text
+  has body: Text
+  has status: Text
+  has read: Boolean
+  has timestamp: Text
+  has attachments: List of Text
+  can ToJson
+  can FromJson
+end
+
+public function send_email(recipients: List of Text, subject: Text, body: Text, attachments: maybe List of Map of Text to Text, cc: maybe List of Text, bcc: maybe List of Text)
+  returns Email
+  or fails with PythonError
+  needs python("tools.send_email")
+  purpose: Sends an email with the given `body` to the given `address`.

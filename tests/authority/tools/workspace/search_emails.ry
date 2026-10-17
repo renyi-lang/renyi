@@ -1,0 +1,27 @@
+module search_emails
+  purpose: The tool `search_emails` of the environment: Searches for emails in the inbox that contain the given query in the sub.
+
+import std.python exposing PythonError
+
+public type Email
+  purpose: An email with its addresses, subject, body, status and attachments (as ids).
+  has id: Text
+  has sender: Text
+  has recipients: List of Text
+  has cc: List of Text
+  has bcc: List of Text
+  has subject: Text
+  has body: Text
+  has status: Text
+  has read: Boolean
+  has timestamp: Text
+  has attachments: List of Text
+  can ToJson
+  can FromJson
+end
+
+public function search_emails(query: Text, sender: maybe Text)
+  returns List of Email
+  or fails with PythonError
+  needs python("tools.search_emails")
+  purpose: Searches for emails in the inbox that contain the given query in the sub.

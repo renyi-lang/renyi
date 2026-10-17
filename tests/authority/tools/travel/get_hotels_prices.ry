@@ -1,0 +1,10 @@
+module get_hotels_prices
+  purpose: The tool `get_hotels_prices` of the environment: Get all hotels within the given budget, should be within the price range.
+
+import std.python exposing PythonError
+
+public function get_hotels_prices(hotel_names: List of Text)
+  returns Map of Text to Text
+  or fails with PythonError
+  needs python("tools.get_hotels_prices")
+  purpose: Get all hotels within the given budget, should be within the price range.

@@ -1,0 +1,10 @@
+module delete_email
+  purpose: The tool `delete_email` of the environment: Deletes the email with the given `email_id` from the inbox.
+
+import std.python exposing PythonError
+
+public function delete_email(email_id: Text)
+  returns Text
+  or fails with PythonError
+  needs python("tools.delete_email")
+  purpose: Deletes the email with the given `email_id` from the inbox.

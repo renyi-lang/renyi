@@ -1,0 +1,10 @@
+module get_hotels_address
+  purpose: The tool `get_hotels_address` of the environment: Get the address of the given hotel.
+
+import std.python exposing PythonError
+
+public function get_hotels_address(hotel_name: Text)
+  returns Map of Text to Text
+  or fails with PythonError
+  needs python("tools.get_hotels_address")
+  purpose: Get the address of the given hotel.

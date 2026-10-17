@@ -1,0 +1,10 @@
+module get_car_price_per_day
+  purpose: The tool `get_car_price_per_day` of the environment: Get the price per day of the given car rental companies.
+
+import std.python exposing PythonError
+
+public function get_car_price_per_day(company_name: List of Text)
+  returns Map of Text to Float
+  or fails with PythonError
+  needs python("tools.get_car_price_per_day")
+  purpose: Get the price per day of the given car rental companies.

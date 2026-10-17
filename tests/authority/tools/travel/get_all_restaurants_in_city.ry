@@ -1,0 +1,10 @@
+module get_all_restaurants_in_city
+  purpose: The tool `get_all_restaurants_in_city` of the environment: Get all restaurants in the given city.
+
+import std.python exposing PythonError
+
+public function get_all_restaurants_in_city(city: Text)
+  returns Text
+  or fails with PythonError
+  needs python("tools.get_all_restaurants_in_city")
+  purpose: Get all restaurants in the given city.

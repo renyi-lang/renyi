@@ -1,0 +1,10 @@
+module get_webpage
+  purpose: The tool `get_webpage` of the environment: Returns the content of the webpage at a given URL.
+
+import std.python exposing PythonError
+
+public function get_webpage(url: Text)
+  returns maybe Text
+  or fails with PythonError
+  needs python("tools.get_webpage")
+  purpose: Returns the content of the webpage at a given URL.

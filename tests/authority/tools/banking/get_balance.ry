@@ -1,0 +1,10 @@
+module get_balance
+  purpose: The tool `get_balance` of the environment: Get the balance of the account.
+
+import std.python exposing PythonError
+
+public function get_balance()
+  returns Float
+  or fails with PythonError
+  needs python("tools.get_balance")
+  purpose: Get the balance of the account.

@@ -1,0 +1,9 @@
+module remove_user_from_slack
+  purpose: The tool `remove_user_from_slack` of the environment: Remove a user from the Slack workspace.
+
+import std.python exposing PythonError
+
+public function remove_user_from_slack(user: Text)
+  or fails with PythonError
+  needs python("tools.remove_user_from_slack")
+  purpose: Remove a user from the Slack workspace.

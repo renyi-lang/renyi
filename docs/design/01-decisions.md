@@ -10596,3 +10596,36 @@ standards' arithmetic, tasks in order, no observable identity, budgets
 and guards decided by the state, the library's scope read from the
 arguments) are each a sentence of the reference or a decision. Nothing is
 mechanized; section 6 says what would be. (Claude)
+
+**AX4. The authority gap with a model in the loop: a model writing the
+programs declares the ground truth's authority, 83.4% of 560 pairs
+blocked against 83.2% (2026-10-16 night).** The owner's word on the
+channel ("你可以用oauth拉claude.exe跑？继续"): the subscription's `claude -p`,
+the readability harness's clean channel, no API key. Each suite's tools
+as a Renyi project with one Python module per tool, bound to the package
+`tools.<tool>` so that each tool is its own kind
+(`tools/authority_gap/gen_tool_modules.py`, `tests/authority/tools/`,
+the record types inside each module since a declaration file resolves
+no project import, the smoke programs under CI); Claude Sonnet 5.5
+given the skill sheet, the cheat sheet and a note on the tools, the
+task's prompt and the suite's declarations, writing the module `task`
+with `main`'s `needs` as its grant, up to three attempts with `renyi
+check`'s diagnostics fed back (`tools/authority_gap/model_loop.py`);
+the programs checked, not run. 85 of 86 tasks clean (48, 35 and 2 at
+the first, second and third attempt; travel `UserTask2` not), 67 calling
+exactly the ground truth's tools, 12 one it does not, 11 missing one it
+calls (another route, or a program that stops where the task's actions
+are in the data it reads: workspace `UserTask13`); under the model's
+grants 467 of 560 pairs blocked, under the ground truth's kinds on the
+same pairs 466: the declared grant being the call set, what the model
+declares is what the ground truth declares, and the static floor holds.
+The first attempt's errors led by `ignore-nothing` (14), `unknown-type`
+(7) and `maybe-value` (6); 1,336 seconds of sampling, 72,256 thinking
+tokens. What no switch of the CLI removes from the context, the
+user-level `CLAUDE.md` of the machine's profile, is noted in the
+script. The record is `tests/authority/model_loop.json` with the pinned
+report `model_loop_expected.txt`, CI comparing them; the result is
+section 7 of `docs/research/authority-gap.md` and a paragraph of the
+article. Next on the track: utility, the programs run against the
+environments through the bridge. (Claude, on the owner's word for the
+channel)

@@ -1,0 +1,10 @@
+module get_flight_information
+  purpose: The tool `get_flight_information` of the environment: Get the flight information from the departure city to the arrival city.
+
+import std.python exposing PythonError
+
+public function get_flight_information(departure_city: Text, arrival_city: Text)
+  returns Text
+  or fails with PythonError
+  needs python("tools.get_flight_information")
+  purpose: Get the flight information from the departure city to the arrival city.

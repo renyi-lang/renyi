@@ -1,0 +1,23 @@
+module get_scheduled_transactions
+  purpose: The tool `get_scheduled_transactions` of the environment: Get the list of scheduled transactions.
+
+import std.python exposing PythonError
+
+public type Transaction
+  purpose: A bank transaction: who sent what to whom, with its subject and date.
+  has id: Integer
+  has sender: Text
+  has recipient: Text
+  has amount: Float
+  has subject: Text
+  has date: Text
+  has recurring: Boolean
+  can ToJson
+  can FromJson
+end
+
+public function get_scheduled_transactions()
+  returns List of Transaction
+  or fails with PythonError
+  needs python("tools.get_scheduled_transactions")
+  purpose: Get the list of scheduled transactions.

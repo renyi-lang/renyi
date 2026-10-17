@@ -1,0 +1,103 @@
+{
+  "name": "agentdojo_travel",
+  "version": "0.1.0",
+  "purpose": "The tools of AgentDojo's travel suite as Python modules, one per tool.",
+  "dependencies": {},
+  "python": {
+    "modules": {
+      "get_user_information": {
+        "package": "tools.get_user_information"
+      },
+      "get_all_hotels_in_city": {
+        "package": "tools.get_all_hotels_in_city"
+      },
+      "get_hotels_prices": {
+        "package": "tools.get_hotels_prices"
+      },
+      "get_hotels_address": {
+        "package": "tools.get_hotels_address"
+      },
+      "get_rating_reviews_for_hotels": {
+        "package": "tools.get_rating_reviews_for_hotels"
+      },
+      "get_all_restaurants_in_city": {
+        "package": "tools.get_all_restaurants_in_city"
+      },
+      "get_restaurants_address": {
+        "package": "tools.get_restaurants_address"
+      },
+      "get_rating_reviews_for_restaurants": {
+        "package": "tools.get_rating_reviews_for_restaurants"
+      },
+      "get_cuisine_type_for_restaurants": {
+        "package": "tools.get_cuisine_type_for_restaurants"
+      },
+      "get_dietary_restrictions_for_all_restaurants": {
+        "package": "tools.get_dietary_restrictions_for_all_restaurants"
+      },
+      "get_contact_information_for_restaurants": {
+        "package": "tools.get_contact_information_for_restaurants"
+      },
+      "get_price_for_restaurants": {
+        "package": "tools.get_price_for_restaurants"
+      },
+      "check_restaurant_opening_hours": {
+        "package": "tools.check_restaurant_opening_hours"
+      },
+      "get_all_car_rental_companies_in_city": {
+        "package": "tools.get_all_car_rental_companies_in_city"
+      },
+      "get_car_types_available": {
+        "package": "tools.get_car_types_available"
+      },
+      "get_rating_reviews_for_car_rental": {
+        "package": "tools.get_rating_reviews_for_car_rental"
+      },
+      "get_car_rental_address": {
+        "package": "tools.get_car_rental_address"
+      },
+      "get_car_fuel_options": {
+        "package": "tools.get_car_fuel_options"
+      },
+      "get_car_price_per_day": {
+        "package": "tools.get_car_price_per_day"
+      },
+      "reserve_hotel": {
+        "package": "tools.reserve_hotel"
+      },
+      "reserve_restaurant": {
+        "package": "tools.reserve_restaurant"
+      },
+      "reserve_car_rental": {
+        "package": "tools.reserve_car_rental"
+      },
+      "get_flight_information": {
+        "package": "tools.get_flight_information"
+      },
+      "send_email": {
+        "package": "tools.send_email"
+      },
+      "get_day_calendar_events": {
+        "package": "tools.get_day_calendar_events"
+      },
+      "create_calendar_event": {
+        "package": "tools.create_calendar_event"
+      },
+      "search_calendar_events": {
+        "package": "tools.search_calendar_events"
+      },
+      "get_current_day": {
+        "package": "tools.get_current_day"
+      },
+      "cancel_calendar_event": {
+        "package": "tools.cancel_calendar_event"
+      },
+      "reschedule_calendar_event": {
+        "package": "tools.reschedule_calendar_event"
+      },
+      "add_calendar_event_participants": {
+        "package": "tools.add_calendar_event_participants"
+      }
+    }
+  }
+}

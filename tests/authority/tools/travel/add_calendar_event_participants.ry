@@ -1,0 +1,25 @@
+module add_calendar_event_participants
+  purpose: The tool `add_calendar_event_participants` of the environment: Adds the given `participants` to the event with the given `event_id`.
+
+import std.python exposing PythonError
+
+public type CalendarEvent
+  purpose: A calendar event with its times, location, participants and status.
+  has id: Text
+  has title: Text
+  has description: Text
+  has start_time: Text
+  has end_time: Text
+  has location: maybe Text
+  has participants: List of Text
+  has all_day: Boolean
+  has status: Text
+  can ToJson
+  can FromJson
+end
+
+public function add_calendar_event_participants(event_id: Text, participants: List of Text)
+  returns CalendarEvent
+  or fails with PythonError
+  needs python("tools.add_calendar_event_participants")
+  purpose: Adds the given `participants` to the event with the given `event_id`.

@@ -1,0 +1,98 @@
+module smoke_workspace
+  purpose: Call every tool of the workspace suite once, so that the declarations check.
+
+import std.console
+import std.python exposing PythonError
+import get_unread_emails
+import send_email
+import search_emails
+import delete_email
+import get_sent_emails
+import get_received_emails
+import get_draft_emails
+import search_contacts_by_name
+import search_contacts_by_email
+import get_day_calendar_events
+import create_calendar_event
+import search_calendar_events
+import get_current_day
+import cancel_calendar_event
+import reschedule_calendar_event
+import add_calendar_event_participants
+import search_files_by_filename
+import create_file
+import delete_file
+import get_file_by_id
+import list_files
+import share_file
+import append_to_file
+import search_files
+
+function part_1() returns Integer or fails with PythonError needs python("tools.get_unread_emails"), python("tools.send_email"), python("tools.search_emails"), python("tools.delete_email"), python("tools.get_sent_emails"), python("tools.get_received_emails"), python("tools.get_draft_emails"), python("tools.search_contacts_by_name"), python("tools.search_contacts_by_email"), python("tools.get_day_calendar_events"), python("tools.create_calendar_event"), python("tools.search_calendar_events")
+  purpose: Call the tools of part 1 once and count the answers.
+
+  let mutable answered be 0
+  ignore get_unread_emails.get_unread_emails() otherwise fail
+  change answered to answered + 1
+  ignore send_email.send_email(recipients: [], subject: "x", body: "x", attachments: nothing, cc: nothing, bcc: nothing) otherwise fail
+  change answered to answered + 1
+  ignore search_emails.search_emails(query: "x", sender: nothing) otherwise fail
+  change answered to answered + 1
+  ignore delete_email.delete_email("x") otherwise fail
+  change answered to answered + 1
+  ignore get_sent_emails.get_sent_emails() otherwise fail
+  change answered to answered + 1
+  ignore get_received_emails.get_received_emails() otherwise fail
+  change answered to answered + 1
+  ignore get_draft_emails.get_draft_emails() otherwise fail
+  change answered to answered + 1
+  ignore search_contacts_by_name.search_contacts_by_name("x") otherwise fail
+  change answered to answered + 1
+  ignore search_contacts_by_email.search_contacts_by_email("x") otherwise fail
+  change answered to answered + 1
+  ignore get_day_calendar_events.get_day_calendar_events("x") otherwise fail
+  change answered to answered + 1
+  ignore create_calendar_event.create_calendar_event(title: "x", start_time: "x", end_time: "x", description: "x", participants: nothing, location: nothing) otherwise fail
+  change answered to answered + 1
+  ignore search_calendar_events.search_calendar_events(query: "x", date: nothing) otherwise fail
+  change answered to answered + 1
+  return answered
+end
+
+function part_2() returns Integer or fails with PythonError needs python("tools.get_current_day"), python("tools.cancel_calendar_event"), python("tools.reschedule_calendar_event"), python("tools.add_calendar_event_participants"), python("tools.search_files_by_filename"), python("tools.create_file"), python("tools.delete_file"), python("tools.get_file_by_id"), python("tools.list_files"), python("tools.share_file"), python("tools.append_to_file"), python("tools.search_files")
+  purpose: Call the tools of part 2 once and count the answers.
+
+  let mutable answered be 0
+  ignore get_current_day.get_current_day() otherwise fail
+  change answered to answered + 1
+  ignore cancel_calendar_event.cancel_calendar_event("x") otherwise fail
+  change answered to answered + 1
+  ignore reschedule_calendar_event.reschedule_calendar_event(event_id: "x", new_start_time: "x", new_end_time: nothing) otherwise fail
+  change answered to answered + 1
+  ignore add_calendar_event_participants.add_calendar_event_participants(event_id: "x", participants: []) otherwise fail
+  change answered to answered + 1
+  ignore search_files_by_filename.search_files_by_filename("x") otherwise fail
+  change answered to answered + 1
+  ignore create_file.create_file(filename: "x", content: "x") otherwise fail
+  change answered to answered + 1
+  ignore delete_file.delete_file("x") otherwise fail
+  change answered to answered + 1
+  ignore get_file_by_id.get_file_by_id("x") otherwise fail
+  change answered to answered + 1
+  ignore list_files.list_files() otherwise fail
+  change answered to answered + 1
+  ignore share_file.share_file(file_id: "x", email: "x", permission: "x") otherwise fail
+  change answered to answered + 1
+  ignore append_to_file.append_to_file(file_id: "x", content: "x") otherwise fail
+  change answered to answered + 1
+  ignore search_files.search_files("x") otherwise fail
+  change answered to answered + 1
+  return answered
+end
+
+public function main() or fails with PythonError needs console, python("tools.get_unread_emails"), python("tools.send_email"), python("tools.search_emails"), python("tools.delete_email"), python("tools.get_sent_emails"), python("tools.get_received_emails"), python("tools.get_draft_emails"), python("tools.search_contacts_by_name"), python("tools.search_contacts_by_email"), python("tools.get_day_calendar_events"), python("tools.create_calendar_event"), python("tools.search_calendar_events"), python("tools.get_current_day"), python("tools.cancel_calendar_event"), python("tools.reschedule_calendar_event"), python("tools.add_calendar_event_participants"), python("tools.search_files_by_filename"), python("tools.create_file"), python("tools.delete_file"), python("tools.get_file_by_id"), python("tools.list_files"), python("tools.share_file"), python("tools.append_to_file"), python("tools.search_files")
+  purpose: Call every tool once and print how many answered.
+
+  let answered be (part_1() otherwise fail) + (part_2() otherwise fail)
+  console.print("{answered} tools answered")
+end

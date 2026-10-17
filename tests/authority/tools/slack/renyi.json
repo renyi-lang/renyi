@@ -1,0 +1,43 @@
+{
+  "name": "agentdojo_slack",
+  "version": "0.1.0",
+  "purpose": "The tools of AgentDojo's slack suite as Python modules, one per tool.",
+  "dependencies": {},
+  "python": {
+    "modules": {
+      "get_channels": {
+        "package": "tools.get_channels"
+      },
+      "add_user_to_channel": {
+        "package": "tools.add_user_to_channel"
+      },
+      "read_channel_messages": {
+        "package": "tools.read_channel_messages"
+      },
+      "read_inbox": {
+        "package": "tools.read_inbox"
+      },
+      "send_direct_message": {
+        "package": "tools.send_direct_message"
+      },
+      "send_channel_message": {
+        "package": "tools.send_channel_message"
+      },
+      "invite_user_to_slack": {
+        "package": "tools.invite_user_to_slack"
+      },
+      "remove_user_from_slack": {
+        "package": "tools.remove_user_from_slack"
+      },
+      "get_users_in_channel": {
+        "package": "tools.get_users_in_channel"
+      },
+      "post_webpage": {
+        "package": "tools.post_webpage"
+      },
+      "get_webpage": {
+        "package": "tools.get_webpage"
+      }
+    }
+  }
+}

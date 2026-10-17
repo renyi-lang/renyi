@@ -1,0 +1,9 @@
+module add_user_to_channel
+  purpose: The tool `add_user_to_channel` of the environment: Add a user to a given channel.
+
+import std.python exposing PythonError
+
+public function add_user_to_channel(user: Text, channel: Text)
+  or fails with PythonError
+  needs python("tools.add_user_to_channel")
+  purpose: Add a user to a given channel.

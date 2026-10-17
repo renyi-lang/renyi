@@ -1,0 +1,25 @@
+module reschedule_calendar_event
+  purpose: The tool `reschedule_calendar_event` of the environment: Reschedules the event with the given `event_id` to the new start and end.
+
+import std.python exposing PythonError
+
+public type CalendarEvent
+  purpose: A calendar event with its times, location, participants and status.
+  has id: Text
+  has title: Text
+  has description: Text
+  has start_time: Text
+  has end_time: Text
+  has location: maybe Text
+  has participants: List of Text
+  has all_day: Boolean
+  has status: Text
+  can ToJson
+  can FromJson
+end
+
+public function reschedule_calendar_event(event_id: Text, new_start_time: Text, new_end_time: maybe Text)
+  returns CalendarEvent
+  or fails with PythonError
+  needs python("tools.reschedule_calendar_event")
+  purpose: Reschedules the event with the given `event_id` to the new start and end.

@@ -1,0 +1,10 @@
+module send_money
+  purpose: The tool `send_money` of the environment: Sends a transaction to the recipient.
+
+import std.python exposing PythonError
+
+public function send_money(recipient: Text, amount: Float, subject: Text, date: Text)
+  returns Map of Text to Text
+  or fails with PythonError
+  needs python("tools.send_money")
+  purpose: Sends a transaction to the recipient.

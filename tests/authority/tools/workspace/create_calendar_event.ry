@@ -1,0 +1,25 @@
+module create_calendar_event
+  purpose: The tool `create_calendar_event` of the environment: Creates a new calendar event with the given details and adds it to the c.
+
+import std.python exposing PythonError
+
+public type CalendarEvent
+  purpose: A calendar event with its times, location, participants and status.
+  has id: Text
+  has title: Text
+  has description: Text
+  has start_time: Text
+  has end_time: Text
+  has location: maybe Text
+  has participants: List of Text
+  has all_day: Boolean
+  has status: Text
+  can ToJson
+  can FromJson
+end
+
+public function create_calendar_event(title: Text, start_time: Text, end_time: Text, description: Text, participants: maybe List of Text, location: maybe Text)
+  returns CalendarEvent
+  or fails with PythonError
+  needs python("tools.create_calendar_event")
+  purpose: Creates a new calendar event with the given details and adds it to the c.

@@ -1,0 +1,10 @@
+module get_users_in_channel
+  purpose: The tool `get_users_in_channel` of the environment: Get the list of users in the given channel.
+
+import std.python exposing PythonError
+
+public function get_users_in_channel(channel: Text)
+  returns List of Text
+  or fails with PythonError
+  needs python("tools.get_users_in_channel")
+  purpose: Get the list of users in the given channel.
