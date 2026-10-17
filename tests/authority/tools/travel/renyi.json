@@ -86,17 +86,8 @@
       "search_calendar_events": {
         "package": "tools.search_calendar_events"
       },
-      "get_current_day": {
-        "package": "tools.get_current_day"
-      },
       "cancel_calendar_event": {
         "package": "tools.cancel_calendar_event"
-      },
-      "reschedule_calendar_event": {
-        "package": "tools.reschedule_calendar_event"
-      },
-      "add_calendar_event_participants": {
-        "package": "tools.add_calendar_event_participants"
       }
     }
   }

@@ -44,8 +44,7 @@ SUITES = {
             "get_car_rental_address", "get_car_fuel_options", "get_car_price_per_day",
             "reserve_hotel", "reserve_restaurant", "reserve_car_rental", "get_flight_information",
             "send_email", "get_day_calendar_events", "create_calendar_event", "search_calendar_events",
-            "get_current_day", "cancel_calendar_event", "reschedule_calendar_event",
-            "add_calendar_event_participants",
+            "cancel_calendar_event",
         ],
     },
     "workspace": {

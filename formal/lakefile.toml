@@ -1,0 +1,6 @@
+name = "RenyiCore"
+version = "0.1.0"
+defaultTargets = ["RenyiCore"]
+
+[[lean_lib]]
+name = "RenyiCore"

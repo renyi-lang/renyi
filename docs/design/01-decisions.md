@@ -10629,3 +10629,82 @@ section 7 of `docs/research/authority-gap.md` and a paragraph of the
 article. Next on the track: utility, the programs run against the
 environments through the bridge. (Claude, on the owner's word for the
 channel)
+
+**AX5. The count corrected: AgentDojo `v1` has 97 user tasks and 629
+pairs, eleven combined tasks the first extraction missed; the static
+measure 90.8% with the prompt's scopes, 91.1% with counts, 36 pairs the
+residue (2026-10-17 night).** Found while installing the benchmark for
+the utility runs of AX6: its registry lists 97 user tasks of version
+`1.0.0` (banking 16, slack 21, travel 20, workspace 40), the paper's
+count, where AX2's extraction had 86; the eleven (slack 17 to 20,
+workspace 4, 19, 23, 36 to 39) are built by `TaskCombinator.
+create_combined_task` from two tasks each, the prompt given or "Perform
+the following tasks in the order they are given", the ground truth the
+two in order, which an extraction reading the task classes alone does
+not see. `extract_tasks.py` reads the combinator's calls now; the
+numbers on the 629 pairs: 527 (83.8%) by kinds, 571 (90.8%) with the
+prompt's scopes, 573 (91.1%) with counts, 600 (95.4%) the ceiling; the
+residue 36, the 32 of AX2 and four of the combined tasks (slack
+`UserTask18` messages Alice, 1; slack `18` and `20` read a page named
+in a channel, 2; workspace `38` deletes a file found by listing, 1), 12
+where the task's sink is the attack's and 24 where the task reads its
+sink from the attacker's data. AX2's entry stands as written; its
+numbers are of the 86 tasks, and every document and the article carry
+the 629. (Claude)
+
+**AX6. The model loop on the full set and the utility of its programs:
+96 of 97 clean, 83.9% of 622 pairs blocked under the model's grants
+against 83.3%, and 54 of the 96 programs do their task when run
+(2026-10-17 night).** The owner's choice after AX4 ("1，同时尝试3": the
+utility, and the mechanization of AX7 beside it). The eleven combined
+tasks sampled as AX4 sampled the 86 (slack `18` and `19`, "do all the
+tasks on my TODO list at <page>", got programs that fetch the page and
+print it, five of the ground truth's tools undeclared: a program fixed
+before the run does not carry out instructions it has not read); the
+whole: 96 clean (55, 38, 3 by attempt), 75 exact, 13 over, 14 under,
+522 of 622 pairs blocked under the model's grants, 518 under the ground
+truth's, 143 calls, 1,496 seconds. Then the programs run: AgentDojo
+installed in the lane's virtual environment (the first time the
+benchmark's code ran; the measures before read it as syntax trees), the
+suite's tools as the package `tools` over the benchmark's
+`FunctionsRuntime` with the environment pickled after every call
+(`tools/authority_gap/utility_tools/`, `utility_run.py`), the judge
+validated on the ground truth of all 97 tasks first (`utility_truth.py`:
+every call without error, the round trip equal), each program run with
+`renyi run` and judged by its task's `utility` (`utility_from_traces`
+for slack `UserTask11`): 54 of 96 (56.2%; banking 10 of 16, slack 14
+of 21, travel 5 of 19, workspace 25 of 40), 91 exit 0, 3 crashes of
+the program's own on data it had guessed the format of, 2 failures, one
+of them travel `UserTask8` calling `get_current_day`, which the travel
+project declared and the suite does not register (the generator's
+hand-copied travel list had three such tools; corrected to the suite's
+28, the sample kept as taken and the defect named); by call set, 48 of
+75 exact against 6 of 21 differing. The record `tests/authority/
+utility.json` with the pinned report `utility_expected.txt`, CI
+comparing; sections 7 and 8 of `docs/research/authority-gap.md`; the
+article's paragraph. Next: the loop with the recording read between
+writes, the utility of a program that has seen the data. (Claude)
+
+**AX7. Theorem 1 and Proposition 1a mechanized in Lean 4: `formal/`,
+Lean core alone, no `sorry`, built by CI (2026-10-17 night).** The
+owner's "同时尝试3". A subagent wrote the project from
+`docs/research/core-calculus.md` and `grant.rs`, on the toolchain elan
+installed (`leanprover/lean4:v4.35.0`): kinds as paths with prefix as
+the order, scopes an abstract decidable preorder with a top and path
+scopes as the instance, `covers`, grants as lists, `WellChecked` the
+static rule, a machine of frames each holding its grant with `call` and
+`prim` instructions and a trace of `effect` and `refused` events, two
+grant models (the stack of decision Q1 and `grant::within` as an
+abstract sound function); `authority_bound` (every effect of every run
+from `main` under `[N(main), G₀]` covered by `G₀` and by `N(main)`, no
+`WellChecked` hypothesis, as the document says), `authority_bound_within`
+(the same for `within` under two hypotheses about the Rust code),
+`refused_only_on_scope` (the proposition with the host's factor named:
+the refusal is on the scope unless `G₀` itself lacks the kind, a
+`--deny`, which the paper statement left implicit and section 2 now
+says); 497 lines of Lean, `#print axioms` `propext` and `Quot.sound`
+(`Classical.choice` for the proposition); verified by a clean rebuild
+in the session. The job "The core calculus in Lean" of CI installs
+elan, builds and checks for `sorry`. What is not modelled is in
+`formal/README.md` and section 6 of the document; Theorems 2 and 3 are
+the mechanization's next stage. (Claude, on the owner's word)

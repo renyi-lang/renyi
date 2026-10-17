@@ -59,8 +59,8 @@ project map and a language server; the compiler is written again in
 Renyi and held byte-equal to the Rust one by tests. Three statements
 hold of the rules: the declared authority bounds every effect, a
 guarded value leaves only through its sinks, and a replay of a recording
-makes the same calls with the same answers. On AgentDojo's 567 security
-cases, 90.5\% of the injected goals need a capability, a scope or a
+makes the same calls with the same answers. On AgentDojo's 629 security
+cases, 90.8\% of the injected goals need a capability, a scope or a
 count outside what the benign task's program declares, so a program that
 passed review for the task is unable to carry them out. On the released
 toolchain, every example workflow's recording reproduces on another
@@ -375,8 +375,11 @@ Each proof names what it rests on: no ambient effect, \texttt{time} and
 \texttt{random} as primitive calls, insertion order, the standards'
 arithmetic, tasks in source order, no observable identity, budgets and
 guards decided by the state; each is a sentence of the reference, and a
-change to one is a change to the statement. The proofs are on paper; a
-mechanization is a stage of the track.
+change to one is a change to the statement. Theorem 1 and its
+proposition are mechanized in Lean 4 over a small model of the calculus
+(the repository's \texttt{formal/}, Lean core alone, built by the
+continuous integration with no \texttt{sorry}); the proofs of the other
+two are on paper.
 
 \subsection{The surface}
 
@@ -641,8 +644,8 @@ We measured it on AgentDojo~\citep{debenedetti2024agentdojo}, the
 benchmark of injection attacks on tool-using agents that
 Quasar~\citep{mell2025quasar} and CaMeL~\citep{debenedetti2025camel}
 are evaluated on: its \texttt{v1} suites (banking, slack, travel,
-workspace), 86 user tasks and 27 injection tasks, every user task of a
-suite paired with every injection task of it, 567 pairs. Each task
+workspace), 97 user tasks and 27 injection tasks, every user task of a
+suite paired with every injection task of it, 629 pairs. Each task
 declares a ground truth, the tool calls with their arguments that carry
 it out; the task files were parsed as syntax trees, which is all the
 measure runs of them. A tool
@@ -665,11 +668,11 @@ kinds alone to the ceiling of every literal as a scope.
 Suite & pairs & kinds & + scopes & + counts & ceiling \\
 \midrule
 banking & 144 & 72.9\% & 89.6\% & 91.0\% & 98.6\% \\
-slack & 85 & 83.5\% & 90.6\% & 90.6\% & 97.6\% \\
+slack & 105 & 81.9\% & 89.5\% & 89.5\% & 97.1\% \\
 travel & 140 & 81.4\% & 82.9\% & 82.9\% & 82.9\% \\
-workspace & 198 & 93.4\% & 96.5\% & 96.5\% & 100.0\% \\
+workspace & 240 & 92.5\% & 96.7\% & 96.7\% & 100.0\% \\
 \midrule
-all & 567 & 83.8\% & 90.5\% & 90.8\% & 95.1\% \\
+all & 629 & 83.8\% & 90.8\% & 91.1\% & 95.4\% \\
 \bottomrule
 \end{tabular}
 \caption{The authority gap on AgentDojo \texttt{v1}: the share of
@@ -681,11 +684,11 @@ that only wants the agent to say something, outside any grant.}
 \label{tab:gap}
 \end{table}
 
-The 32 pairs that fit the third grant are of two kinds. In 11 the
+The 36 pairs that fit the third grant are of two kinds. In 12 the
 task's own sink is the attack's: a banking task names the attacker's
 account as the user's new landlord, one asks for a password change and
-the attack asks for another password, three slack tasks message Alice
-and the attack sends Alice a link. In 21 the task itself reads its sink
+the attack asks for another password, four slack tasks message Alice
+and the attack sends Alice a link. In 24 the task itself reads its sink
 from the attacker's data: a bill's recipient, a page's address found in
 a channel, people found by name, a file found by listing, calendar
 events, which have no scope. No authority fixed before the run can
@@ -704,20 +707,25 @@ are in the repository, held by its continuous integration.
 
 A model in the loop, on the same pairs, gives the same number. Claude
 Sonnet 5.5, given the toolchain's skill sheet and cheat sheet, wrote a
-Renyi program for each of the 86 user tasks against the suite's tools
+Renyi program for each of the 97 user tasks against the suite's tools
 bound as Python modules, one capability kind each, with at most three
-attempts and \texttt{renyi check}'s diagnostics fed back. 85 tasks got
-a program the checker accepts (48 at the first attempt, 35 at the
-second, 2 at the third); 67 of them call exactly the ground truth's
-tools, 12 call one it does not, 11 miss one it calls, among them a task
-whose actions are in the email the program reads, which a program fixed
-before the run does not follow. Under the grants those programs declare,
-467 of their 560 pairs are blocked (83.4\%), against 466 (83.2\%) under
-the ground truth's kinds on the same pairs: the declared grant is the
-call set, so what the model declares is what the ground truth declares,
-and the floor holds with a model in the loop. The programs were checked,
-not run, so utility is still unmeasured; the sample, its programs and
-the pinned report are in the repository.
+attempts and \texttt{renyi check}'s diagnostics fed back. 96 tasks got
+a program the checker accepts (55 at the first attempt, 38 at the
+second, 3 at the third); 75 of them call exactly the ground truth's
+tools, 13 call one it does not, 14 miss one it calls, among them the
+tasks whose actions are in the email or the web page the program reads,
+which a program fixed before the run does not follow. Under the grants
+those programs declare, 522 of their 622 pairs are blocked (83.9\%),
+against 518 (83.3\%) under the ground truth's kinds on the same pairs:
+the declared grant is the call set, so what the model declares is what
+the ground truth declares, and the floor holds with a model in the loop.
+Run against the benchmark's own environments through the Python bridge
+and judged by each task's own check, 54 of the 96 programs do their
+task (56\%; 48 of the 75 whose call set is the ground truth's, 6 of the
+21 others), a program written once from the prompt and the declarations
+without a look at the data; the loop that reads the recording between
+writes is the measure after this one. The sample, its programs, their
+runs and the pinned reports are in the repository.
 
 \subsection{First-run rate}
 \label{sec:firstrun}

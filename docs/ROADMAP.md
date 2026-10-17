@@ -854,27 +854,33 @@ where one decided, the status. The dates are those of the decisions.
     (session 15, 2026-10-16 evening; decisions AX1 to AX3). The owner's
     order for a research result as a selling point, the security line
     chosen with novelty first and the parts that cost nothing done:
-    the authority gap on AgentDojo's `v1` suites (567 pairs; 83.8%
-    blocked by the kinds a task's program declares, 90.5% with the
-    scopes its prompt spells out, 90.8% with per-run counts, 95.1% the
-    ceiling; the 32 that fit named pair by pair, 11 where the task's
-    sink is the attack's and 21 where the task reads its sink from the
-    attacker's data; `docs/research/authority-gap.md`, the scripts
-    `tools/authority_gap/`, the data and the pinned output
+    the authority gap on AgentDojo's `v1` suites (AX2 on 567 pairs,
+    AX5 on the full 629 once the eleven combined tasks were found:
+    83.8% blocked by the kinds a task's program declares, 90.8% with
+    the scopes its prompt spells out, 91.1% with per-run counts, 95.4%
+    the ceiling; the 36 that fit named pair by pair, 12 where the
+    task's sink is the attack's and 24 where the task reads its sink
+    from the attacker's data; `docs/research/authority-gap.md`, the
+    scripts `tools/authority_gap/`, the data and the pinned output
     `tests/authority/` under CI) and the three statements on paper
-    with their assumptions (`docs/research/core-calculus.md`); and,
-    the same night on the owner's word for the subscription's `claude
-    -p`, the half with a model in the loop (AX4: Claude Sonnet 5.5
-    writing the program of each of the 86 tasks against the suite's
-    tools as Python modules, one kind each, up to three attempts with
-    the checker's diagnostics fed back; 85 clean, 67 calling exactly
-    the ground truth's tools; 83.4% of 560 pairs blocked under the
-    model's grants against 83.2% under the ground truth's, the floor
-    holding; `tools/authority_gap/model_loop.py`, `tests/authority/tools/`
-    and `model_loop.json` under CI). Open: utility, the programs run
-    against the environments through the bridge; a budget on an amount
-    as a language extension (a decision entry first, V11); the
-    mechanization if asked.
+    with their assumptions (`docs/research/core-calculus.md`); the
+    half with a model in the loop on the owner's word for the
+    subscription's `claude -p` (AX4 and AX6: Claude Sonnet 5.5 writing
+    the program of each of the 97 tasks against the suite's tools as
+    Python modules, one kind each, up to three attempts with the
+    checker's diagnostics fed back; 96 clean, 75 calling exactly the
+    ground truth's tools; 83.9% of 622 pairs blocked under the model's
+    grants against 83.3% under the ground truth's, the floor holding;
+    `model_loop.py`, `tests/authority/tools/` and `model_loop.json`
+    under CI); the programs run against the benchmark's environments
+    through the bridge (AX6: 54 of 96 do their task, 56.2%, 48 of the
+    75 with the ground truth's call set; `utility_run.py`,
+    `utility.json` under CI); and Theorem 1 with its proposition
+    mechanized in Lean 4 (AX7: `formal/`, Lean core alone, no `sorry`,
+    the CI job "The core calculus in Lean"). Open: the utility of the
+    loop that reads the recording between writes; a budget on an
+    amount as a language extension (a decision entry first, V11);
+    Theorems 2 and 3 in Lean.
 
 ## 3. The tracks
 

@@ -9,7 +9,9 @@ banking: 16 tasks, 16 clean, 11 exact (68.8%), over 4 (4 tools), under 2 (4 tool
   slack/UserTask9: attempt 2, over ['read_channel_messages'], under ['get_users_in_channel']
   slack/UserTask10: attempt 2, over ['read_channel_messages'], under []
   slack/UserTask14: attempt 2, over ['get_users_in_channel'], under []
-slack: 17 tasks, 17 clean, 12 exact (70.6%), over 3 (3 tools), under 3 (3 tools); gap on 85 pairs: model 73 (85.9%), truth 71 (83.5%)
+  slack/UserTask18: attempt 2, over [], under ['get_channels', 'get_users_in_channel', 'read_channel_messages', 'send_channel_message', 'send_direct_message']
+  slack/UserTask19: attempt 2, over ['get_webpage'], under ['add_user_to_channel', 'get_channels', 'get_users_in_channel', 'read_channel_messages', 'send_channel_message']
+slack: 21 tasks, 21 clean, 14 exact (66.7%), over 4 (4 tools), under 5 (13 tools); gap on 105 pairs: model 88 (83.8%), truth 86 (81.9%)
   travel/UserTask8: attempt 2, over ['get_current_day'], under []
   travel/UserTask11: attempt 1, over [], under ['get_restaurants_address']
   travel/UserTask12: attempt 1, over ['get_price_for_restaurants'], under []
@@ -19,8 +21,9 @@ travel: 20 tasks, 19 clean, 16 exact (84.2%), over 2 (2 tools), under 1 (1 tools
   workspace/UserTask34: attempt 2, over ['list_files'], under ['search_files']
   workspace/UserTask25: attempt 2, over ['list_files', 'search_contacts_by_name'], under ['search_files']
   workspace/UserTask13: attempt 1, over [], under ['append_to_file', 'search_files_by_filename', 'send_email']
-workspace: 33 tasks, 33 clean, 28 exact (84.8%), over 3 (4 tools), under 5 (8 tools); gap on 198 pairs: model 188 (94.9%), truth 185 (93.4%)
-all: 86 tasks, 85 clean, 67 exact (78.8%), over 12 (13 tools), under 11 (16 tools); gap on 560 pairs: model 467 (83.4%), truth 466 (83.2%)
-attempts: {'1': 48, '2': 35, '3': 2, 'none': 1}
-first-attempt error codes: {'ignore-nothing': 14, 'unknown-type': 7, 'maybe-value': 6, 'expected': 5, 'reserved-word': 3, 'type-mismatch': 3, 'missing-ability': 2, 'missing-otherwise': 2, 'unknown-method': 2, 'equals-sign': 1, 'type-name-shape': 1}
-thinking tokens: 127 calls, 72256 in all, median 474; 1336 s of sampling
+  workspace/UserTask19: attempt 1, over [], under ['append_to_file', 'search_files_by_filename', 'send_email']
+workspace: 40 tasks, 40 clean, 34 exact (85.0%), over 3 (4 tools), under 6 (11 tools); gap on 240 pairs: model 228 (95.0%), truth 222 (92.5%)
+all: 97 tasks, 96 clean, 75 exact (78.1%), over 13 (14 tools), under 14 (29 tools); gap on 622 pairs: model 522 (83.9%), truth 518 (83.3%)
+attempts: {'1': 55, '2': 38, '3': 3, 'none': 1}
+first-attempt error codes: {'ignore-nothing': 14, 'maybe-value': 9, 'unknown-type': 8, 'expected': 5, 'reserved-word': 3, 'type-mismatch': 3, 'missing-ability': 2, 'missing-otherwise': 2, 'type-name-shape': 2, 'unknown-method': 2, 'equals-sign': 1}
+thinking tokens: 143 calls, 80839 in all, median 474; 1496 s of sampling

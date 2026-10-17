@@ -153,6 +153,33 @@ def extract_file(path, kind):
                 t.setdefault("spliced", []).append(target)
             else:
                 t.setdefault("unresolved_refs", []).append(ref)
+    # a combined task (TaskCombinator.create_combined_task, the eleven of slack and
+    # workspace): its ground truth is the two tasks' in order, its prompt the one
+    # given or the combinator's "Perform the following tasks in the order they are
+    # given: 1. <first> 2. <second>"
+    for node in tree.body:
+        call = node.value if isinstance(node, ast.Expr) else None
+        if not (isinstance(call, ast.Call) and isinstance(call.func, ast.Attribute)
+                and call.func.attr == "create_combined_task"):
+            continue
+        name = resolve(call.args[0], consts)
+        parts = []
+        for arg in call.args[1:3]:
+            # task_suite.user_tasks["user_task_N"] names the class UserTaskN
+            key = resolve(arg.slice, consts)
+            parts.append("UserTask" + key.rsplit("_", 1)[1])
+        prompt = next((resolve(k.value, consts) for k in call.keywords if k.arg == "prompt"), None)
+        first, second = (tasks[part] for part in parts)
+        if prompt is None:
+            prompt = f"Perform the following tasks in the order they are given: 1. {first['text']} 2. {second['text']}"
+        tasks[name] = {
+            "id": name,
+            "text": prompt,
+            "calls": first["calls"] + second["calls"],
+            "refs": [],
+            "consts": {**first["consts"], **second["consts"], "PROMPT": prompt},
+            "combined": parts,
+        }
     return tasks
 
 

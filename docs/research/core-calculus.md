@@ -1,7 +1,9 @@
 # The core of the guarantees: three statements and their proofs
 
-Status: written 2026-10-16 (decision AX3), on paper; nothing is
-mechanized yet. The implementation the statements describe is
+Status: written 2026-10-16 (decision AX3), on paper; Theorem 1 and
+Proposition 1a mechanized in Lean 4 the next day (decision AX7,
+`formal/`, Lean core only, no `sorry`, built by CI); Theorems 2 and 3
+still on paper. The implementation the statements describe is
 `crates/renyi_vm/src/grant.rs` (coverage, narrowing, guards),
 `crates/renyi_vm/src/vm.rs` (`frame_grant`, `call_native`, the origins)
 and `crates/renyi_check/src/effects.rs` (the static coverage rule);
@@ -94,7 +96,12 @@ along the chain (coverage is transitive, and a call site's `N(f)`
 covers its callee's `N(g)`), so every factor of `E` covers the kind,
 and only the actual scope `scope_p(a)` can fall outside a declared one.
 Across a package boundary the kind is still covered (the rule compares
-kinds there), so the same holds; the scope is the run's.
+kinds there), so the same holds; the scope is the run's. The
+mechanization (section 6) states the proposition with the host's factor
+named: every factor of `E` other than `G₀` covers the kind, and the
+refusal is on the scope unless `G₀` itself, the host's narrowing (a
+`--deny`), lacks the kind, which is outside "one program" and is what
+the sentence above leaves implicit.
 
 What the theorem does not say: nothing about effects that are not
 primitive calls, because there are none (section 5, assumption A1).
@@ -236,12 +243,59 @@ world would answer today.
 Each assumption is a sentence of the reference or a decision entry; a
 change to one of them is a change to these statements.
 
-## 6. What would make this a mechanized result
+## 6. The mechanization
 
-The three statements are short enough to state in Lean or Coq over a
-core calculus (a stack machine with a primitive-call rule carrying a
-grant and an origin word, pure steps as an abstract deterministic
-relation). Theorem 1 and Theorem 3 are inductions on the trace;
-Theorem 2 is an invariant of the origin rules. The work is the calculus,
-not the proofs; it is a stage of the research track if the owner asks
-for it.
+Theorem 1 and Proposition 1a are mechanized in Lean 4 (decision AX7):
+`formal/`, a Lake project over Lean core alone (no Mathlib, no
+dependencies), built by CI (`lake build`, and a check that no source
+contains `sorry`). `formal/README.md` is the account of the model; in
+short:
+
+- `RenyiCore/Coverage.lean`: a kind is a path (`List String`), below
+  another when the other is its prefix; scopes an abstract type with a
+  decidable preorder and a top (`ScopeOrder`), one order for every kind,
+  with path scopes (`Option (List String)`, prefix containment) as the
+  instance; `covers`, a grant as a list of capabilities, `kindCovers`
+  (the checker's kind-only coverage of a primitive), `stackCovers`.
+- `RenyiCore/Machine.lean`: a program as functions with closed needs and
+  bodies of `call g` and `prim k σ`; `WellChecked`, the static rule;
+  frames each holding their grant; `Step` and `Run` with a trace of
+  `effect` and `refused` events, a refused call continuing; two grant
+  models, `stackModel` (the stack of decision Q1, admitting `c` iff
+  every member covers it, a function with no needs pushing nothing, as
+  `vm.rs` does) and `withinModel` (`grant::within` as an abstract
+  function with the one hypothesis that what `within E N` covers, `E`
+  covers; `within` is not the intersection, since a granted capability
+  on a line the needs do not mention passes through, by decision Q1).
+- `RenyiCore/Authority.lean`: `effects_admitted_by_initial` (any grant
+  model, no static rule); `authority_bound`, Theorem 1 in the stack
+  model, stated as
+
+  ```
+  theorem authority_bound (P : Program F S) (G₀ : Grant S)
+      {tr : List (Event S)} {s : List (Frame F S (stackModel S).Eff)}
+      (run : Run P (stackModel S) (initial P (stackModel S) [P.needs P.main, G₀]) tr s) :
+      ∀ c, Event.effect c ∈ tr → grantCovers G₀ c ∧ grantCovers (P.needs P.main) c
+  ```
+
+  with no `WellChecked` hypothesis, as section 2 says; `authority_bound_within`,
+  the same for the implementation's `within` under its two hypotheses
+  (soundness of `within`, and `G₀` covered by `N(main)`, which is how
+  `effective` builds it); `refused_only_on_scope`, Proposition 1a as
+  stated in section 2 with the host's factor named. The axioms are
+  `propext` and `Quot.sound` for both forms of Theorem 1, with
+  `Classical.choice` for the proposition.
+
+What the model leaves out, as the README lists: values, arguments and
+results (a primitive's actual scope is a field of the instruction,
+fixed rather than computed, which the static rule ignores, so the
+theorems are not weakened), scopes naming a parameter and their
+substitution, failures, function values, tests, packages, budgets and
+guards; `G₀ = G ∧ H` is not computed (`G₀` is any grant beside
+`N(main)` on the stack), and the intersection is the stack's
+conjunction of coverage, not `grant::narrow`'s computed set. Of the
+assumptions, A1, A2 and A8 are embodied; A3 to A7 belong to Theorems 2
+and 3, which are the mechanization's next stage: a machine with an
+origin word per value for Theorem 2 (an invariant of the origin rules)
+and pure steps as an abstract deterministic relation for Theorem 3 (an
+induction on the trace).

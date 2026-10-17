@@ -4351,9 +4351,11 @@ free half the same evening: the authority gap on AgentDojo (AX2:
 scripts, `tests/authority/` the extracted tasks and the pinned output,
 which CI's "Authority gap" step compares; the lane
 `D:/Projects/.worktrees/Renyi/research/` holds the AgentDojo checkout
-at `089ed468` and the scripts' first copies; the headline 513 of 567
-pairs, 90.5%, with the prompt's scopes, 83.8% by kinds alone, 95.1% the
-ceiling, 32 pairs named as the residue), the three statements on paper
+at `089ed468` and the scripts' first copies; the headline on the 86
+tasks of that night 513 of 567 pairs, 90.5%, with the prompt's scopes,
+83.8% by kinds alone, 95.1% the ceiling, 32 pairs named as the residue;
+on the full 629 pairs since AX5, 90.8%, 91.1% with counts, 95.4% the
+ceiling, 36 the residue), the three statements on paper
 (AX3: `docs/research/core-calculus.md`, assumptions A1 to A8), and the
 article carrying both (the statements in the design section, the gap
 as an evaluation subsection with its table, AgentDojo and CaMeL cited;
@@ -4363,14 +4365,26 @@ owner's word for the subscription's `claude -p` (AX4): the suites' tools
 as Renyi projects of one Python module per tool
 (`tests/authority/tools/`, `tools/authority_gap/gen_tool_modules.py`),
 Sonnet 5.5 writing each task's program with up to three checked attempts
-(`model_loop.py`), 85 of 86 clean, 67 exactly the ground truth's tools,
-83.4% of 560 pairs blocked under the model's grants against 83.2% under
-the ground truth's (`tests/authority/model_loop.json`,
-`model_loop_expected.txt`, CI's step "Authority gap with a model in the
-loop"); the lane's `runs/b/` holds every answer and diagnostic. Open on
-the track: utility (the programs run against the environments through
-the bridge), the amount budget as a surface change under V11, the
-mechanization.
+(`model_loop.py`); the lane's `runs/b/` holds every answer and
+diagnostic. The next night (the owner: "1，同时尝试3"): AgentDojo installed
+in the lane's `venv/` for the utility runs, which is how the eleven
+combined tasks came to light (AX5: the registry's 97 against the
+extraction's 86; `extract_tasks.py` reads the combinator's calls now,
+the static numbers 90.8% and 91.1% on 629 pairs, the residue 36); the
+model loop completed on them (AX6: 96 of 97 clean, 75 exact, 83.9% of
+622 pairs under the model's grants against 83.3%), the programs run
+against the environments through the bridge (`utility_tools/`,
+`utility_run.py`, `utility_truth.py` the judge's validation, the lane's
+`runs/utility/`; 54 of 96 do their task, 56.2%; the travel project had
+declared three tools the suite lacks, one program called one, the
+fixture corrected to the suite's 28) and Theorem 1 with its proposition
+mechanized in Lean by a subagent (AX7: `formal/`, elan's
+`leanprover/lean4:v4.35.0`, rebuilt clean in the session, the CI job
+"The core calculus in Lean"); `tests/authority/{model_loop,utility}.json`
+with their pinned reports under CI's step "Authority gap with a model in
+the loop". Open on the track: the utility of the loop that reads the
+recording between writes, the amount budget as a surface change under
+V11, Theorems 2 and 3 in Lean.
 `paper/endorsement.md` is the request the owner sends with the
 submission's link; the arXiv procedure was explained to the owner (the
 endorsement link from the submission form, the endorsers found through

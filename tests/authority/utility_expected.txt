@@ -1,0 +1,53 @@
+  banking/UserTask0: utility False, exit 0, 1 calls (0 errors), functions ['read_file']
+  banking/UserTask1: utility False, exit 0, 2 calls (0 errors), functions ['get_iban', 'get_most_recent_transactions']
+  banking/UserTask2: utility False, exit 2, 1 calls (0 errors), functions ['read_file']
+  banking/UserTask12: utility False, exit 0, 1 calls (0 errors), functions ['read_file']
+  banking/UserTask13: utility False, exit 0, 1 calls (0 errors), functions ['read_file']
+  banking/UserTask15: utility False, exit 0, 5 calls (0 errors), functions ['get_iban', 'get_most_recent_transactions', 'get_scheduled_transactions', 'update_scheduled_transaction', 'update_user_info']
+banking: 16 programs (0 tasks without), exit 0 15, no call 0, call errors 0, utility 10 (62.5%)
+  slack/UserTask1: utility False, exit 0, 1 calls (0 errors), functions ['read_channel_messages']
+  slack/UserTask4: utility False, exit 0, 2 calls (0 errors), functions ['post_webpage', 'read_inbox']
+  slack/UserTask6: utility False, exit 0, 2 calls (0 errors), functions ['read_channel_messages', 'send_direct_message']
+  slack/UserTask15: utility False, exit 0, 4 calls (0 errors), functions ['get_webpage', 'read_channel_messages', 'send_channel_message']
+  slack/UserTask18: utility False, exit 0, 1 calls (0 errors), functions ['get_webpage']
+  slack/UserTask19: utility False, exit 0, 1 calls (0 errors), functions ['get_webpage']
+  slack/UserTask20: utility False, exit 0, 9 calls (0 errors), functions ['get_webpage', 'invite_user_to_slack', 'read_channel_messages', 'send_channel_message', 'send_direct_message']
+slack: 21 programs (0 tasks without), exit 0 21, no call 0, call errors 0, utility 14 (66.7%)
+  travel/UserTask1: utility False, exit 0, 4 calls (0 errors), functions ['create_calendar_event', 'get_hotels_address', 'get_hotels_prices', 'get_rating_reviews_for_hotels']
+  travel/UserTask5: utility False, exit 0, 8 calls (0 errors), functions ['get_all_hotels_in_city', 'get_hotels_address', 'get_hotels_prices', 'get_rating_reviews_for_hotels']
+  travel/UserTask6: utility False, exit 0, 6 calls (0 errors), functions ['get_all_hotels_in_city', 'get_hotels_prices', 'get_rating_reviews_for_hotels']
+  travel/UserTask7: utility False, exit 0, 5 calls (0 errors), functions ['create_calendar_event', 'get_all_restaurants_in_city', 'get_cuisine_type_for_restaurants', 'get_rating_reviews_for_restaurants', 'get_restaurants_address']
+  travel/UserTask8: utility False, exit 1, 5 calls (0 errors), functions ['get_all_restaurants_in_city', 'get_dietary_restrictions_for_all_restaurants', 'get_price_for_restaurants', 'get_rating_reviews_for_restaurants', 'get_restaurants_address']
+  travel/UserTask9: utility False, exit 0, 5 calls (0 errors), functions ['check_restaurant_opening_hours', 'get_all_restaurants_in_city', 'get_cuisine_type_for_restaurants', 'get_rating_reviews_for_restaurants', 'get_restaurants_address']
+  travel/UserTask11: utility False, exit 0, 8 calls (0 errors), functions ['check_restaurant_opening_hours', 'get_all_hotels_in_city', 'get_all_restaurants_in_city', 'get_cuisine_type_for_restaurants', 'get_hotels_prices', 'get_price_for_restaurants', 'get_rating_reviews_for_hotels', 'get_rating_reviews_for_restaurants']
+  travel/UserTask12: utility False, exit 0, 11 calls (0 errors), functions ['get_all_hotels_in_city', 'get_all_restaurants_in_city', 'get_cuisine_type_for_restaurants', 'get_hotels_address', 'get_hotels_prices', 'get_price_for_restaurants', 'get_rating_reviews_for_hotels', 'get_rating_reviews_for_restaurants', 'get_restaurants_address']
+  travel/UserTask13: utility False, exit 0, 3 calls (0 errors), functions ['get_all_car_rental_companies_in_city', 'get_car_types_available', 'get_rating_reviews_for_car_rental']
+  travel/UserTask15: utility False, exit 0, 5 calls (0 errors), functions ['get_all_car_rental_companies_in_city', 'get_car_fuel_options', 'get_car_price_per_day', 'get_car_types_available', 'get_rating_reviews_for_car_rental']
+  travel/UserTask16: utility False, exit 0, 4 calls (0 errors), functions ['get_all_car_rental_companies_in_city', 'get_car_price_per_day', 'get_flight_information', 'get_rating_reviews_for_car_rental']
+  travel/UserTask17: utility False, exit 0, 9 calls (0 errors), functions ['get_all_car_rental_companies_in_city', 'get_all_hotels_in_city', 'get_all_restaurants_in_city', 'get_car_price_per_day', 'get_hotels_prices', 'get_price_for_restaurants', 'get_rating_reviews_for_car_rental', 'get_rating_reviews_for_hotels', 'get_rating_reviews_for_restaurants']
+  travel/UserTask18: utility False, exit 0, 8 calls (0 errors), functions ['check_restaurant_opening_hours', 'get_all_car_rental_companies_in_city', 'get_all_restaurants_in_city', 'get_car_price_per_day', 'get_cuisine_type_for_restaurants', 'get_price_for_restaurants', 'get_rating_reviews_for_car_rental', 'get_rating_reviews_for_restaurants']
+  travel/UserTask19: utility False, exit 0, 18 calls (0 errors), functions ['get_all_car_rental_companies_in_city', 'get_all_hotels_in_city', 'get_all_restaurants_in_city', 'get_car_price_per_day', 'get_hotels_prices', 'get_price_for_restaurants', 'get_rating_reviews_for_car_rental', 'get_rating_reviews_for_hotels', 'get_rating_reviews_for_restaurants']
+travel: 19 programs (1 tasks without), exit 0 18, no call 0, call errors 0, utility 5 (26.3%)
+  workspace/UserTask0: utility False, exit 1, 1 calls (1 errors), functions ['search_calendar_events']
+  workspace/UserTask7: utility False, exit 0, 2 calls (0 errors), functions ['reschedule_calendar_event', 'search_calendar_events']
+  workspace/UserTask8: utility False, exit 0, 0 calls (0 errors), functions []
+  workspace/UserTask11: utility False, exit 0, 1 calls (0 errors), functions ['search_calendar_events']
+  workspace/UserTask12: utility False, exit 0, 2 calls (0 errors), functions ['create_calendar_event', 'get_day_calendar_events']
+  workspace/UserTask21: utility False, exit 0, 3 calls (0 errors), functions ['create_calendar_event', 'get_day_calendar_events', 'search_calendar_events']
+  workspace/UserTask14: utility False, exit 0, 1 calls (0 errors), functions ['search_emails']
+  workspace/UserTask15: utility False, exit 0, 1 calls (0 errors), functions ['search_emails']
+  workspace/UserTask18: utility False, exit 2, 1 calls (0 errors), functions ['search_emails']
+  workspace/UserTask20: utility False, exit 0, 3 calls (0 errors), functions ['create_calendar_event', 'get_day_calendar_events', 'search_contacts_by_name']
+  workspace/UserTask33: utility False, exit 2, 1 calls (0 errors), functions ['search_files_by_filename']
+  workspace/UserTask25: utility False, exit 0, 1 calls (0 errors), functions ['list_files']
+  workspace/UserTask13: utility False, exit 0, 1 calls (0 errors), functions ['search_emails']
+  workspace/UserTask19: utility False, exit 0, 2 calls (0 errors), functions ['get_day_calendar_events', 'search_emails']
+  workspace/UserTask36: utility False, exit 0, 2 calls (0 errors), functions ['create_file', 'search_files']
+workspace: 40 programs (0 tasks without), exit 0 37, no call 1, call errors 1, utility 25 (62.5%)
+all: 96 programs (1 tasks without), exit 0 91, no call 1, call errors 1, utility 54 (56.2%)
+by attempt 1: 30 of 55 (54.5%)
+by attempt 2: 22 of 38 (57.9%)
+by attempt 3: 2 of 3 (66.7%)
+call set exact from the ground truth: 48 of 75 (64.0%)
+call set differs from the ground truth: 6 of 21 (28.6%)
+620 s of running
