@@ -4420,15 +4420,24 @@ prompt spells the amount, as the scopes; 574 of 629, 91.3%, one pair
 more, banking `UserTask15` against the transfer of 1,000,000; the
 ceiling unmoved, the residue 35; `expected.txt` pinned again, the
 document, the article's table). Then the article polished on the
-owner's word (2026-10-17): condensed from 7,308 to 6,753 prose words
-with every number and citation kept (the restatements of the
-foundations, the roadmap paragraph, the coverage rule and the proofs'
-assumptions each left one home), the colon elaborations and stacked
-clauses rewritten as sentences (the sci-paper lint's advisories 55 to
-19, the 18 left being labels inside the new figure), an overview
-figure added as Figure 1 (TikZ: the two questions over before, during
-and after the run, the three theorems and the gap under them), the
-residue gate clean, the build clean; `paper/endorsement.md` carries
+owner's word (2026-10-17), in two passes: the second, after the
+owner found the first still long and machine-like, condensed the
+prose from 7,308 to 5,739 words (the sci-paper length gate), rewrote
+the colon elaborations, the anaphora and the clefts as plain sentences
+(the lint's advisories 55 to 5, the 5 left being colons inside code and
+the email address), dropped the numbers that carried no argument (the
+grammar's line count, the reserved words, the diagnostic codes, the
+library's declaration lines, the wasm module's bytes, the game's lines
+and frame times, the cycle counts of the typed round, the ratio before
+the last round; every citation kept, the decisions document their
+home), and replaced the overview figure with the toolchain's own
+texts on the starter workflow (Figure 1, TikZ, three boxes stacked:
+the signature of `main` and the `capability-missing` diagnostic a body
+reading a file gets, the boundary admitting the call to the granted
+host and failing one to `example.org` with `HostNotAllowed`, the first
+entry of the recording `api_digest.json` and what replay, reproduce
+and explain do with it; no theorem labels), the residue gate clean,
+the build clean with no overfull line; `paper/endorsement.md` carries
 the email updated to the article and the three endorsers' cs.PL
 records checked against arXiv's listing. Nothing is open on the
 track; the arXiv submission and the endorsement email are the owner's
