@@ -90,7 +90,8 @@ parentheses.
   `List of Path` or fails with `FileError`; `map.entries()` answers
   `Pair`s whose fields are `left` (the key) and `right` (the value);
   `map.get(key)` answers `maybe`; `text.to_integer()` and
-  `text.to_decimal()` answer `maybe`.
+  `text.to_decimal()` fail with `InvalidNumber`. An `example:` compares
+  a `maybe T` result with a `T` or with `nothing`.
 - There is no `=`, no `==`, no `null` and no anonymous function
   (`equals-sign`, `symbolic-operator`): `let total be 0`, `is`,
   `nothing`, a named function passed by name.

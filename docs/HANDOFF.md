@@ -4452,7 +4452,20 @@ one, one, two, two, one attempts (alone: one, one, one, three, two);
 with it `library_lookup` takes a qualified name and the cheat sheet's
 test example calls the module's own function bare; the lane
 `D:/Projects/.worktrees/Renyi/measure03/firstrun/` (`run_task.sh`,
-`analyze.py`, `results.md`).
+`analyze.py`, `results.md`). Then the gaps the five agents' reports
+named in the cheat sheet, filled within its budget (2,986 of 3,000
+tokens; the three copies equal): the `Path` methods under
+`std.filesystem` (`name()`, `parent()`, `extension()`,
+`join(segment)`, with `inspect`), that `is` compares a `maybe T` with
+a `T` or `nothing` in an `example:` (verified on the binary with a
+probe, `measure03/probe/maybe_probe.ry`), that a test calls the
+module's own functions bare, and that a loop header takes one
+`sorted by` key (the `query-shape` of the third task); paid for by
+the library's repeat of the argument rule, the parenthetical of
+`expose as tool`, "even after a check" and the longer concurrency
+sentence. The skill file's wrong line fixed with it: `text.to_integer()`
+and `text.to_decimal()` fail with `InvalidNumber`, they do not answer
+`maybe` (`library/std/prelude.ry`).
 `paper/endorsement.md` is the request the owner sends with the
 submission's link; the arXiv procedure was explained to the owner (the
 endorsement link from the submission form, the endorsers found through

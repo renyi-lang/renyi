@@ -13,7 +13,7 @@ import std.json                              # use as json.parse(...)
 import std.http as web                       # renamed namespace
 import accounts.models exposing User, UserId # types and abilities only
 ```
-Imported functions are called qualified, own ones bare; definitions are private unless `public`.
+Imported functions are called qualified, own ones bare (in tests too); definitions are private unless `public`.
 
 ## Function
 ```
@@ -90,8 +90,8 @@ Construct: `User(name: "Ann", age: 30, email: nothing)`, `Circle(radius: 2.5)`
 (fields always named), `Point`, `UserId(7)` (a subtype wraps a value).
 Update: `user with age: 31`. Refined construction or update can fail:
 `Email(input) otherwise fail with BadInput`. A literal the checker can
-evaluate needs no `otherwise` (`Port(8080)`); a variable needs one even
-after a check. Generic types: `List of T`, `Map of K to V`, `Set of T`,
+evaluate needs no `otherwise` (`Port(8080)`); a variable needs one.
+Generic types: `List of T`, `Map of K to V`, `Set of T`,
 `maybe T`.
 
 ## Abilities
@@ -146,8 +146,9 @@ match action()                                      # when the error is needed
   when failure(error) then log.warn(error.to_text())
 end
 ```
-A `T` is accepted where `maybe T` or a success is expected. Reading out always
-names the other case; `otherwise` is allowed only there. It takes a default
+A `T` is accepted where `maybe T` or a success is expected, and `is` compares
+a `maybe T` with a `T` or `nothing` (`example: first_word("") is nothing`).
+Reading out always names the other case; `otherwise` is allowed only there. It takes a default
 or a way out: `fail`, `fail with E(...)`, `return value`, `break`,
 `continue`, `crash with "text"`.
 `type X is Base` is a subtype: an `X` passes as a `Base`, never the reverse.
@@ -189,7 +190,7 @@ Matching is exhaustive. A variant with fields matches by its bare name:
 `when Circle then`. `if` and `match` are also expressions
 when every branch is one expression: `let label be if done then "yes"
 otherwise "no" end`.
-Loop headers take `where` and `sorted by`.
+Loop headers take `where` and one `sorted by` key.
 
 ## Queries (instead of lambdas)
 ```
@@ -234,8 +235,7 @@ run concurrently within time.seconds(5)
   let orders be billing.fetch_open() otherwise fail
 end
 ```
-All tasks finish or the first failure cancels the rest; an expired `within`
-cancels them and fails with `TimedOut`.
+The first failure cancels the rest; an expired `within` fails with `TimedOut`.
 
 ## Tests and tools
 ```
@@ -247,8 +247,7 @@ test "the forecast is read" needs network.http replays "fixtures/forecast.json"
 end
 ```
 A recording (`renyi record`) answers a `replays` test's effects offline.
-`expose as tool` publishes a function to agents (schema from the parameters,
-description from `purpose:`, permissions from `needs`).
+`expose as tool` publishes a function to agents.
 `deprecated: since 2.0, replaced by new_name` warns callers.
 
 ## Library (names and parameters; nothing else exists)
@@ -271,13 +270,12 @@ Numbers: to_decimal() to_float() to_text() quotient(divisor) absolute()
   at_least(other) at_most(other) rounded(places) truncated() square_root()
 Modules: std.console (print, print_error, read_line); std.environment
   (arguments, get, exit); std.time (now, seconds, parse_date, Date,
-  Instant, Duration); std.random; std.filesystem (Path, read_text, write_text,
-  exists, list); std.json (parse, render); std.http (Url, get, post_json);
+  Instant, Duration); std.random; std.filesystem (Path: name() parent()
+  extension() join(segment); read_text, write_text, exists, list, inspect);
+  std.json (parse, render); std.http (Url, get, post_json);
   std.server; std.csv; std.sqlite; std.regex; std.process (execute, attempt);
   std.foreign; std.python; std.screen (present, play)
 ```
-One parameter is positional, more are named: `line.split(",")`,
-`text.replace(old: "a", new: "b")`.
 
 ## Names and reserved words
 snake_case for values and functions, PascalCase for types, abilities and
