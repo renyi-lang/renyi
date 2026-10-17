@@ -911,8 +911,10 @@ state of each line.
   memory budget in the grant).
   The surface is frozen (V11): a change is a new decision entry first,
   then the reference, the grammar, the cheat sheet, the formatter and
-  the conformance suite in one commit. Open: R3-1 (`Iterable`), section
-  6 of `docs/GAPS.md`.
+  the conformance suite in one commit. Open: section 6 of
+  `docs/GAPS.md` (section 18 of the sketch holds none: R3-1,
+  `Iterable`, was decided as V10 and built with AB1, and R3-2 to R3-4
+  as AB1, AW62 and AW64).
 - **B. The toolchain in Rust**: stages 3, 4, 5, 7, 10, 13, 14, 22, 25,
   46 (the name sets of the liveness analysis as bits, AW67).
   Complete for the language as designed; the Rust front end is the
@@ -1117,7 +1119,7 @@ numbers are 0.4.0's and the arXiv endorsement request is written. The
 project is at its stable version. What remains is the owner's: the
 article's submission with the endorsement, the announcements (the
 extension is on the Marketplace at 0.4.0 since 2026-10-16); and the open items listed
-above by track (R3-1, 40c, the switch of the front end, the verified
+above by track (40c, the switch of the front end, the verified
 domain), none of them scheduled. The research track opened on
 2026-10-16 evening (AX1): the authority gap, the three statements, the
 model in the loop, the utility runs, the loop and the three theorems in

@@ -1006,8 +1006,10 @@ are in sections 0 to AW of `01-decisions.md`; the positioning in
 `08-positioning.md`; the agent tooling in
 `05-agent-tooling.md`, the signature capabilities in
 `06-runtime-guarantees.md`, the system-level commitments in
-`07-system-design.md`; the open items in section 18 of the sketch (R3-1,
-`Iterable`) and section 6 of `docs/GAPS.md`.
+`07-system-design.md`; the open items in section 6 of `docs/GAPS.md`
+(section 18 of the sketch holds none since AW64: R3-1, `Iterable`, was
+decided as V10 and built with AB1; a probe on 2026-10-17 walked a
+program's own type through `for each` on the 0.4.0 binary).
 
 The owner's direction since 2026-10-06 (decision V1): the readability
 scores are no longer the gate; the aim is a self-hosted, independent
