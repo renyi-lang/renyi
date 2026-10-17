@@ -434,7 +434,13 @@ impl Server {
     /// Library declarations whose module, head or purpose contain every
     /// word of the query, the ones named by a word first.
     fn lookup(&self, query: &str) -> String {
-        let words: Vec<String> = query.split_whitespace().map(str::to_lowercase).collect();
+        // a qualified name (`filesystem.list`) is its module and its name
+        // (decision AY3: the agents of the measure asked that way first)
+        let words: Vec<String> = query
+            .split(|c: char| c.is_whitespace() || c == '.')
+            .filter(|word| !word.is_empty())
+            .map(str::to_lowercase)
+            .collect();
         if words.is_empty() {
             return "give a name or a few words to look for".to_string();
         }
@@ -633,7 +639,7 @@ fn tool_json(name: &str) -> Json {
              its signature, effects and purpose. Use it before calling a library function, so that \
              names and arguments are not invented.",
             schema(
-                vec![("query", string_property("a name or a few words, such as `get_with` or `read file`"))],
+                vec![("query", string_property("a name, bare or qualified, or a few words, such as `get_with`, `filesystem.list` or `read file`"))],
                 &["query"],
             ),
         ),

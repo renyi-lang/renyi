@@ -274,8 +274,14 @@ fn the_tools_answer_from_the_served_project() {
         call(10, "chunks", r#"{"module":"invoice"}"#),
         call(11, "chunks", r#"{"module":"no_such_module"}"#),
         call(12, "chunks", r#"{"language":true,"module":"std.http"}"#),
+        call(13, "library_lookup", r#"{"query":"filesystem.list"}"#),
     ]);
-    assert_eq!(messages.len(), 12);
+    assert_eq!(messages.len(), 13);
+    let qualified = content(&messages[12]);
+    assert!(
+        qualified.contains("std.filesystem: public function list(path: Path) returns List of Path or fails with FileError needs filesystem.read"),
+        "{qualified}"
+    );
     let lookup = content(&messages[0]);
     assert!(
         lookup.contains("std.http: public function get_with(url: Url, headers: Map of Text to Text) returns Response or fails with HttpError needs network.http"),

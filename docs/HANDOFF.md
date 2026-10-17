@@ -4443,7 +4443,16 @@ the build clean with no overfull line; `paper/endorsement.md` carries
 the email updated to the article and the three endorsers' cs.PL
 records checked against arXiv's listing. Nothing is open on the
 track; the arXiv submission and the endorsement email are the owner's
-step (the link comes from the started submission).
+step (the link comes from the started submission). Then, on the
+owner's choice of 2026-10-17 after R3-1 was found done, the first-run
+measure with the MCP server connected (decision AY3): the five tasks
+of AW45 again, a fresh agent each through `claude -p` (Fable 5.1) with
+the skill file, the cheat sheet, the 0.4.0 binary and `renyi mcp`;
+one, one, two, two, one attempts (alone: one, one, one, three, two);
+with it `library_lookup` takes a qualified name and the cheat sheet's
+test example calls the module's own function bare; the lane
+`D:/Projects/.worktrees/Renyi/measure03/firstrun/` (`run_task.sh`,
+`analyze.py`, `results.md`).
 `paper/endorsement.md` is the request the owner sends with the
 submission's link; the arXiv procedure was explained to the owner (the
 endorsement link from the submission form, the endorsers found through

@@ -159,6 +159,14 @@ agents with the skill file alone (one, two, one, one attempts) and took
 three on the fifth, whose second failure was answered by a diagnostic
 whose fix did not name the spelling, `or fails with A or B`, since
 added to the skill file; claim 1 is the owner's measure and is pending.
+Claim 2 measured again on 2026-10-17 against release 0.4.0 with the
+MCP server connected (decision AY3), the same five tasks: one, one,
+two, two, one attempts; every agent looked the library up through the
+server before writing; the two failed first attempts were answered by
+`query-shape` on a `sorted by` with two keys and by `unknown-name` on a
+qualified call of the module's own function, which the cheat sheet's
+test example wrote and no longer does; the second's fix was not the
+one taken.
 
 ## 6. How it is said
 

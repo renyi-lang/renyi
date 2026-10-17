@@ -240,7 +240,7 @@ cancels them and fails with `TimedOut`.
 ## Tests and tools
 ```
 test "tax is applied to the subtotal"
-  check invoices.total_price(items: items, rate: TaxRate(0.1)) is 11.00
+  check total_price(items: items, rate: TaxRate(0.1)) is 11.00
 end
 test "the forecast is read" needs network.http replays "fixtures/forecast.json"
   check weather.fetch(city: "Berlin").temperature is 21.5

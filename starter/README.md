@@ -64,7 +64,7 @@ take the same command and arguments. The server's tools:
 | Tool | What it answers |
 |------|-----------------|
 | `cheat_sheet` | the whole language on one page |
-| `library_lookup` | standard library declarations by name or by a few words, with signature, effects and purpose |
+| `library_lookup` | standard library declarations by name (bare or qualified) or by a few words, with signature, effects and purpose |
 | `project_map` | one record per module and definition of the served directory: signature, purpose, effects, failures, edges, metrics, content hash |
 | `definition` | one definition's record and source text, by qualified name |
 | `effects` | the transitive effect and failure graph under a definition, down to the library primitives |

@@ -268,7 +268,7 @@ again (open item R5-5, closed).
 | Tool | Input | Output |
 |------|-------|--------|
 | `cheat_sheet` | none | `docs/cheatsheet.md`, the whole language within its token budget |
-| `library_lookup` | a name or a few words | matching library declarations with their purposes, from `library/std` |
+| `library_lookup` | a name, bare or qualified, or a few words | matching library declarations with their purposes, from `library/std` |
 | `project_map` | optional module name, optional detail level | the map of section 4, or one module's records |
 | `definition` | a qualified name | the definition's source text and its record |
 | `effects` | a qualified name | the transitive effect and failure graph under that definition |

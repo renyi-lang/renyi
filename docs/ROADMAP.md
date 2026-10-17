@@ -1125,5 +1125,8 @@ domain), none of them scheduled. The research track opened on
 model in the loop, the utility runs, the loop and the three theorems in
 Lean are done (stage 47, AX1 to AX9), and the amount budget on the
 owner's answers of 2026-10-17 (stage 48, AY1) and measured (AY2: one
-pair of the 36, the ceiling unmoved); next on the track, nothing
-scheduled: the arXiv submission is the owner's step.
+pair of the 36, the ceiling unmoved); the first-run measure of claim 2 taken again with the MCP server
+connected on 2026-10-17 (AY3: one, one, two, two, one attempts; the
+lookup tool and the cheat sheet's test example corrected with it);
+next on the track, nothing scheduled: the arXiv submission is the
+owner's step.

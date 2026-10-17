@@ -10842,3 +10842,48 @@ exfiltration, not the theft. The residue is 35. The output's rows
 carry an `amount` column, `expected.txt` pinned again, the document's
 sections 3 to 5, the article's table (a column "+ amounts") and its
 residue passage. (Claude, on the owner's word)
+
+**AY3. The first-run measure with the MCP server connected: one, one,
+two, two, one attempts (2026-10-17).** The measure the article's
+conclusion named as the one to follow, on the owner's choice after
+R3-1 was found decided and built. The five tasks of AW45 (the same
+generator and seed, the data byte for byte the same), each given to a
+fresh agent through `claude -p` (Claude Fable 5.1; the first measure's
+subagents inherited their session's model, not recorded) with the
+skill file and the cheat sheet of 9b255c6, the 0.4.0 Windows binary and
+`renyi mcp <task directory>` connected under `--strict-mcp-config` as
+the only sources; the prompt asks for every version to be saved before
+its check, and the session counted again on the saved versions with
+the binary (`measure03/firstrun/analyze.py`). Attempts to a clean
+check: one, one, two, two, one, against one, one, one, three, two with
+the skill file alone on 0.2.0; the tests and the run passed on the
+clean attempt in four tasks, and in the words task the agent's own
+example named a three-letter word the task excludes and took one more
+version with the program unchanged; the outputs equal the programs'
+of AW45 on four tasks and are the same numbers in another layout on
+the logs task. The failed first attempts: `query-shape` and
+`expected` on a `sorted by` with two keys (the fix names the query's
+end; the agent sorted twice by one key) and `unknown-name` twice on a
+test calling the module's own function qualified by the module's
+name, as the cheat sheet's test example wrote it (the fix, "declare
+it first", was not the fix; the agent dropped the qualifier). Every
+agent called `library_lookup` before its first version, four to seven
+times, and nothing else before it; checked through the server on one
+to three versions and through the binary as a second check; ran the
+tests and the program through the server once each; two to three
+minutes and 18 to 21 turns per task. The agents' reports named what
+they did not find: `library_lookup` answered "nothing matches" to a
+qualified name (`filesystem.list`, `console.print`), the cheat sheet
+gives the `Path` methods only in the skill file's passing mention, and
+no spelling of an `example:` on a `maybe` value. Changed with the
+measure: `library_lookup` splits its query on dots too, so a qualified
+name finds its declaration (`crates/renyi/src/mcp.rs`, a case in
+`tests/mcp.rs`, the tool's description, the tooling document and the
+starter's README), and the cheat sheet's test example calls the
+module's own function bare, `check total_price(...)`, the two copies
+the same. The positioning document's section 5, the article's
+first-run section and table, its abstract and its conclusion carry
+the measure. The lane: `measure03/firstrun/` (`run_task.sh`, the
+prompt per task, the transcripts `out/*.jsonl`, every attempt and the
+agents' reports under `tasks/`, `count.md`, `results.md`). (Claude,
+on the owner's choice)

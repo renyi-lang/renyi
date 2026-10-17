@@ -62,7 +62,8 @@ goals need a capability, a scope or a count outside what the benign
 task's program declares, so a program that passed review for the task
 cannot carry them out. Every example workflow's recording reproduces on
 another operating system, agents given the language's one-page skill
-file wrote four of five workflows clean within two attempts, and Claude
+file wrote four of five workflows clean within two attempts, five of
+five with the toolchain's MCP server connected, and Claude
 Sonnet 5.5 reading the cheat sheet alone predicts the output of corpus
 programs at 90\% and explains them at 100\%.
 \end{abstract}
@@ -516,7 +517,8 @@ and with the whole program checked before it serves.
 The reproduction and the benchmarks were measured on release 0.4.0 on
 2026-10-15. The first-run measure was taken on release 0.2.0 on
 2026-10-14 with the skill file and the cheat sheet of that release,
-which have since gained one line, the memory budget clause.
+and again on release 0.4.0 on 2026-10-17 with the MCP server
+connected.
 
 \subsection{Reproduction}
 
@@ -664,22 +666,44 @@ FileError, JsonError}, the parser's \texttt{expected} diagnostic
 proposed one statement per line, which was not the fix, and the agent
 found the spelling with \texttt{or} by a guess.
 
+The measure was taken again on release 0.4.0 with the toolchain's MCP
+server connected to the task directory, the same five tasks and data,
+a fresh agent each (Claude Fable 5.1 through the command-line
+interface), every version saved before its check and counted again by
+the first author with the binary. The attempts to a clean check were
+one, one, two, two and one. Every agent looked the library up through
+the server before writing its first version, four to seven times, and
+checked, tested and ran through it as well. The two failed first
+attempts were a \texttt{sorted by} with two keys, which the query
+grammar does not have, and a test calling the module's own function
+qualified by the module's name, as the cheat sheet's example wrote it,
+since corrected. The tests and the run passed on the clean attempt in
+four tasks; in the fifth the agent's own example named a three-letter
+word the task excludes and took one more version with the program
+unchanged. The agents' reports named what the lookup tool did not
+find, a qualified name such as \texttt{filesystem.list}, which it
+accepts since.
+
 \begin{table}[t]
 \centering
-\begin{tabular}{lcl}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{lccll}
 \toprule
-Task & Attempts & Diagnostics on the failed attempts \\
+Task & alone & with the server & Diagnostics, alone & with the server \\
 \midrule
-expenses by category & 1 & none \\
-log levels and top errors & 1 & none (a line-width warning, formatted away) \\
-word frequencies & 1 & none \\
-inventory from JSON & 3 & \texttt{error-not-declared}; \texttt{expected} \\
-rename plan & 2 & \texttt{unknown-field} ($\times 3$) \\
+expenses by category & 1 & 1 & none & none \\
+log levels and top errors & 1 & 1 & none & none \\
+word frequencies & 1 & 2 & none & \texttt{query-shape}, \texttt{expected} \\
+inventory from JSON & 3 & 2 & \texttt{error-not-declared}; \texttt{expected} & \texttt{unknown-name} ($\times 2$) \\
+rename plan & 2 & 1 & \texttt{unknown-field} ($\times 3$) & none \\
 \bottomrule
 \end{tabular}
 \caption{The first-run measure, the attempts to a clean \texttt{renyi
-check} on five tasks, one fresh agent each with the skill file and the
-cheat sheet alone.}
+check} on five tasks, one fresh agent each, with the skill file and
+the cheat sheet alone (release 0.2.0) and with the MCP server
+connected too (release 0.4.0), and the diagnostics of the failed
+attempts.}
 \label{tab:firstrun}
 \end{table}
 
@@ -832,8 +856,7 @@ the VM enforce, dependencies included. What it did, a recording states
 as data and a manifest makes reproducible. The syntax that carries
 those answers was chosen by measuring the readers it is for. The
 toolchain is released and the language is self-hosted and judged. The
-measures to follow are review time by people and the first-run rate
-with the MCP server connected.
+measure to follow is review time by people.
 
 \paragraph{Availability.} The toolchain, the specification, the corpus,
 the conformance suite, the readability harness and every measure's data
