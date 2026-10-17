@@ -862,7 +862,7 @@ where one decided, the status. The dates are those of the decisions.
     task's sink is the attack's and 24 where the task reads its sink
     from the attacker's data; `docs/research/authority-gap.md`, the
     scripts `tools/authority_gap/`, the data and the pinned output
-    `tests/authority/` under CI) and the three statements on paper
+    `tests/authority/` under CI) and the three statements, first on paper
     with their assumptions (`docs/research/core-calculus.md`); the
     half with a model in the loop on the owner's word for the
     subscription's `claude -p` (AX4 and AX6: Claude Sonnet 5.5 writing
@@ -882,8 +882,10 @@ where one decided, the status. The dates are those of the decisions.
     the recording and writing the program again, at most two turns;
     81 of 96 do their task, 84.4%, none broken, the grants changed in
     9 and the gap under the final grants 83.6%; `loop_run.py`,
-    `loop.json` under CI). Open: a budget on an amount as a language
-    extension (a decision entry first, V11); Theorems 2 and 3 in Lean.
+    `loop.json` under CI); and Theorems 2 and 3 in Lean (AX9:
+    `Guards.lean` and `Replay.lean`, a machine each, `propext` alone).
+    Open: a budget on an amount as a language extension (a decision
+    entry first, V11).
 
 ## 3. The tracks
 
@@ -963,8 +965,7 @@ state of each line.
   `tests/readability/`; they run only on request (V1).
 - **I. Research**: stage 47 (the authority gap, the three statements,
   the model in the loop, the programs run for utility, the loop and
-  Theorem 1 in Lean, AX1 to AX8). Open: the amount budget, Theorems 2
-  and 3.
+  the three theorems in Lean, AX1 to AX9). Open: the amount budget.
 
 ## 4. What is next
 
@@ -1105,7 +1106,6 @@ extension is on the Marketplace at 0.4.0 since 2026-10-16); and the open items l
 above by track (R3-1, 40c, the switch of the front end, the verified
 domain), none of them scheduled. The research track opened on
 2026-10-16 evening (AX1): the authority gap, the three statements, the
-model in the loop, the utility runs, the loop and Theorem 1 in Lean
-are done (stage 47, AX1 to AX8); next, when the owner says so, the
-amount budget as a surface change under V11 and Theorems 2 and 3 in
-Lean.
+model in the loop, the utility runs, the loop and the three theorems in
+Lean are done (stage 47, AX1 to AX9); next, on the owner's answers of
+2026-10-17, the amount budget as a surface change under V11.

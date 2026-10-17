@@ -10737,3 +10737,27 @@ workspace `UserTask35`, whose round 0 timed out at 300 seconds on the
 loaded machine. The run paused once on the owner's word for the
 machine and resumed; the channel's hard link to the login had broken
 on a token refresh and was made again. (Claude, on the owner's word)
+
+**AX9. Theorems 2 and 3 mechanized in Lean 4: `formal/RenyiCore/{Guards,Replay}.lean`,
+each over a machine of its own, no `sorry` (2026-10-17).** The next
+stage AX7 named, on the owner's "继续". A subagent (Claude Fable 5.1,
+named this time) wrote the two files from sections 3 and 4 of
+`docs/research/core-calculus.md`, `grant.rs` and `value.rs`, in the
+lane's copy of the project, verified by a clean rebuild in the
+session: Theorem 2 over values that are the record of their
+computation, origin sets as predicates over an abstract guard type,
+`Val.origins` and the least relation `Prov` proved equal, a stack
+machine whose `test` drops the tested value (implicit flow reproduced,
+not strengthened), `guards_admit_only_sinks` on every effect of every
+run; Theorem 3 over an abstract state with `request`, `pure` and
+`apply`, the live run under a world `Nat → Answer`, the replay by the
+first unused entry with the same primitive and arguments,
+`replay_run` and `replay_output` by the induction `replay_tracks_live`
+with the book's invariant. `#print axioms`: `propext` alone for both
+theorems and the corollary, none for `origins_iff_prov`; 468 lines of
+Lean added, Theorem 1's files untouched, CI's job unchanged. The one
+deviation the README names: the replay starts from the live run's
+initial state, grant included, a stronger hypothesis than the
+document's "a grant covering the header". What is left out is listed
+per theorem in `formal/README.md` and section 6 of the document.
+(Claude, on the owner's word)

@@ -343,9 +343,10 @@ live once.
 \subsection{Three statements}
 \label{sec:statements}
 
-The rules of this section keep three properties, stated here and
-proved on paper in the repository's \texttt{docs/research/core-calculus.md}
-over an abstract machine whose steps are pure steps and primitive calls.
+The rules of this section keep three properties, stated here, proved
+on paper in the repository's \texttt{docs/research/core-calculus.md}
+over an abstract machine whose steps are pure steps and primitive calls,
+and mechanized in Lean 4.
 A capability is a kind of the tree with a scope; a granted capability
 covers a needed one when its kind is the same or an ancestor and its
 scope contains the needed one; the grant of a frame is the enclosing
@@ -375,11 +376,14 @@ Each proof names what it rests on: no ambient effect, \texttt{time} and
 \texttt{random} as primitive calls, insertion order, the standards'
 arithmetic, tasks in source order, no observable identity, budgets and
 guards decided by the state; each is a sentence of the reference, and a
-change to one is a change to the statement. Theorem 1 and its
-proposition are mechanized in Lean 4 over a small model of the calculus
+change to one is a change to the statement. The three theorems and the
+proposition are mechanized in Lean 4 over small models of the calculus
 (the repository's \texttt{formal/}, Lean core alone, built by the
-continuous integration with no \texttt{sorry}); the proofs of the other
-two are on paper.
+continuous integration with no \texttt{sorry}), one machine per theorem:
+frames with grants for the first, values carrying their origins for the
+second, an abstract state with pure steps as a function for the third,
+whose replay starts from the live run's initial state, the one place the
+model asks more than the statement.
 
 \subsection{The surface}
 

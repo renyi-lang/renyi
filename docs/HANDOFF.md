@@ -4398,9 +4398,16 @@ fallback the repository's `utility_run.py` lacked, ported; workspace
 owner's word while the machine was loaded (this session coordinated
 the owner's other sessions' pause and resume) and resumed; the
 channel's hard link to the login breaks on a token refresh and is made
-again before a run (the memory note has the steps). Open on the
-track: the amount budget as a surface change under V11, Theorems 2 and
-3 in Lean.
+again before a run (the memory note has the steps). Then Theorems 2
+and 3 in Lean by a subagent (AX9: `formal/RenyiCore/Guards.lean` and
+`Replay.lean`, a machine each, Theorem 1's files untouched, `propext`
+alone, rebuilt clean in the session; the replay starts from the live
+run's initial state, the one deviation the README names). Open on the
+track: the amount budget as a surface change under V11 (the owner's
+four answers of 2026-10-17: budgets extend to `python` kinds, `at most
+LIMIT of PARAMETER per UNIT`, the parameter on every primitive the
+capability covers typed Integer or Decimal, absolute values summed and
+the call that would exceed refused before anything leaves).
 `paper/endorsement.md` is the request the owner sends with the
 submission's link; the arXiv procedure was explained to the owner (the
 endorsement link from the submission form, the endorsers found through

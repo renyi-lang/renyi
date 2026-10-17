@@ -2,8 +2,9 @@
 
 Status: written 2026-10-16 (decision AX3), on paper; Theorem 1 and
 Proposition 1a mechanized in Lean 4 the next day (decision AX7,
-`formal/`, Lean core only, no `sorry`, built by CI); Theorems 2 and 3
-still on paper. The implementation the statements describe is
+`formal/`, Lean core only, no `sorry`, built by CI), Theorems 2 and 3
+the same day (decision AX9, section 6, each over a machine of its own).
+The implementation the statements describe is
 `crates/renyi_vm/src/grant.rs` (coverage, narrowing, guards),
 `crates/renyi_vm/src/vm.rs` (`frame_grant`, `call_native`, the origins)
 and `crates/renyi_check/src/effects.rs` (the static coverage rule);
@@ -245,7 +246,8 @@ change to one of them is a change to these statements.
 
 ## 6. The mechanization
 
-Theorem 1 and Proposition 1a are mechanized in Lean 4 (decision AX7):
+The three theorems and Proposition 1a are mechanized in Lean 4
+(decisions AX7 and AX9):
 `formal/`, a Lake project over Lean core alone (no Mathlib, no
 dependencies), built by CI (`lake build`, and a check that no source
 contains `sorry`). `formal/README.md` is the account of the model; in
@@ -293,9 +295,52 @@ theorems are not weakened), scopes naming a parameter and their
 substitution, failures, function values, tests, packages, budgets and
 guards; `G₀ = G ∧ H` is not computed (`G₀` is any grant beside
 `N(main)` on the stack), and the intersection is the stack's
-conjunction of coverage, not `grant::narrow`'s computed set. Of the
-assumptions, A1, A2 and A8 are embodied; A3 to A7 belong to Theorems 2
-and 3, which are the mechanization's next stage: a machine with an
-origin word per value for Theorem 2 (an invariant of the origin rules)
-and pure steps as an abstract deterministic relation for Theorem 3 (an
-induction on the trace).
+conjunction of coverage, not `grant::narrow`'s computed set.
+
+Theorems 2 and 3 (decision AX9) each have a machine of their own, which
+leaves Theorem 1's files as they are; nothing composes the three.
+
+- `RenyiCore/Guards.lean`, Theorem 2: guards an abstract type with a
+  capability and sinks each, an origin set a predicate over them (the
+  word of `Value::origins`); a value the record of its computation (a
+  literal, an operation on two operands, an admitted primitive call on
+  its argument); `Val.origins` the three rules of section 3 and `Prov`
+  the least relation closed under them, proved equal
+  (`origins_iff_prov`, no axiom); a stack machine whose `prim e` makes
+  the outgoing check (`Guard::admits`) and, refused, pushes a plain
+  value, and whose `test` drops the value it tests and continues with
+  either branch, so implicit flow is reproduced, not strengthened;
+  `guards_admit_only_sinks`: in every run, for every `effect e a` of
+  the trace, every guard in `Prov a` has a sink covering `e`
+  (`propext` alone). Left out: the grant's own admission check (the
+  two are independent in `call_primitive`), the `runtime_scoped`
+  leniency of a scoped sink over an unscoped effect (the model is
+  stricter there), the 64-guard limit, redaction, the console check
+  of a crash's text.
+- `RenyiCore/Replay.lean`, Theorem 3: a machine of three functions
+  over an abstract state, `request` (whether the next step is a
+  primitive call, which, with what arguments), `pure` (a pure step)
+  and `apply` (the step of a call given its answer); the lemma of
+  section 4 is the hypothesis that `pure` is a function, where A1 to
+  A6 enter; the grant, the budgets and the origins are folded into the
+  state (A7), a refused call a pure step. The live run takes the
+  `j`-th answer from a world `w : Nat → Answer`; the recording is its
+  entries in order; the replay takes the first unused entry with the
+  same primitive and arguments and fails when there is none.
+  `replay_run`: the replay of the recording of `n` live steps succeeds,
+  ends in the live run's state, makes the recording's calls with its
+  answers in its order, and uses every entry; `replay_output`: any
+  function of the calls made, the output among them, is the same
+  (`propext` alone). The induction is `replay_tracks_live` with the
+  invariant that after `j` calls the first `j` entries are used, which
+  is the paper's "under A5 the calls complete in the order they are
+  made". Where it deviates from section 4: the replay starts from the
+  live run's initial state, grant included, a stronger hypothesis
+  than "a grant covering `R`'s header", since an abstract state cannot
+  show that another such grant decides every recorded call alike;
+  redaction and `reproduce`'s hash checks are not modelled.
+
+Of the assumptions, A1, A2 and A8 are embodied; A3 to A6 are the
+hypotheses of the replay model, taken as `pure` being a function; A7
+is by construction in both new machines. `formal/README.md` has the
+full account per theorem.
