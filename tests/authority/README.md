@@ -1,7 +1,7 @@
 # The authority gap
 
 The data and the pinned results of the measures of decisions AX2, AX4,
-AX5, AX6 and AX8 (`docs/research/authority-gap.md`): for every pair of a
+AX5, AX6, AX8 and AY2 (`docs/research/authority-gap.md`): for every pair of a
 user task and an injection task of AgentDojo's `v1` suites, whether the
 attack fits inside the grant the user task's program declares, the
 grant the ground truth implies (AX2, AX5) and the grant a model's own

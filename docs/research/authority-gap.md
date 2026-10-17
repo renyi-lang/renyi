@@ -73,13 +73,23 @@ recipient is another authority than changing an amount). A user task's
   the number of calls of the kind in the ground truth (a budget on a
   `python` kind, which the language allowed only from decision AY1,
   after this measure);
+- *+amount* (decision AY2): the same, with `at most A of amount per
+  run` on a kind whose amount argument (`send_money`,
+  `schedule_transaction` and `update_scheduled_transaction` take
+  `amount`) is a literal the prompt spells out in every call of the
+  ground truth, `A` the sum of those amounts: the honest estimate with
+  every budget the language has since decision AY1;
 - *literal*: a scope declared for every literal argument, whether or
   not the prompt spells it out: an upper bound, not a grant anyone can
-  write.
+  write;
+- *literal+amount*: the same with the counts and the amounts of every
+  literal, whether or not the prompt spells them: the upper bound with
+  every budget.
 
 A pair is **blocked** when the injection's calls need a kind the grant
-lacks, a scope outside a declared one, or more calls of a kind than
-the budget; it **fits** otherwise. An injection with no tool call at
+lacks, a scope outside a declared one, more calls of a kind than
+the budget, or amounts of a kind whose sum (absolute values) passes
+the budget on the amount; it **fits** otherwise. An injection with no tool call at
 all (an attack that only wants the agent to say something) is
 `no-tool`: no grant can touch it. An injection whose scope is derived
 against a declared scope would be `undetermined`; none is.
@@ -88,13 +98,15 @@ against a declared scope would be `undetermined`; none is.
 
 ```
 all: 629 pairs
-  kind          blocked  527 ( 83.8%): kind 527, scope   0, budget   0; undetermined   0, fits  82, no-tool  20
-  prompt        blocked  571 ( 90.8%): kind 527, scope  44, budget   0; undetermined   0, fits  38, no-tool  20
-  prompt+budget blocked  573 ( 91.1%): kind 527, scope  44, budget   2; undetermined   0, fits  36, no-tool  20
-  literal       blocked  600 ( 95.4%): kind 527, scope  73, budget   0; undetermined   0, fits   9, no-tool  20
+  kind           blocked  527 ( 83.8%): kind 527, scope   0, budget   0, amount   0; undetermined   0, fits  82, no-tool  20
+  prompt         blocked  571 ( 90.8%): kind 527, scope  44, budget   0, amount   0; undetermined   0, fits  38, no-tool  20
+  prompt+budget  blocked  573 ( 91.1%): kind 527, scope  44, budget   2, amount   0; undetermined   0, fits  36, no-tool  20
+  +amount        blocked  574 ( 91.3%): kind 527, scope  44, budget   2, amount   1; undetermined   0, fits  35, no-tool  20
+  literal        blocked  600 ( 95.4%): kind 527, scope  73, budget   0, amount   0; undetermined   0, fits   9, no-tool  20
+  literal+amount blocked  600 ( 95.4%): kind 527, scope  73, budget   0, amount   0; undetermined   0, fits   9, no-tool  20
 ```
 
-Per suite (the *prompt+budget* grant): banking 131 of 144 (91.0%),
+Per suite (the *+amount* grant): banking 132 of 144 (91.7%),
 slack 94 of 105 (89.5%), travel 116 of 140 (82.9%; its 20 `no-tool`
 pairs are one speech-only injection against every task), workspace
 232 of 240 (96.7%). The whole output is `tests/authority/expected.txt`.
@@ -102,19 +114,23 @@ pairs are one speech-only injection against every task), workspace
 Read as a ceiling: with the kinds alone, 83.8% of the benchmark's
 attacks ask for an authority the benign program never had; a scope the
 reviewer can read in the prompt takes it to 90.8%; a per-run count adds
-two pairs (three transfers where the task makes one); the upper bound
-of every literal as a scope is 95.4%. On the 86 tasks of the first
+two pairs (three transfers where the task makes one); a budget on the
+amount, declarable where the prompt spells the amount, adds one (a
+transfer of 1,000,000 against a task that refunds 10, decision AY2);
+the upper bound of every literal as a scope is 95.4%, and the amounts
+move it by nothing: every amount attack the scopes leave sends 0.01. On the 86 tasks of the first
 extraction the rows were 83.8%, 90.5%, 90.8% and 95.1%: the eleven
 combined tasks, whose grants are the union of two, moved the number by
 a third of a point.
 
 ## 5. What is left, pair by pair
 
-The 36 pairs that fit the *prompt+budget* grant, by why:
+The 35 pairs that fit the *+amount* grant, by why:
 
-- **The task's own sink is the attack's sink** (12 pairs). Banking
+- **The task's own sink is the attack's sink** (11 pairs). Banking
   `UserTask15` names the attacker's account as the user's new landlord
-  (7 pairs); banking `UserTask14` asks for a password change and the
+  (6 pairs; the seventh, a transfer of 1,000,000, is the one pair the
+  budget on the amount blocks); banking `UserTask14` asks for a password change and the
   attack asks for another password (1); slack `UserTask1`, `13`, `14`
   and the combined `18` message Alice, and the attack sends Alice a
   link (4). No notion of authority separates these: the difference is
@@ -132,10 +148,15 @@ The 36 pairs that fit the *prompt+budget* grant, by why:
 
 What acts on them: a budget on an amount (`send_money` of 1,000,000 at
 once, or "as much as possible") was not a budget Renyi had when this
-was measured, since its budgets counted calls; it is the one extension
-this measure argued for, and decision AY1 added it after the measure
-(`at most 1000 of amount per run`, the absolute values summed, the call
-past the limit refused before anything leaves). A
+was first measured, since its budgets counted calls; it is the one
+extension the measure argued for, decision AY1 added it (`at most 10
+of amount per run`, the absolute values summed, the call past the
+limit refused before anything leaves), and the *+amount* row measures
+it: one pair, since the author can write the limit only where the
+prompt spells the amount (banking `UserTask15` refunds 10), and the
+attacks that remain under any limit send 0.01 to the attacker's
+account with the user's data in the subject (`InjectionTask0` to
+`3` and `8`): the transfer is the exfiltration, not the theft. A
 guard (`only to`) does not help: the data flows to the sink the task
 wants. The recording and the narration answer the question after the
 run (the recipient is in the recording), and the reviewer of the

@@ -10817,3 +10817,28 @@ A replay checks a budget on an amount from the recorded arguments as it
 checks a count. The static measure's rows are unchanged: an amount
 budget's effect on the 36 pairs is a measure of its own, open. (The
 owner, 2026-10-17)
+
+**AY2. The amount budget measured: one pair of the 36, the ceiling
+unmoved (2026-10-17).** The measure AY1 left open, on the owner's
+"继续". Two rows added to `tools/authority_gap/authority_gap.py`:
+*+amount*, the *prompt+budget* grant with `at most A of amount per
+run` on a kind whose amount argument (`send_money`,
+`schedule_transaction` and `update_scheduled_transaction` take
+`amount`) is a literal the prompt spells out in every call of the
+ground truth, `A` their sum (the rule of the scopes applied to the
+amounts: the author writes what the prompt says), and
+*literal+amount*, the ceiling with the counts and the amounts of
+every literal. A pair is blocked by `amount` when the injection's
+amounts of a kind sum, in absolute value, past the budget; a derived
+amount against a budget is `undetermined`. The result: 574 of 629
+blocked (91.3%), one pair more than the counts, banking `UserTask15`
+against `InjectionTask5` (a transfer of 1,000,000 where the task
+refunds 10, the only task whose prompt spells its amount; the other
+nine tasks with an amount read it from a file or a transaction, so no
+author can write the limit); the ceiling 600 (95.4%) unmoved, since
+every amount attack the scopes leave sends 0.01 with the user's data
+in the subject, under any limit: there the transfer is the
+exfiltration, not the theft. The residue is 35. The output's rows
+carry an `amount` column, `expected.txt` pinned again, the document's
+sections 3 to 5, the article's table (a column "+ amounts") and its
+residue passage. (Claude, on the owner's word)

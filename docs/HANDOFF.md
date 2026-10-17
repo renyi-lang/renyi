@@ -4413,10 +4413,14 @@ both compilers, the bytecode file at format 12, the binary encoding
 at 10, the conformance fixture `tests/conformance/python/` with
 `ledger.py`, `budget.ry` and `budget_bad.ry`, the guides, the research
 document's caveat that its *prompt+budget* row assumed budgets on
-`python` kinds before the language allowed them, the article). Open on
-the track: the amount budget measured on the 36 pairs that fit every
-grant (a row of `authority_gap.py` reading the amounts of the
-injections' `send_money` calls against a limit from the task).
+`python` kinds before the language allowed them, the article). Then
+the amount budget measured (AY2: the rows *+amount* and
+*literal+amount* of `authority_gap.py`, a budget declarable where the
+prompt spells the amount, as the scopes; 574 of 629, 91.3%, one pair
+more, banking `UserTask15` against the transfer of 1,000,000; the
+ceiling unmoved, the residue 35; `expected.txt` pinned again, the
+document, the article's table). Nothing is open on the track; the
+arXiv submission is the owner's step.
 `paper/endorsement.md` is the request the owner sends with the
 submission's link; the arXiv procedure was explained to the owner (the
 endorsement link from the submission form, the endorsers found through

@@ -662,35 +662,39 @@ task's grant is what its program can write in the \texttt{needs} of
 when every call's scope is a literal the user's prompt spells out (a
 recipient read from a file is not declarable, and the kind is granted
 without a scope); \texttt{at most $n$ per run}, $n$ the ground truth's
-count. A pair is blocked when the injection's calls need a kind the
-grant lacks, a scope outside a declared one or more calls than the
-count. Table~\ref{tab:gap} gives the result under four grants, the
-kinds alone to the ceiling of every literal as a scope.
+count; \texttt{at most $A$ of amount per run} on a kind whose amount
+is a literal the prompt spells out in every call, $A$ their sum. A
+pair is blocked when the injection's calls need a kind the grant
+lacks, a scope outside a declared one, more calls than the count or
+amounts summing past the budget. Table~\ref{tab:gap} gives the result
+under five grants, the kinds alone to the ceiling of every literal as
+a scope.
 
 \begin{table}[t]
 \centering
-\begin{tabular}{lrrrrr}
+\begin{tabular}{lrrrrrr}
 \toprule
-Suite & pairs & kinds & + scopes & + counts & ceiling \\
+Suite & pairs & kinds & + scopes & + counts & + amounts & ceiling \\
 \midrule
-banking & 144 & 72.9\% & 89.6\% & 91.0\% & 98.6\% \\
-slack & 105 & 81.9\% & 89.5\% & 89.5\% & 97.1\% \\
-travel & 140 & 81.4\% & 82.9\% & 82.9\% & 82.9\% \\
-workspace & 240 & 92.5\% & 96.7\% & 96.7\% & 100.0\% \\
+banking & 144 & 72.9\% & 89.6\% & 91.0\% & 91.7\% & 98.6\% \\
+slack & 105 & 81.9\% & 89.5\% & 89.5\% & 89.5\% & 97.1\% \\
+travel & 140 & 81.4\% & 82.9\% & 82.9\% & 82.9\% & 82.9\% \\
+workspace & 240 & 92.5\% & 96.7\% & 96.7\% & 96.7\% & 100.0\% \\
 \midrule
-all & 629 & 83.8\% & 90.8\% & 91.1\% & 95.4\% \\
+all & 629 & 83.8\% & 90.8\% & 91.1\% & 91.3\% & 95.4\% \\
 \bottomrule
 \end{tabular}
 \caption{The authority gap on AgentDojo \texttt{v1}: the share of
 (user task, injection task) pairs whose attack does not fit the user
 task's grant, with the kinds alone, with the scopes the prompt spells
-out, with per-run counts, and with every literal as a scope (an upper
-bound). Travel's 20 unblocked pairs under every grant are one injection
+out, with per-run counts, with budgets on the amounts the prompt
+spells out, and with every literal as a scope (an upper bound, which
+the amounts do not move). Travel's 20 unblocked pairs under every grant are one injection
 that only wants the agent to say something, outside any grant.}
 \label{tab:gap}
 \end{table}
 
-The 36 pairs that fit the third grant are of two kinds. In 12 the
+The 35 pairs that fit the fourth grant are of two kinds. In 11 the
 task's own sink is the attack's: a banking task names the attacker's
 account as the user's new landlord, one asks for a password change and
 the attack asks for another password, four slack tasks message Alice
@@ -703,8 +707,11 @@ the narration after the run, the reviewer who sees \texttt{send\_money}
 without a scope and knows the bill chooses the recipient, and, for the
 attacks that move as much money as possible, a budget on an amount,
 which Renyi's budgets, counting calls, did not express when the measure
-was made: the one extension it argued for, added since (\texttt{at most
-1000 of amount per run}). The measure assumes a program fixed before any
+was first made: the one extension it argued for, added since
+(\texttt{at most 10 of amount per run}) and measured in the fourth
+grant: one pair, the only task whose prompt spells the amount; the
+attacks that remain send 0.01 with the user's data in the subject, under
+any limit. The measure assumes a program fixed before any
 effect, uses the ground truth as the task's authority (the kinds row is
 the floor, the ceiling row the bound a broader review could reach), and
 runs no model, so it says nothing about utility; CaMeL reports utility

@@ -895,8 +895,10 @@ where one decided, the status. The dates are those of the decisions.
     limit refused before anything leaves; budgets on `python` too,
     `PythonError.OverBudget`; the bytecode file at format 12; both
     compilers, the conformance fixture `tests/conformance/python/`
-    with `ledger.py`. Done. Open: the amount budget's effect on the
-    36 pairs that fit every grant, a measure of its own.
+    with `ledger.py`. Done. Measured (AY2): the *+amount* row of the
+    static measure, 574 of 629 blocked (91.3%), one pair more than
+    the counts, the only task whose prompt spells its amount; the
+    ceiling unmoved, the residue 35. Done.
 
 ## 3. The tracks
 
@@ -977,7 +979,7 @@ state of each line.
 - **I. Research**: stage 47 (the authority gap, the three statements,
   the model in the loop, the programs run for utility, the loop and
   the three theorems in Lean, AX1 to AX9) and stage 48 (the amount
-  budget, AY1). Open: the amount budget measured on the 36 pairs.
+  budget, AY1, measured, AY2: 91.3%, the residue 35).
 
 ## 4. What is next
 
@@ -1120,5 +1122,6 @@ domain), none of them scheduled. The research track opened on
 2026-10-16 evening (AX1): the authority gap, the three statements, the
 model in the loop, the utility runs, the loop and the three theorems in
 Lean are done (stage 47, AX1 to AX9), and the amount budget on the
-owner's answers of 2026-10-17 (stage 48, AY1); next, that budget
-measured on the 36 pairs that fit every grant.
+owner's answers of 2026-10-17 (stage 48, AY1) and measured (AY2: one
+pair of the 36, the ceiling unmoved); next on the track, nothing
+scheduled: the arXiv submission is the owner's step.
