@@ -119,6 +119,7 @@ jobs:
           cargo run -q -- check tests/authority/tools/banking/smoke_banking.ry tests/authority/tools/slack/smoke_slack.ry tests/authority/tools/travel/smoke_travel.ry tests/authority/tools/workspace/smoke_workspace.ry
           python -I tools/authority_gap/model_loop_report.py --tasks tests/authority/tasks_v1.json --results tests/authority/model_loop.json | diff - tests/authority/model_loop_expected.txt
           python -I tools/authority_gap/utility_report.py --tasks tests/authority/tasks_v1.json --results tests/authority/utility.json | diff - tests/authority/utility_expected.txt
+          python -I tools/authority_gap/loop_report.py --tasks tests/authority/tasks_v1.json --results tests/authority/loop.json | diff - tests/authority/loop_expected.txt
 
       - name: Cheat-sheet token gate
         run: |

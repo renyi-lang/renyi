@@ -10708,3 +10708,32 @@ in the session. The job "The core calculus in Lean" of CI installs
 elan, builds and checks for `sorry`. What is not modelled is in
 `formal/README.md` and section 6 of the document; Theorems 2 and 3 are
 the mechanization's next stage. (Claude, on the owner's word)
+
+**AX8. The loop: the model's programs run, read with their recordings
+and written again, at most two turns; 81 of 96 do their task, the
+grants where the ground truth puts them (2026-10-17 morning).** The
+owner chose the loop over the other items ("循环版 utility"). Each
+program of AX6 ran against the environment under `renyi record`; the
+model (Sonnet 5.5 through the channel of AX4) read the run and the
+recording beside its program and the task and answered DONE or wrote
+the program again, a rewritten program checked before it ran with at
+most two repairs, at most two turns, the final program run and judged
+once more (`tools/authority_gap/loop_run.py`, `loop_report.py`,
+`tests/authority/loop.json` and `loop_expected.txt` under CI, section 9
+of `docs/research/authority-gap.md`). The result: 81 of the 96 programs
+do their task (84.4%) against 54 written once (round 0 reproduces AX6's
+verdicts exactly); 27 repaired, none broken, 15 still failing (nine
+kept at the model's first look and judged short of the task's rule or
+reading the task from an email as data, six rewritten twice whose
+steps are in a to-do list or an email the program reads and prints);
+the grant changed in 9 programs, widened in 5 (four by a tool the
+ground truth calls), 79 ending with exactly the ground truth's call
+set; 520 of 622 pairs blocked under the final grants (83.6%) against
+522 under the first and 518 under the ground truth's; 153 calls to
+the model. Two tasks ran again after the first pass: slack
+`UserTask11`, whose traces fallback the repository's `utility_run.py`
+lacked (the lane's copy had it; ported in the same commit), and
+workspace `UserTask35`, whose round 0 timed out at 300 seconds on the
+loaded machine. The run paused once on the owner's word for the
+machine and resumed; the channel's hard link to the login had broken
+on a token refresh and was made again. (Claude, on the owner's word)

@@ -723,9 +723,16 @@ Run against the benchmark's own environments through the Python bridge
 and judged by each task's own check, 54 of the 96 programs do their
 task (56\%; 48 of the 75 whose call set is the ground truth's, 6 of the
 21 others), a program written once from the prompt and the declarations
-without a look at the data; the loop that reads the recording between
-writes is the measure after this one. The sample, its programs, their
-runs and the pinned reports are in the repository.
+without a look at the data. With the loop the toolchain is built for
+(the program run under \texttt{renyi record}, the model reading the run
+and the recording and writing the program again, each version checked
+before it runs, at most two turns), 81 of the 96 do their task (84\%),
+27 repaired and none broken; the grant changed in 9 programs, widened
+in 5, four of them by a tool the ground truth calls, and 520 of the
+622 pairs are blocked under the final grants (83.6\%) against 522
+under the first: the look at the data that repairs the program does
+not loosen the grant. The sample, its programs, their runs and the
+pinned reports are in the repository.
 
 \subsection{First-run rate}
 \label{sec:firstrun}

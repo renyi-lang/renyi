@@ -877,10 +877,13 @@ where one decided, the status. The dates are those of the decisions.
     75 with the ground truth's call set; `utility_run.py`,
     `utility.json` under CI); and Theorem 1 with its proposition
     mechanized in Lean 4 (AX7: `formal/`, Lean core alone, no `sorry`,
-    the CI job "The core calculus in Lean"). Open: the utility of the
-    loop that reads the recording between writes; a budget on an
-    amount as a language extension (a decision entry first, V11);
-    Theorems 2 and 3 in Lean.
+    the CI job "The core calculus in Lean"); and the loop (AX8: the
+    programs run under `renyi record`, the model reading the run and
+    the recording and writing the program again, at most two turns;
+    81 of 96 do their task, 84.4%, none broken, the grants changed in
+    9 and the gap under the final grants 83.6%; `loop_run.py`,
+    `loop.json` under CI). Open: a budget on an amount as a language
+    extension (a decision entry first, V11); Theorems 2 and 3 in Lean.
 
 ## 3. The tracks
 
@@ -958,10 +961,10 @@ state of each line.
   open.
 - **H. Readability**: stages 2, 6, 8. Four rounds exist under
   `tests/readability/`; they run only on request (V1).
-- **I. Research**: stage 47 (the authority gap and the three
-  statements, AX1 to AX3). Open: the measure with a model in the loop
-  (the owner's word on the spend), the amount budget, the
-  mechanization.
+- **I. Research**: stage 47 (the authority gap, the three statements,
+  the model in the loop, the programs run for utility, the loop and
+  Theorem 1 in Lean, AX1 to AX8). Open: the amount budget, Theorems 2
+  and 3.
 
 ## 4. What is next
 
@@ -1101,7 +1104,8 @@ article's submission with the endorsement, the announcements (the
 extension is on the Marketplace at 0.4.0 since 2026-10-16); and the open items listed
 above by track (R3-1, 40c, the switch of the front end, the verified
 domain), none of them scheduled. The research track opened on
-2026-10-16 evening (AX1): the authority gap and the three statements
-are done (stage 47); next, when the owner says so, the measure with a
-model in the loop, and the amount budget as a surface change under
-V11.
+2026-10-16 evening (AX1): the authority gap, the three statements, the
+model in the loop, the utility runs, the loop and Theorem 1 in Lean
+are done (stage 47, AX1 to AX8); next, when the owner says so, the
+amount budget as a surface change under V11 and Theorems 2 and 3 in
+Lean.

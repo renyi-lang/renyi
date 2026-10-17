@@ -29,6 +29,7 @@ import subprocess
 import sys
 import time
 
+from agentdojo.functions_runtime import FunctionCall
 from agentdojo.task_suite.load_suites import get_suite
 
 SHIM = '"""The tool `{name}` over AgentDojo\'s environment; see the package."""\nfrom tools import call\n\n\ndef {name}(*args):\n    return call("{name}", args)\n'
@@ -77,6 +78,12 @@ def judge(suite, task, injection, post_file, output):
                "functions": sorted({c["function"] for c in calls})}
     try:
         verdict["utility"] = bool(task.utility(output, pre, post))
+    except NotImplementedError:
+        # a task judged by its traces alone (slack UserTask11): the calls the
+        # worker recorded, as the benchmark's runtime would have traced them
+        traces = [FunctionCall(function=c["function"], args=c["args"]) for c in calls]
+        verdict["utility"] = bool(task.utility_from_traces(output, pre, post, traces))
+        verdict["judged_by"] = "traces"
     except Exception as error:  # the judge's own failure is recorded as the verdict, not raised
         verdict["utility"] = None
         verdict["judge_error"] = f"{type(error).__name__}: {error}"

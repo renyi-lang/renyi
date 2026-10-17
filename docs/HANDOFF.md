@@ -1,6 +1,7 @@
 # Handoff
 
-Last updated: 2026-10-16, session 15 paused on the owner's word (the
+Last updated: 2026-10-17 morning, session 15 (paused on the owner's
+word on the 16th for the machine, continued the next morning; the
 paragraph's end has the session's work; its start is session 14's). Session 14's work:
 the design study of stage 29, the new backend for the VM (the section
 "Stage 29, the new backend: the design study (session 14)" below: the
@@ -4382,9 +4383,24 @@ mechanized in Lean by a subagent (AX7: `formal/`, elan's
 `leanprover/lean4:v4.35.0`, rebuilt clean in the session, the CI job
 "The core calculus in Lean"); `tests/authority/{model_loop,utility}.json`
 with their pinned reports under CI's step "Authority gap with a model in
-the loop". Open on the track: the utility of the loop that reads the
-recording between writes, the amount budget as a surface change under
-V11, Theorems 2 and 3 in Lean.
+the loop". The next morning the loop itself (AX8, the owner's "循环版
+utility"): the programs run under `renyi record`, the model reading
+the run and the recording and answering DONE or writing the program
+again, checked before it runs, at most two turns (`loop_run.py`,
+`loop_report.py`, the lane's `runs/loop/`; `tests/authority/loop.json`
+and `loop_expected.txt` under the same CI step; section 9 of the
+document); 81 of 96 do their task (84.4%) against 54 written once, 27
+repaired and none broken, the grant changed in 9 and the gap under
+the final grants 83.6% against 83.9% and the ground truth's 83.3%; two
+tasks ran again after the first pass (slack `UserTask11`, the traces
+fallback the repository's `utility_run.py` lacked, ported; workspace
+`UserTask35`, a timeout on the loaded machine). The run paused on the
+owner's word while the machine was loaded (this session coordinated
+the owner's other sessions' pause and resume) and resumed; the
+channel's hard link to the login breaks on a token refresh and is made
+again before a run (the memory note has the steps). Open on the
+track: the amount budget as a surface change under V11, Theorems 2 and
+3 in Lean.
 `paper/endorsement.md` is the request the owner sends with the
 submission's link; the arXiv procedure was explained to the owner (the
 endorsement link from the submission form, the endorsers found through
