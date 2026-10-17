@@ -13,7 +13,9 @@ Steve Zdancewic (University of Pennsylvania, an author of Quasar, which
 the article cites as the closest work; his page spells the address
 stevez at cis.upenn.edu); if he declines or does not answer within a
 week, the same email goes to Osbert Bastani (the same paper), then to
-Daan Leijen (Koka).
+Daan Leijen (Koka). Sent to Zdancewic on 2026-10-17 from the author's
+Gmail with the PDF of that day's build attached (the endorsement code
+ABPDSO); the week runs to 2026-10-24.
 
 Eligibility checked against arXiv's listing on 2026-10-17 (the API
 query `au:<name> AND cat:cs.PL`): Zdancewic has 26 papers in cs.PL,

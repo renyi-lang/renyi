@@ -4467,7 +4467,9 @@ sentence. The skill file's wrong line fixed with it: `text.to_integer()`
 and `text.to_decimal()` fail with `InvalidNumber`, they do not answer
 `maybe` (`library/std/prelude.ry`).
 `paper/endorsement.md` is the request the owner sends with the
-submission's link; the arXiv procedure was explained to the owner (the
+submission's link (sent to Zdancewic on 2026-10-17 through the
+owner's Gmail, the arXiv submission started by the owner; if no
+answer by 2026-10-24, the same email goes to Bastani, then Leijen); the arXiv procedure was explained to the owner (the
 endorsement link from the submission form, the endorsers found through
 a cited paper's "Which authors of this paper are endorsers?" link, the
 email sent from the owner's mailbox by the session on the owner's word,
