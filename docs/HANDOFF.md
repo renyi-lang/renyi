@@ -4419,8 +4419,20 @@ the amount budget measured (AY2: the rows *+amount* and
 prompt spells the amount, as the scopes; 574 of 629, 91.3%, one pair
 more, banking `UserTask15` against the transfer of 1,000,000; the
 ceiling unmoved, the residue 35; `expected.txt` pinned again, the
-document, the article's table). Nothing is open on the track; the
-arXiv submission is the owner's step.
+document, the article's table). Then the article polished on the
+owner's word (2026-10-17): condensed from 7,308 to 6,753 prose words
+with every number and citation kept (the restatements of the
+foundations, the roadmap paragraph, the coverage rule and the proofs'
+assumptions each left one home), the colon elaborations and stacked
+clauses rewritten as sentences (the sci-paper lint's advisories 55 to
+19, the 18 left being labels inside the new figure), an overview
+figure added as Figure 1 (TikZ: the two questions over before, during
+and after the run, the three theorems and the gap under them), the
+residue gate clean, the build clean; `paper/endorsement.md` carries
+the email updated to the article and the three endorsers' cs.PL
+records checked against arXiv's listing. Nothing is open on the
+track; the arXiv submission and the endorsement email are the owner's
+step (the link comes from the started submission).
 `paper/endorsement.md` is the request the owner sends with the
 submission's link; the arXiv procedure was explained to the owner (the
 endorsement link from the submission form, the endorsers found through
