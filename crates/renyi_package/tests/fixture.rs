@@ -75,8 +75,12 @@ fn the_resolver_reads_the_projects_as_the_suite_expects() {
 
 #[test]
 fn the_python_fixtures_are_in_canonical_form() {
-    // decision AL1: a manifest with a `python` section renders to itself
-    for directory in ["tests/conformance/python", "tests/conformance/python_bad"] {
+    // decision AL1: a manifest with a `python` section renders to itself;
+    // the good fixture binds `analysis` and, since decision AY1, `ledger`
+    for (directory, modules) in [
+        ("tests/conformance/python", 2),
+        ("tests/conformance/python_bad", 1),
+    ] {
         let text = read(&format!("{directory}/renyi.json"));
         let manifest = Manifest::read(&text).expect("the manifest reads");
         assert_eq!(
@@ -86,8 +90,8 @@ fn the_python_fixtures_are_in_canonical_form() {
         );
         assert_eq!(
             manifest.python.modules.len(),
-            1,
-            "{directory}: one Python module"
+            modules,
+            "{directory}: {modules} Python module(s)"
         );
     }
 }
