@@ -110,6 +110,14 @@
       "exit_code": 1
     },
     {
+      "name": "a budget on an amount names a parameter every primitive under the capability takes",
+      "command": "check",
+      "program": "tests/conformance/python/budget_bad.ry",
+      "stdout": "tests/conformance/expected/python_budget_bad.out",
+      "diagnostics": ["budget-parameter"],
+      "exit_code": 1
+    },
+    {
       "name": "a frame loop that needs the screen checks clean",
       "command": "check",
       "program": "tests/conformance/programs/screen_needs.ry",
@@ -470,6 +478,14 @@
       "program": "tests/conformance/python/stats.ry",
       "stdout": "tests/conformance/expected/python_stats.out",
       "stderr_contains": ["this program can run Python through `analysis`"],
+      "exit_code": 0
+    },
+    {
+      "name": "a budget on an amount sums the absolute values and refuses the call past it",
+      "command": "run",
+      "program": "tests/conformance/python/budget.ry",
+      "stdout": "tests/conformance/expected/python_budget.out",
+      "stderr_contains": ["this program can run Python through `ledger`"],
       "exit_code": 0
     },
     {

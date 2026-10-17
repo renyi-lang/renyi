@@ -198,9 +198,15 @@ fails with the module's error type, `HttpError.OverBudget(host: Text)`,
 `FileError.OverBudget(path: Path)`, `DbError.OverBudget(path: Path)`,
 `StartError.OverBudget(port: Port)`, `ProcessError.OverBudget(program:
 Text)`; the program handles it like any failure (`otherwise`, a `match`, a
-retry). Budgets apply to `network`, `process` and `filesystem` and their
-children; `console`, `time`, `random`, `environment`, `foreign`,
-`python` and `screen` take none. A denied call is reported the same way (`PermissionDenied`,
+retry). Budgets apply to `network`, `process`, `filesystem` and `python` and
+their children (`PythonError.OverBudget(package: Text)`, decision AY1);
+`console`, `time`, `random`, `environment`, `foreign` and `screen` take
+none. `at most LIMIT of PARAMETER per UNIT` is a budget on an amount
+(decision AY1): the limit a whole number or a decimal, the parameter a
+name every primitive under the capability takes, of type `Integer` or
+`Decimal` (`budget-parameter` otherwise); the counter sums the absolute
+values of that argument within the same windows, and the call whose
+amount would take the sum past the limit fails before anything leaves. A denied call is reported the same way (`PermissionDenied`,
 `HostNotAllowed`, decision J11); a primitive that cannot fail crashes,
 naming the function whose `needs` narrowed the grant, and a path scope
 contains a path by its text, with nothing resolved on disk (decision Y1).
@@ -208,8 +214,8 @@ contains a path by its text, with nothing resolved on disk (decision Y1).
 The checker rejects a budget on any function other than `main` or a test
 (`grant-clause`): a budget is a property of the whole run, like the grant.
 `renyi run --at-most network.http=60/minute program.ry` narrows a budget
-from the command line, as `--allow-host` narrows a scope; it can only
-tighten. A `replays` test ignores budgets (nothing is sent) but checks that
+from the command line (`--at-most "python=500 of amount/run"` one on an
+amount), as `--allow-host` narrows a scope; it can only tighten. A `replays` test ignores budgets (nothing is sent) but checks that
 the recording stayed within them.
 
 Why in the grant: an agent's program that loops over an API is the usual

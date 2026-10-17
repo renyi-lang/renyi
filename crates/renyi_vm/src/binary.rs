@@ -14,7 +14,7 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
-use renyi_check::effects::Capability;
+use renyi_check::effects::{Budget, Capability};
 use renyi_check::types::{FunctionTy, Ty};
 use renyi_check::world::Builtins;
 use renyi_syntax::ast::BinaryOp;
@@ -37,7 +37,7 @@ use crate::value::Value;
 /// code object as a block after its head, decoded at the first use
 /// (decision AW18), and 9 the deadline of a Python binding (decision
 /// AW49).
-pub const FORMAT: u64 = 9;
+pub const FORMAT: u64 = 10;
 
 type Read<T> = Result<T, String>;
 
@@ -225,9 +225,10 @@ fn write_type(out: &mut Writer, ty: &Ty) {
 fn write_grant(out: &mut Writer, capability: &Capability) {
     out.texts(&capability.path);
     out.opt(capability.scope.as_ref(), |out, scope| out.text(scope));
-    out.opt(capability.budget.as_ref(), |out, (limit, unit)| {
-        out.text(limit);
-        out.text(unit);
+    out.opt(capability.budget.as_ref(), |out, budget| {
+        out.text(&budget.limit);
+        out.opt(budget.parameter.as_ref(), |out, name| out.text(name));
+        out.text(&budget.unit);
     });
     out.list(&capability.only_to, |out, (path, scope)| {
         out.texts(path);
@@ -731,7 +732,13 @@ fn read_grant(input: &mut Reader) -> Read<Capability> {
     Ok(Capability {
         path: input.texts()?,
         scope: input.opt(Reader::text)?,
-        budget: input.opt(|input| Ok((input.text()?, input.text()?)))?,
+        budget: input.opt(|input| {
+            Ok(Budget {
+                limit: input.text()?,
+                parameter: input.opt(Reader::text)?,
+                unit: input.text()?,
+            })
+        })?,
         only_to: input.list(|input| Ok((input.texts()?, input.opt(Reader::text)?)))?,
     })
 }

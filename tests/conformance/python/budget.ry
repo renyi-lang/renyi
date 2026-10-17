@@ -1,0 +1,24 @@
+module budget
+  purpose: A budget on an amount over the bridge (decision AY1): the absolute values summed, a call past it refused.
+
+import std.console
+import std.python exposing PythonError
+import ledger
+
+function main()
+  or fails with PythonError
+  needs console, python("ledger") at most 9.5 of amount per run
+  purpose: Spend 4 and refund 5, then 1 and -1 past the budget, then 0 within it.
+
+  let spent be ledger.spend(4) otherwise fail
+  console.print("spent {spent}")
+  let refunded be ledger.refund(5) otherwise fail
+  console.print("refunded {refunded}")
+  for each amount in [1, -1, 0]
+    match ledger.spend(amount)
+      when success(value) then console.print("spent {value}")
+      when failure(OverBudget(package)) then console.print("over the budget of {package}")
+      when failure(other) then console.print("other: {other}")
+    end
+  end
+end

@@ -6,11 +6,13 @@
 //! exercises, which the scope check, the budgets, the guards and the
 //! recorder share.
 
+use std::cmp::Ordering;
 use std::collections::VecDeque;
 
-use renyi_check::effects::{self, Capability, TREE};
+use renyi_check::effects::{self, Budget, Capability, TREE};
 
 use crate::compile::FunctionMeta;
+use crate::decimal::Decimal;
 #[cfg(feature = "sqlite")]
 use crate::value::Native;
 use crate::value::Value;
@@ -60,23 +62,40 @@ impl Unit {
 }
 
 /// The counter of one budget: the calls made under its capability in the
-/// current window, or in the whole run.
+/// current window, or in the whole run; under `of PARAMETER` (decision
+/// AY1), the absolute values of that argument those calls carried,
+/// summed.
 #[derive(Clone, Debug)]
 pub struct Counter {
     /// The budgeted capability, its path and scope only.
     pub capability: Capability,
+    /// The limit of a count of calls; zero under a budget on an amount.
     pub limit: u64,
     pub unit: Unit,
+    /// The parameter whose amounts the budget sums, with the limit as a
+    /// decimal and as it was spelled (decision AY1).
+    pub parameter: Option<(String, Decimal, String)>,
     /// The times of the calls still inside the window, in milliseconds
-    /// since the run began.
-    stamps: VecDeque<i64>,
+    /// since the run began, each with the amount it carried (zero under
+    /// a count).
+    stamps: VecDeque<(i64, Decimal)>,
     count: u64,
+    /// The amounts inside the window, or of the whole run, summed.
+    spent: Decimal,
 }
 
 impl Counter {
     /// The counter of a granted capability that carries a budget.
     pub fn from_grant(capability: &Capability) -> Option<Counter> {
-        let (count, unit) = capability.budget.as_ref()?;
+        let budget = capability.budget.as_ref()?;
+        let parameter = match &budget.parameter {
+            Some(name) => Some((
+                name.clone(),
+                Decimal::parse(&budget.limit)?,
+                budget.limit.clone(),
+            )),
+            None => None,
+        };
         Some(Counter {
             capability: Capability {
                 path: capability.path.clone(),
@@ -84,41 +103,75 @@ impl Counter {
                 budget: None,
                 only_to: Vec::new(),
             },
-            limit: count.parse().ok()?,
-            unit: Unit::parse(unit)?,
+            limit: if parameter.is_some() {
+                0
+            } else {
+                budget.limit.parse().ok()?
+            },
+            unit: Unit::parse(&budget.unit)?,
+            parameter,
             stamps: VecDeque::new(),
             count: 0,
+            spent: Decimal::zero(),
         })
     }
 
-    /// Whether one more call at `now` stays within the budget.
-    pub fn fits(&mut self, now: i64) -> bool {
-        match self.unit.window_ms() {
-            None => self.count < self.limit,
-            Some(window) => {
-                while self.stamps.front().is_some_and(|&at| at <= now - window) {
-                    self.stamps.pop_front();
-                }
-                (self.stamps.len() as u64) < self.limit
+    /// Whether one more call at `now`, carrying `amount` under a budget on
+    /// an amount, stays within the budget: the window's calls, or their
+    /// amounts with this one, within the limit.
+    pub fn fits(&mut self, now: i64, amount: &Decimal) -> bool {
+        if let Some(window) = self.unit.window_ms() {
+            while self
+                .stamps
+                .front()
+                .is_some_and(|&(at, _)| at <= now - window)
+            {
+                let (_, left) = self.stamps.pop_front().expect("a front the test saw");
+                self.spent = self
+                    .spent
+                    .subtract(&left)
+                    .unwrap_or_else(|_| Decimal::zero());
             }
+        }
+        match &self.parameter {
+            Some((_, limit, _)) => match self.spent.add(amount) {
+                Ok(total) => total.compare(limit) != Ordering::Greater,
+                Err(_) => false,
+            },
+            None => match self.unit.window_ms() {
+                None => self.count < self.limit,
+                Some(_) => (self.stamps.len() as u64) < self.limit,
+            },
         }
     }
 
-    /// Count a call made at `now`.
-    pub fn note(&mut self, now: i64) {
+    /// Count a call made at `now` carrying `amount`.
+    pub fn note(&mut self, now: i64, amount: &Decimal) {
+        if self.parameter.is_some() {
+            if let Ok(total) = self.spent.add(amount) {
+                self.spent = total;
+            }
+        }
         match self.unit.window_ms() {
             None => self.count += 1,
-            Some(_) => self.stamps.push_back(now),
+            Some(_) => self.stamps.push_back((now, amount.clone())),
         }
     }
 
     pub fn spelling(&self) -> String {
-        format!(
-            "{} at most {} per {}",
-            self.capability.spelling(),
-            self.limit,
-            self.unit.spelling()
-        )
+        match &self.parameter {
+            Some((name, _, limit)) => format!(
+                "{} at most {limit} of {name} per {}",
+                self.capability.spelling(),
+                self.unit.spelling()
+            ),
+            None => format!(
+                "{} at most {} per {}",
+                self.capability.spelling(),
+                self.limit,
+                self.unit.spelling()
+            ),
+        }
     }
 }
 
@@ -404,10 +457,29 @@ fn restrict(granted: Capability, needs: &[Capability]) -> Vec<Capability> {
 pub fn spell(capability: &Capability) -> String {
     let mut spelled = match &capability.budget {
         // a memory budget has no `per` (decision AW64)
-        Some((count, unit)) if effects::is_memory_unit(unit) => {
-            format!("{} at most {count} {unit}", capability.spelling())
+        Some(budget) if effects::is_memory_unit(&budget.unit) => {
+            format!(
+                "{} at most {} {}",
+                capability.spelling(),
+                budget.limit,
+                budget.unit
+            )
         }
-        Some((count, unit)) => format!("{} at most {count} per {unit}", capability.spelling()),
+        // a budget on an amount names its parameter (decision AY1)
+        Some(Budget {
+            limit,
+            parameter: Some(name),
+            unit,
+        }) => format!(
+            "{} at most {limit} of {name} per {unit}",
+            capability.spelling()
+        ),
+        Some(budget) => format!(
+            "{} at most {} per {}",
+            capability.spelling(),
+            budget.limit,
+            budget.unit
+        ),
         None => capability.spelling(),
     };
     if !capability.only_to.is_empty() {
@@ -444,15 +516,16 @@ pub fn memory_of(declared: &[Capability]) -> Option<u64> {
         .iter()
         .filter(|capability| capability.path == ["memory"])
         .filter_map(|capability| {
-            let (count, unit) = capability.budget.as_ref()?;
-            effects::memory_bytes(count, unit)
+            let budget = capability.budget.as_ref()?;
+            effects::memory_bytes(&budget.limit, &budget.unit)
         })
         .min()
 }
 
 /// A capability from its spelling: `filesystem.read("data")`, `console`,
-/// optionally followed by `at most COUNT per UNIT` and by `only to SINK or
-/// SINK`.
+/// optionally followed by `at most COUNT per UNIT` (`at most LIMIT of
+/// PARAMETER per UNIT` for a budget on an amount, decision AY1) and by
+/// `only to SINK or SINK`.
 pub fn parse_capability(text: &str) -> Result<Capability, String> {
     let text = text.trim();
     let (text, only_to) = match text.split_once(" only to ") {
@@ -485,7 +558,20 @@ pub fn parse_capability(text: &str) -> Result<Capability, String> {
                     }
                 },
             };
-            if count.parse::<u64>().is_err() {
+            let (count, parameter) = match count.split_once(" of ") {
+                Some((count, parameter)) => (count.trim(), Some(parameter.trim().to_string())),
+                None => (count, None),
+            };
+            if parameter.is_some() {
+                if memory {
+                    return Err(format!(
+                        "`{text}`: a budget on an amount is per a unit of time"
+                    ));
+                }
+                if !effects::is_amount_literal(count) {
+                    return Err(format!("`{text}`: the limit `{count}` is not a number"));
+                }
+            } else if count.parse::<u64>().is_err() {
                 return Err(format!(
                     "`{text}`: the count `{count}` is not a whole number"
                 ));
@@ -501,7 +587,14 @@ pub fn parse_capability(text: &str) -> Result<Capability, String> {
                     "`{text}`: the unit `{unit}` is not second, minute, hour, day or run"
                 ));
             }
-            (head.trim(), Some((count.to_string(), unit.to_string())))
+            (
+                head.trim(),
+                Some(Budget {
+                    limit: count.to_string(),
+                    parameter,
+                    unit: unit.to_string(),
+                }),
+            )
         }
         None => (text, None),
     };
@@ -643,13 +736,50 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_budget_on_an_amount_sums_the_absolute_values_and_is_spelled_back() {
+        // decision AY1
+        let spelled = "python(\"tools.send_money\") at most 500.50 of amount per run";
+        let capability = parse_capability(spelled).expect("parses");
+        assert_eq!(
+            capability
+                .budget
+                .as_ref()
+                .and_then(|b| b.parameter.as_deref()),
+            Some("amount")
+        );
+        assert_eq!(spell(&capability), spelled);
+        let mut counter = Counter::from_grant(&capability).expect("a counter");
+        let amount = |text: &str| Decimal::parse(text).unwrap();
+        assert!(counter.fits(0, &amount("300")));
+        counter.note(0, &amount("300"));
+        assert!(counter.fits(1, &amount("200.50")));
+        counter.note(1, &amount("200.50"));
+        assert!(!counter.fits(2, &amount("0.01")));
+        assert_eq!(counter.spelling(), spelled);
+        // a window lets the amounts out as the calls leave it
+        let windowed =
+            parse_capability("network.http at most 10 of bytes per second").expect("parses");
+        let mut counter = Counter::from_grant(&windowed).expect("a counter");
+        counter.note(0, &amount("8"));
+        assert!(!counter.fits(500, &amount("3")));
+        assert!(counter.fits(1_000, &amount("3")));
+        // an amount is not a memory, and a limit is a number
+        assert!(parse_capability("memory at most 5 of amount megabytes").is_err());
+        assert!(parse_capability("network.http at most five of amount per run").is_err());
+    }
+
+    #[test]
     fn the_memory_budget_is_spelled_without_per_and_read_back() {
         // decision AW64
         let spelled = "memory at most 256 megabytes";
         let capability = parse_capability(spelled).expect("parses");
         assert_eq!(
             capability.budget,
-            Some(("256".to_string(), "megabytes".to_string()))
+            Some(Budget {
+                limit: "256".to_string(),
+                parameter: None,
+                unit: "megabytes".to_string()
+            })
         );
         assert_eq!(spell(&capability), spelled);
         assert_eq!(
@@ -707,15 +837,16 @@ mod tests {
         let spelled: Vec<String> = grant.capabilities.iter().map(spell).collect();
         assert_eq!(spelled, ["network.http at most 2 per run"]);
         let mut counter = grant.counters.into_iter().next().unwrap();
-        assert!(counter.fits(0));
-        counter.note(0);
-        counter.note(1);
-        assert!(!counter.fits(2));
+        let none = Decimal::zero();
+        assert!(counter.fits(0, &none));
+        counter.note(0, &none);
+        counter.note(1, &none);
+        assert!(!counter.fits(2, &none));
         let mut window = Counter::from_grant(&cap("filesystem.read at most 1 per second")).unwrap();
-        assert!(window.fits(0));
-        window.note(0);
-        assert!(!window.fits(500));
-        assert!(window.fits(1_000));
+        assert!(window.fits(0, &none));
+        window.note(0, &none);
+        assert!(!window.fits(500, &none));
+        assert!(window.fits(1_000, &none));
     }
 
     #[test]

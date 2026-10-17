@@ -222,8 +222,11 @@ record` and `renyi run --replay` work as they do for the library: a
 replay answers the calls from the recording and never starts Python,
 `renyi reproduce` compares the outcome and the output, `--explain`
 narrates each call with its duration. The capability takes a scope
-and no budget: `python` in `main` covers every package,
-`python("analysis")` this one; `--deny python` refuses the program.
+and a budget (decision AY1): `python` in `main` covers every package,
+`python("analysis")` this one, `python("analysis") at most 100 per run`
+bounds the calls, and `at most 500 of amount per run` the sum of an
+argument `amount` that every function of the package takes, of type
+`Integer` or `Decimal`; `--deny python` refuses the program.
 
 ## 5. What fails
 
@@ -241,6 +244,8 @@ an exception of its own:
   called `sys.exit`); the next call starts a worker again.
 - `PermissionDenied(package)`: the package is outside the effective
   grant.
+- `OverBudget(package)`: the call would exceed a budget on the package,
+  the count or the sum of the amounts; nothing crossed.
 - `TimedOut(after)`: the call ran past the manifest's `deadline`
   (section 1), `after` being that deadline as a Duration; the worker
   was killed, so what the module kept between calls is gone, and the
@@ -250,6 +255,7 @@ an exception of its own:
 A project with Python modules cannot be published as a package (`renyi
 publish` refuses it): a package is written in Renyi, and Python stays in
 the program that grants it. The conformance fixtures
-`tests/conformance/python/` and `python_bad/` are the example above and
-a file that breaks every rule; `crates/renyi/tests/python.rs` drives the
+`tests/conformance/python/` and `python_bad/` are the example above, a
+second module under a budget on an amount (`ledger.py`, `budget.ry`)
+and a file that breaks every rule; `crates/renyi/tests/python.rs` drives the
 whole of it through the binary.

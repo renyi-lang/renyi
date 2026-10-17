@@ -998,7 +998,8 @@ impl<'s> Parser<'s> {
     fn budget(&mut self) -> ParseResult<Budget> {
         let start = self.expect_word(Word::AtMost)?;
         let count_token = self.advance();
-        if !matches!(count_token.kind, TokenKind::Integer) {
+        let decimal = matches!(count_token.kind, TokenKind::Decimal);
+        if !matches!(count_token.kind, TokenKind::Integer) && !decimal {
             self.expected(
                 "a whole number after `at most`",
                 count_token.span,
@@ -1007,11 +1008,46 @@ impl<'s> Parser<'s> {
             return Err(());
         }
         let count = self.text_of(&count_token);
+        // `of PARAMETER`: a budget on an amount (decision AY1), the one
+        // place a decimal limit stands
+        let parameter = if self.eat_word(Word::Of) {
+            let name_token = self.advance();
+            if !matches!(name_token.kind, TokenKind::Identifier) {
+                self.expected(
+                    "a parameter name after `of`",
+                    name_token.span,
+                    "write `at most 500 of amount per run`",
+                );
+                return Err(());
+            }
+            Some(Name {
+                text: self.text_of(&name_token),
+                span: name_token.span,
+            })
+        } else {
+            if decimal {
+                self.expected(
+                    "a whole number after `at most`, or `of` and the parameter an amount is summed over",
+                    count_token.span,
+                    "write `at most 10 per minute` or `at most 9.99 of amount per run`",
+                );
+                return Err(());
+            }
+            None
+        };
         // `per` a unit of time (decision P2), else a memory in bytes
         // (decision AW64)
         if !self.eat_word(Word::Per) {
             let unit_token = self.advance();
             let unit = self.text_of(&unit_token);
+            if parameter.is_some() {
+                self.expected(
+                    "`per` and a unit of time after the parameter of an amount",
+                    unit_token.span,
+                    "write `at most 500 of amount per run`",
+                );
+                return Err(());
+            }
             if !MEMORY_UNITS.contains(&unit.as_str()) {
                 self.expected(
                     "`per` and a unit of time, or a memory in `bytes`, `kilobytes`, `megabytes` or `gigabytes`",
@@ -1022,6 +1058,7 @@ impl<'s> Parser<'s> {
             }
             return Ok(Budget {
                 count,
+                parameter: None,
                 per: Name {
                     text: unit,
                     span: unit_token.span,
@@ -1044,6 +1081,7 @@ impl<'s> Parser<'s> {
         }
         Ok(Budget {
             count,
+            parameter,
             per: Name {
                 text: unit,
                 span: unit_token.span,
@@ -2872,6 +2910,39 @@ mod tests {
         ));
         assert!(matches!(&statements[6].kind, StmtKind::RepeatUntil { .. }));
         assert!(matches!(&statements[7].kind, StmtKind::Return(Some(_))));
+    }
+
+    #[test]
+    fn an_amount_budget_names_its_parameter() {
+        // decision AY1: `at most LIMIT of PARAMETER per UNIT`, the limit a
+        // whole number or a decimal
+        for (source, limit) in [
+            ("module demo\n\nfunction main() needs python(\"tools.send_money\") at most 500 of amount per run\nend\n", "500"),
+            ("module demo\n\nfunction main() needs python(\"tools.send_money\") at most 9.99 of amount per day\nend\n", "9.99"),
+        ] {
+            let parsed = parse(source);
+            assert!(parsed.diagnostics.is_empty(), "{:?}", parsed.diagnostics);
+            let Item::Function(main) = &parsed.module.items[0] else {
+                panic!()
+            };
+            let budget = main.needs[0].budget.as_ref().expect("budget");
+            assert_eq!(budget.count, limit);
+            assert_eq!(budget.parameter.as_ref().map(|n| n.text.as_str()), Some("amount"));
+        }
+        // a decimal limit stands only with `of`; `of` takes a name and then
+        // `per`; a memory takes no parameter
+        for (source, message) in [
+            ("module demo\n\nfunction main() needs network.http at most 9.99 per run\nend\n", "or `of`"),
+            ("module demo\n\nfunction main() needs network.http at most 5 of 7 per run\nend\n", "a parameter name after `of`"),
+            ("module demo\n\nfunction main() needs network.http at most 5 of amount megabytes\nend\n", "`per` and a unit of time after the parameter"),
+        ] {
+            let bad = parse(source);
+            assert!(
+                bad.diagnostics.iter().any(|d| d.message.contains(message)),
+                "{source}: {:?}",
+                bad.diagnostics
+            );
+        }
     }
 
     #[test]

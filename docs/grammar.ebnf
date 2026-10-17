@@ -83,7 +83,8 @@ Constraint          ::= TypeName 'can' Type
 Capabilities        ::= Capability (',' Capability)*
 Capability          ::= CapabilityPath Budget? ('only to' CapabilityPath ('or' CapabilityPath)*)?
 CapabilityPath      ::= DottedName ('(' PlainText ')')?
-Budget              ::= 'at most' Integer ('per' ('second' | 'minute' | 'hour' | 'day' | 'run') | 'bytes' | 'kilobytes' | 'megabytes' | 'gigabytes')
+Budget              ::= 'at most' (Integer ('of' Identifier)? | Decimal 'of' Identifier) 'per' ('second' | 'minute' | 'hour' | 'day' | 'run')
+                      | 'at most' Integer ('bytes' | 'kilobytes' | 'megabytes' | 'gigabytes')
 
 /* Section 4: types */
 

@@ -1,0 +1,16 @@
+module ledger
+  purpose: The functions of `ledger.py`: each takes `amount`, the parameter a budget on an amount sums.
+
+import std.python exposing PythonError
+
+public function spend(amount: Integer)
+  returns Integer
+  or fails with PythonError
+  needs python("ledger")
+  purpose: Gives the amount back.
+
+public function refund(amount: Integer)
+  returns Integer
+  or fails with PythonError
+  needs python("ledger")
+  purpose: Gives the amount back, negated.

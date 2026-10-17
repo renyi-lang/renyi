@@ -13,8 +13,9 @@ public type Grant
 end
 
 public type BudgetSpelling
-  purpose: `at most LIMIT per UNIT` on a grant (decision P2); not part of coverage.
+  purpose: `at most LIMIT per UNIT` (decision P2), `of PARAMETER` before `per` on an amount (AY1).
   has limit: Text
+  has parameter: maybe Text
   has unit: Text
   can ToJson
 end
@@ -58,6 +59,13 @@ public function tree_spelling() returns Text
   return tree.join(", ")
 end
 
+public function budgeted_kind(path: List of Text) returns Boolean
+  purpose: Whether the capability takes a budget (decisions P2 and AY1).
+
+  let head be path.first() otherwise ""
+  return ["network", "process", "filesystem", "python"].contains(head)
+end
+
 public function takes_scope(path: List of Text) returns Boolean
   purpose: Whether the capability takes a scope (a path, a host, a variable, a program, a package).
 
@@ -76,7 +84,12 @@ public function from_ast(capability: Capability) returns Grant
 
   let budget: maybe BudgetSpelling be
     match capability.budget
-      when some(found) then BudgetSpelling(limit: found.limit, unit: found.unit.text)
+      when some(found) then
+        BudgetSpelling(
+          limit: found.limit,
+          parameter: parameter_text(found.parameter),
+          unit: found.unit.text
+        )
       when nothing then nothing
     end
   let sinks be
@@ -88,6 +101,15 @@ public function from_ast(capability: Capability) returns Grant
     budget: budget,
     only_to: sinks
   )
+end
+
+function parameter_text(parameter: maybe Name) returns maybe Text
+  purpose: The parameter an amount is summed over, as its spelling.
+
+  match parameter
+    when some(name) then return name.text
+    when nothing then return nothing
+  end
 end
 
 public function plain(path: List of Text, scope: maybe Text) returns Grant

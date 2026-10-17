@@ -1412,7 +1412,8 @@ function parse_budget(cursor: Cursor) returns Parsed of Budget or fails with Hal
   let start_token be start.token
   let limit be advance(start.cursor)
   let limit_token be limit.token
-  if limit_token.kind is not IntegerToken then
+  let decimal be limit_token.kind is DecimalToken
+  if limit_token.kind is not IntegerToken and not decimal then
     let flagged be expected(
       cursor: limit.cursor,
       what: "a whole number after `at most`",
@@ -1421,27 +1422,21 @@ function parse_budget(cursor: Cursor) returns Parsed of Budget or fails with Hal
     )
     fail with Halt(cursor: flagged)
   end
-  let per_word be eat_word(cursor: limit.cursor, code: words.word_per)
+  let limit_text be text_of(cursor: limit.cursor, span: limit_token.span)
+  let summed be parse_budget_parameter(
+    cursor: limit.cursor,
+    decimal: decimal,
+    limit_span: limit_token.span
+  ) otherwise fail
+  let per_word be eat_word(cursor: summed.cursor, code: words.word_per)
   let per_found be per_word.found
   if not per_found then
-    let memory_unit be advance(per_word.cursor)
-    let memory_token be memory_unit.token
-    let memory_text be text_of(cursor: memory_unit.cursor, span: memory_token.span)
-    if not memory_units.contains(memory_text) then
-      let flagged be expected(
-        cursor: memory_unit.cursor,
-        what: "`per` and a unit of time, or a memory in `bytes`, `kilobytes`, `megabytes` or `gigabytes`",
-        span: memory_token.span,
-        fix: "write `at most 60 per minute` or `at most 256 megabytes`"
-      )
-      fail with Halt(cursor: flagged)
-    end
-    let memory_node be Budget(
-      limit: text_of(cursor: limit.cursor, span: limit_token.span),
-      unit: Name(text: memory_text, span: memory_token.span),
-      span: join(left: start_token.span, right: memory_token.span)
-    )
-    return Parsed(node: memory_node, cursor: memory_unit.cursor)
+    return parse_memory_budget(
+      cursor: per_word.cursor,
+      start_span: start_token.span,
+      limit_text: limit_text,
+      summed: summed.node
+    ) otherwise fail
   end
   let unit be advance(per_word.cursor)
   let unit_token be unit.token
@@ -1456,11 +1451,84 @@ function parse_budget(cursor: Cursor) returns Parsed of Budget or fails with Hal
     fail with halt(cursor: unit.cursor, diagnostic: diagnostic)
   end
   let node be Budget(
-    limit: text_of(cursor: limit.cursor, span: limit_token.span),
+    limit: limit_text,
+    parameter: summed.node,
     unit: Name(text: unit_text, span: unit_token.span),
     span: join(left: start_token.span, right: unit_token.span)
   )
   return Parsed(node: node, cursor: unit.cursor)
+end
+
+function parse_budget_parameter(cursor: Cursor, decimal: Boolean, limit_span: Span)
+  returns Parsed of maybe Name
+  or fails with Halt
+  purpose: `of PARAMETER` after the limit: a budget on an amount (decision AY1), where a decimal stands.
+
+  let of_word be eat_word(cursor: cursor, code: words.word_of)
+  let of_found be of_word.found
+  if of_found then
+    let name be advance(of_word.cursor)
+    let name_token be name.token
+    if name_token.kind is not Identifier then
+      let flagged be expected(
+        cursor: name.cursor,
+        what: "a parameter name after `of`",
+        span: name_token.span,
+        fix: "write `at most 500 of amount per run`"
+      )
+      fail with Halt(cursor: flagged)
+    end
+    let named be Name(
+      text: text_of(cursor: name.cursor, span: name_token.span),
+      span: name_token.span
+    )
+    return Parsed(node: named, cursor: name.cursor)
+  end
+  if decimal then
+    let flagged be expected(
+      cursor: cursor,
+      what: "a whole number after `at most`, or `of` and the parameter an amount is summed over",
+      span: limit_span,
+      fix: "write `at most 10 per minute` or `at most 9.99 of amount per run`"
+    )
+    fail with Halt(cursor: flagged)
+  end
+  return Parsed(node: nothing, cursor: cursor)
+end
+
+function parse_memory_budget(cursor: Cursor, start_span: Span, limit_text: Text, summed: maybe Name)
+  returns Parsed of Budget
+  or fails with Halt
+  purpose: A budget without `per`: a memory in bytes (decision AW64), which takes no parameter.
+
+  let memory_unit be advance(cursor)
+  let memory_token be memory_unit.token
+  let memory_text be text_of(cursor: memory_unit.cursor, span: memory_token.span)
+  if summed is not nothing then
+    let flagged be expected(
+      cursor: memory_unit.cursor,
+      what: "`per` and a unit of time after the parameter of an amount",
+      span: memory_token.span,
+      fix: "write `at most 500 of amount per run`"
+    )
+    fail with Halt(cursor: flagged)
+  end
+  if not memory_units.contains(memory_text) then
+    let flagged be expected(
+      cursor: memory_unit.cursor,
+      what: "`per` and a unit of time, or a memory in `bytes`, `kilobytes`, `megabytes` or `gigabytes`",
+      span: memory_token.span,
+      fix: "write `at most 60 per minute` or `at most 256 megabytes`"
+    )
+    fail with Halt(cursor: flagged)
+  end
+  let memory_node be Budget(
+    limit: limit_text,
+    parameter: nothing,
+    unit: Name(text: memory_text, span: memory_token.span),
+    span: join(left: start_span, right: memory_token.span)
+  )
+  return Parsed(node: memory_node, cursor: memory_unit.cursor)
 end
 
 function parse_for_any(cursor: Cursor) returns Parsed of ForAny or fails with Halt

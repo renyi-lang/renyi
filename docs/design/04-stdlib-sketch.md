@@ -804,6 +804,7 @@ public type PythonError is one of
   NotCarried(detail: Text)
   Unavailable(detail: Text)
   PermissionDenied(package: Text)
+  OverBudget(package: Text)
   TimedOut(after: Duration)
 end
 ```
@@ -820,7 +821,8 @@ process per run (decision AL2). `Raised` carries the class name and the
 text of an exception the function let escape, `NotCarried` a result the
 declared type does not fit, `Unavailable` an interpreter that does not
 answer, a module that does not import or a worker that ended,
-`PermissionDenied` a package outside the grant, and `TimedOut` the
+`PermissionDenied` a package outside the grant, `OverBudget` a call
+past a budget on the package (decision AY1), and `TimedOut` the
 deadline the manifest's `python` section sets per call (decision AW49:
 a Duration text such as `"5 seconds"`, for the section or for one
 module's entry), after which the worker is killed and the next call

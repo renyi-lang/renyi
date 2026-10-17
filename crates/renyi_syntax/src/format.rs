@@ -1607,8 +1607,13 @@ fn capability_text(capability: &Capability) -> String {
     if let Some(budget) = &capability.budget {
         // a memory budget has no `per` (decision AW64)
         let per = if budget.is_memory() { "" } else { "per " };
+        // `of PARAMETER`: a budget on an amount (decision AY1)
+        let of = match &budget.parameter {
+            Some(name) => format!("of {} ", name.text),
+            None => String::new(),
+        };
         out.push_str(&format!(
-            " at most {} {per}{}",
+            " at most {} {of}{per}{}",
             budget.count, budget.per.text
         ));
     }
@@ -1853,6 +1858,8 @@ end
 
     #[test]
     fn grant_clauses_and_replays_round_trip() {
+        // the amount budget (decision AY1)
+        stays("module demo\n\npublic function main() needs console, python(\"tools.send_money\") at most 500 of amount per run\n  purpose: Try the amount budget.\n\n  console.print(\"hi\")\nend\n");
         // the memory budget (decision AW64)
         stays("module demo\n\npublic function main() needs console, memory at most 256 megabytes\n  purpose: Try the memory budget.\n\n  console.print(\"hi\")\nend\n");
         stays("module demo\n\npublic function main()\n  or fails with AppError\n  needs console, network.http(\"api.example.com\") at most 60 per minute\n  purpose: Try the grant clauses.\n\n  console.print(\"hi\")\nend\n\ntest \"the forecast is read\" needs network.http replays \"fixtures/forecast.json\"\n  check true\nend\n");

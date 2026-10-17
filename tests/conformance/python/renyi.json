@@ -10,7 +10,8 @@
         "symbols": {
           "mean": "average"
         }
-      }
+      },
+      "ledger": {}
     }
   }
 }

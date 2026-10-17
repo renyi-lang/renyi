@@ -40,7 +40,7 @@ every `public` definition must carry `purpose:`.
 ## Calls
 ```
 let page be web.get(url) otherwise fail
-let total be money.add(left: 1, right: 2)          # two or more: all named, in order
+let total be money.add(left: 1, right: 2)          # two or more: named
 retry.run(action: fetch_page, attempts: 3)         # pass a function by name
 ```
 One argument is never named: `web.get(url)`, not `web.get(url: url)`.
@@ -214,11 +214,11 @@ for each url in urls concurrently collect web.get(url) otherwise fail
 `needs` lists capabilities; callers declare a superset; no `needs` means
 pure. Capabilities: `console`, `filesystem.read`, `filesystem.write`,
 `network.http`, `network.socket`, `environment`, `time`, `random`,
-`process`, `foreign`, `python`, `screen`. A parent
+`process`, `foreign`, `python`, `screen`; a parent
 covers its children. A literal argument narrows a scope:
 `filesystem.read("data")`, `network.http("api.example.com")`; no argument
-covers every scope. `main` declares the whole grant. Only there: `at most 60 per minute` (budget; also `per run`),
-`memory at most 256 megabytes` and `only to console` (what it reads leaves only there).
+covers every scope. `main` declares the whole grant. Only there: `at most 60 per minute` (a budget; `per run`;
+`at most 9.99 of amount per run` sums `amount`), `memory at most 256 megabytes`, `only to console`.
 ```
 public function main() or fails with AppError
   needs console, network.http("api.example.com") at most 60 per minute
@@ -235,7 +235,7 @@ run concurrently within time.seconds(5)
 end
 ```
 All tasks finish or the first failure cancels the rest; an expired `within`
-deadline cancels them and fails with `TimedOut`.
+cancels them and fails with `TimedOut`.
 
 ## Tests and tools
 ```

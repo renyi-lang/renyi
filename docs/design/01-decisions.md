@@ -10761,3 +10761,59 @@ initial state, grant included, a stronger hypothesis than the
 document's "a grant covering the header". What is left out is listed
 per theorem in `formal/README.md` and section 6 of the document.
 (Claude, on the owner's word)
+
+## AY. The amount budget (session 15)
+
+**AY1. A budget on an amount: `at most LIMIT of PARAMETER per UNIT`,
+budgets on `python`, `PythonError.OverBudget` (2026-10-17).** The one
+extension the authority gap argued for (AX5, section 5 of
+`docs/research/authority-gap.md`): twelve of the 36 pairs that fit
+every grant are attacks that move as much money as possible through
+the task's own sink, which a budget counting calls cannot touch and a
+budget on the amount bounds. The measure's own *prompt+budget* row
+assumed `at most n per run` on every tool kind, the Python modules of
+`tests/authority/tools/` included, which the language did not allow
+until this entry (`python` took a scope and no budget, AL1); the
+document says so now. The owner's four answers, every recommended
+option: (i) budgets extend to the `python` kinds, the count and the
+amount alike, `PythonError` gains `OverBudget(package: Text)`, and
+`foreign` stays without (a C call has no boundary to refuse at); (ii)
+the syntax is `at most 500 of amount per run`, `at most LIMIT of
+PARAMETER per UNIT` with the limit a whole number or a decimal literal
+(a decimal stands only with `of`), after the capability as a count
+budget stands, the memory budget taking no parameter; (iii) the static
+rule: the parameter is a parameter of every primitive the capability
+covers among the modules declared, of type `Integer` or `Decimal`, and
+at least one primitive is under it, else `budget-parameter` with a fix
+(drop `of PARAMETER`, name a parameter every primitive takes, or
+narrow the capability), checked once every function is declared, the
+`needs` of every function and test of the program's own modules; (iv)
+the counting: the absolute value of the argument is summed, the call
+whose amount would take the sum past the limit fails before anything
+leaves with the module's `OverBudget` (the sum untouched), and the
+sliding windows of `second`, `minute`, `hour` and `day` hold with the
+amount of each call stamped. A surface change under V11, one commit:
+the grammar's `Budget` rule, the reference (section 11, appendix A),
+the cheat sheet (2,996 to 2,999 tokens of 3,000, a parenthesis
+shortened), the formatter, the parser's tree (`Budget.parameter`, the
+JSON order limit, parameter, unit), the checker (`effects::Budget`
+with its `parameter`, `budgeted_kind`, the pass `check_amount_budgets`
+of `world.rs`), the VM (`Counter` with the parameter, its decimal
+limit and the amounts stamped, `exhausted` reading the argument by the
+function's metadata, `--at-most <capability>=<limit>[ of
+<parameter>]/<unit>`, the MCP tool's `at_most` likewise), the bytecode
+file (format 11 to 12, the budget record `limit`, `parameter`, `unit`)
+and the binary encoding (9 to 10), the library (`std.python`), the
+compiler written in Renyi (`ast.ry`, `parser.ry` with `parse_budget`
+split in three for the body limit, `effects.ry`, `declare.ry`,
+`emit.ry`), the conformance suite (the fixture `tests/conformance/python/`
+gains `ledger.py` and `ledger.ry`, every function taking `amount`;
+`budget.ry` spends 4, refunds 5, is refused at 1 and at -1 past 9.5
+and spends 0 within it; `budget_bad.ry` the two messages of
+`budget-parameter`), the rules tests of the checker and the VM's
+counter test, and the guides (`python.md`, the skill, the runtime
+guarantees, the library sketch, the research document, the article).
+A replay checks a budget on an amount from the recorded arguments as it
+checks a count. The static measure's rows are unchanged: an amount
+budget's effect on the 36 pairs is a measure of its own, open. (The
+owner, 2026-10-17)

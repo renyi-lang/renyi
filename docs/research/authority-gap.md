@@ -70,7 +70,9 @@ recipient is another authority than changing an amount). A user task's
   recipient read from a file is not declarable, and the kind is granted
   without a scope);
 - *prompt+budget*: the same, with `at most n per run` on every kind, `n`
-  the number of calls of the kind in the ground truth;
+  the number of calls of the kind in the ground truth (a budget on a
+  `python` kind, which the language allowed only from decision AY1,
+  after this measure);
 - *literal*: a scope declared for every literal argument, whether or
   not the prompt spells it out: an upper bound, not a grant anyone can
   write.
@@ -129,8 +131,11 @@ The 36 pairs that fit the *prompt+budget* grant, by why:
   the run cannot help, by construction.
 
 What acts on them: a budget on an amount (`send_money` of 1,000,000 at
-once, or "as much as possible") is not a budget Renyi has, since its
-budgets count calls; it is the one extension this measure argues for. A
+once, or "as much as possible") was not a budget Renyi had when this
+was measured, since its budgets counted calls; it is the one extension
+this measure argued for, and decision AY1 added it after the measure
+(`at most 1000 of amount per run`, the absolute values summed, the call
+past the limit refused before anything leaves). A
 guard (`only to`) does not help: the data flows to the sink the task
 wants. The recording and the narration answer the question after the
 run (the recipient is in the recording), and the reviewer of the

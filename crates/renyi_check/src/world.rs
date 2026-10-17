@@ -403,10 +403,108 @@ impl World {
         for &id in &modules {
             self.resolve_functions(id);
         }
+        self.check_amount_budgets();
         self.check_requirements();
         for &id in &modules {
             self.check_see_also(id);
         }
+    }
+
+    /// `at most LIMIT of PARAMETER per UNIT` (decision AY1): every primitive
+    /// the capability covers, among the modules declared, takes a parameter
+    /// of that name of type Integer or Decimal, and there is at least one;
+    /// checked once every function is declared, for the `needs` of every
+    /// function and test of the program's modules.
+    fn check_amount_budgets(&mut self) {
+        let modules: Vec<ModuleId> = (0..self.modules.len()).collect();
+        for &id in &modules {
+            if self.modules[id].is_library {
+                continue;
+            }
+            let ast = Rc::clone(&self.modules[id].ast);
+            for item in &ast.items {
+                let needs = match item {
+                    Item::Function(function) => &function.needs,
+                    Item::Test(test) => &test.needs,
+                    _ => continue,
+                };
+                for syntax in needs {
+                    let capability = Capability::from_ast(syntax);
+                    let parameter = capability
+                        .budget
+                        .as_ref()
+                        .and_then(|budget| budget.parameter.clone());
+                    let Some(parameter) = parameter else {
+                        continue;
+                    };
+                    if capability.path == ["memory"] {
+                        continue;
+                    }
+                    self.check_amount_budget(id, &capability, &parameter, syntax.span);
+                }
+            }
+        }
+    }
+
+    fn check_amount_budget(
+        &mut self,
+        module: ModuleId,
+        capability: &Capability,
+        parameter: &str,
+        span: Span,
+    ) {
+        let mut primitives = 0;
+        let mut offenders: Vec<String> = Vec::new();
+        for function in &self.functions {
+            let owner = &self.modules[function.module];
+            let primitive =
+                function.is_library || owner.python.is_some() || owner.foreign.is_some();
+            if !primitive
+                || !function
+                    .needs
+                    .iter()
+                    .any(|need| capability.covers(need, true))
+            {
+                continue;
+            }
+            primitives += 1;
+            let fits = function
+                .params
+                .iter()
+                .any(|(name, ty)| name == parameter && self.is_amount_type(ty));
+            if !fits {
+                offenders.push(format!("`{}.{}`", owner.name, function.name));
+            }
+        }
+        let spelled = capability.spelling();
+        if primitives == 0 {
+            self.error_with_fix(
+                module,
+                "budget-parameter",
+                format!("no primitive under `{spelled}` takes a parameter `{parameter}`"),
+                span,
+                format!("drop `of {parameter}`, or budget a capability whose primitives take it"),
+            );
+        } else if !offenders.is_empty() {
+            self.error_with_fix(
+                module,
+                "budget-parameter",
+                format!(
+                    "`{parameter}` is not a parameter of type Integer or Decimal of every primitive under `{spelled}`: {}",
+                    offenders.join(", ")
+                ),
+                span,
+                format!(
+                    "name a parameter every primitive under `{spelled}` takes, of type Integer or Decimal, or narrow the capability"
+                ),
+            );
+        }
+    }
+
+    /// `Integer` or `Decimal`, the types a budget on an amount sums.
+    fn is_amount_type(&self, ty: &Ty) -> bool {
+        matches!(ty, Ty::App(id, args)
+            if args.is_empty() && (*id == self.builtins.integer || *id == self.builtins.decimal))
     }
 
     /// `ability X where self can Y`: every implementation's type has `Y`
@@ -1913,10 +2011,9 @@ impl World {
             if is_memory {
                 // the memory budget (decision AW64): `memory` stands only
                 // with a budget, and only one in bytes
-                let fine = capability
-                    .budget
-                    .as_ref()
-                    .is_some_and(|(_, unit)| crate::effects::is_memory_unit(unit));
+                let fine = capability.budget.as_ref().is_some_and(|budget| {
+                    crate::effects::is_memory_unit(&budget.unit) && budget.parameter.is_none()
+                });
                 if !fine {
                     self.error_with_fix(
                         module,
@@ -1926,23 +2023,19 @@ impl World {
                         "write `memory at most 256 megabytes`".into(),
                     );
                 }
-            } else if let Some((_, unit)) = &capability.budget {
-                let budgeted = matches!(
-                    capability.path.first().map(String::as_str),
-                    Some("network") | Some("process") | Some("filesystem")
-                );
-                if !budgeted {
+            } else if let Some(budget) = &capability.budget {
+                if !crate::effects::budgeted_kind(&capability.path) {
                     self.error_with_fix(
                         module,
                         "grant-clause",
                         format!(
-                            "`{}` takes no budget; budgets apply to network, process and filesystem",
+                            "`{}` takes no budget; budgets apply to network, process, filesystem and python",
                             capability.path.join(".")
                         ),
                         syntax.span,
                         "drop the `at most` clause".into(),
                     );
-                } else if crate::effects::is_memory_unit(unit) {
+                } else if crate::effects::is_memory_unit(&budget.unit) {
                     self.error_with_fix(
                         module,
                         "grant-clause",

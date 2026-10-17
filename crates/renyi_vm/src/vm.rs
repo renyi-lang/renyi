@@ -530,6 +530,20 @@ pub enum Entry {
 /// in-place entry.
 type Entries = Vec<Option<Found>>;
 
+/// The absolute value of the argument a budget's parameter names (decision
+/// AY1): an Integer or a Decimal, by the checker's rule; zero for anything
+/// else.
+fn amount_of(meta: &crate::compile::FunctionMeta, parameter: &str, args: &[Value]) -> Decimal {
+    let Some(index) = meta.params.iter().position(|name| name == parameter) else {
+        return Decimal::zero();
+    };
+    match args.get(index).map(Value::plain) {
+        Some(Value::Integer(value)) => Decimal::from_int(value).absolute(),
+        Some(Value::Decimal(value)) => value.absolute(),
+        _ => Decimal::zero(),
+    }
+}
+
 fn entries_of(program: &Program, registry: &Registry) -> Entries {
     program
         .function_metas
@@ -1315,7 +1329,7 @@ impl<'p> Vm<'p> {
             return Ok(value.guarded(origins));
         }
         let at_ms = natives::now_millis() - self.started;
-        if let Some(budget) = self.exhausted(&effect, at_ms) {
+        if let Some(budget) = self.exhausted(&effect, at_ms, function, args) {
             self.expected = None;
             return self.over_budget(function, &effect, &budget, args);
         }
@@ -1498,20 +1512,32 @@ impl<'p> Vm<'p> {
     }
 
     /// Whether the budgets covering an effect admit a call at `now`; the
-    /// call is counted when they do, and the exhausted budget is named
-    /// when they do not.
-    fn exhausted(&mut self, effect: &Capability, now: i64) -> Option<String> {
+    /// call is counted when they do, with the amount its argument carries
+    /// under a budget on an amount (decision AY1), and the exhausted
+    /// budget is named when they do not.
+    fn exhausted(
+        &mut self,
+        effect: &Capability,
+        now: i64,
+        function: FunctionId,
+        args: &[Value],
+    ) -> Option<String> {
         let mut covering = Vec::new();
+        let meta = &self.program.function_metas[function];
         for (index, counter) in self.counters.iter_mut().enumerate() {
             if counter.capability.covers(effect, true) {
-                if !counter.fits(now) {
+                let amount = match &counter.parameter {
+                    Some((name, _, _)) => amount_of(meta, name, args),
+                    None => Decimal::zero(),
+                };
+                if !counter.fits(now, &amount) {
                     return Some(counter.spelling());
                 }
-                covering.push(index);
+                covering.push((index, amount));
             }
         }
-        for index in covering {
-            self.counters[index].note(now);
+        for (index, amount) in covering {
+            self.counters[index].note(now, &amount);
         }
         None
     }
@@ -1643,7 +1669,7 @@ impl<'p> Vm<'p> {
             .take(&primitive, &arguments)
             .map_err(Interrupt::crash)?;
         let call = replay.recording.calls[index].clone();
-        if let Some(budget) = self.exhausted(effect, call.at_ms) {
+        if let Some(budget) = self.exhausted(effect, call.at_ms, function, args) {
             return Err(Interrupt::crash(format!(
                 "the recording exceeds the budget `{budget}` at call #{}",
                 call.sequence

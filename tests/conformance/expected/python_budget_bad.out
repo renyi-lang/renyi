@@ -1,0 +1,4 @@
+tests/conformance/python/budget_bad.ry:10:18: error [budget-parameter]: `times` is not a parameter of type Integer or Decimal of every primitive under `python("analysis")`: `analysis.mean`, `analysis.describe`, `analysis.shout`, `analysis.explode`, `analysis.stall`, `analysis.shift`
+  fix: name a parameter every primitive under `python("analysis")` takes, of type Integer or Decimal, or narrow the capability
+tests/conformance/python/budget_bad.ry:17:51: error [budget-parameter]: no primitive under `network.socket` takes a parameter `port`
+  fix: drop `of port`, or budget a capability whose primitives take it

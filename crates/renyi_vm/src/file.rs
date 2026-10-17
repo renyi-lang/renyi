@@ -13,7 +13,7 @@
 
 use std::collections::HashMap;
 
-use renyi_check::effects::Capability;
+use renyi_check::effects::{Budget, Capability};
 use renyi_check::types::{FunctionTy, Ty};
 use renyi_check::world::Builtins;
 use renyi_syntax::ast::BinaryOp;
@@ -38,7 +38,7 @@ use crate::value::Value;
 /// (decision AW14), 10 adds the jump tables of a code object and
 /// `JumpByTag` (decision AW15), and 11 the deadline of a Python binding
 /// (decision AW49).
-pub const FORMAT: usize = 11;
+pub const FORMAT: usize = 12;
 
 /// The extension of a bytecode file.
 pub const EXTENSION: &str = "ryc";
@@ -650,8 +650,15 @@ fn grant_json(capability: &Capability) -> Out {
         ),
         (
             "budget",
-            optional(capability.budget.as_ref(), |(limit, unit)| {
-                record(vec![("limit", string(limit)), ("unit", string(unit))])
+            optional(capability.budget.as_ref(), |budget| {
+                record(vec![
+                    ("limit", string(&budget.limit)),
+                    (
+                        "parameter",
+                        optional(budget.parameter.as_ref(), |name| string(name)),
+                    ),
+                    ("unit", string(&budget.unit)),
+                ])
             }),
         ),
         (
@@ -1374,7 +1381,13 @@ fn read_grant(json: &In, at: &str) -> Read<Capability> {
         scope: scope(fields, at)?,
         budget: optional_at(fields, "budget", at, |json, at| {
             let fields = object(json, at)?;
-            Ok((text_at(fields, "limit", at)?, text_at(fields, "unit", at)?))
+            Ok(Budget {
+                limit: text_at(fields, "limit", at)?,
+                parameter: optional_at(fields, "parameter", at, |json, at| {
+                    text_of(json, at).map(str::to_string)
+                })?,
+                unit: text_at(fields, "unit", at)?,
+            })
         })?,
         only_to: list_at(fields, "only_to", at, |json, at| {
             let fields = object(json, at)?;

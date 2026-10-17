@@ -884,8 +884,19 @@ where one decided, the status. The dates are those of the decisions.
     9 and the gap under the final grants 83.6%; `loop_run.py`,
     `loop.json` under CI); and Theorems 2 and 3 in Lean (AX9:
     `Guards.lean` and `Replay.lean`, a machine each, `propext` alone).
-    Open: a budget on an amount as a language extension (a decision
-    entry first, V11).
+    Done.
+48. **The amount budget** (session 15, 2026-10-17; decision AY1). The
+    one extension the authority gap argued for, a surface change under
+    V11 on the owner's four answers: `at most LIMIT of PARAMETER per
+    UNIT` after a capability, the limit a whole number or a decimal,
+    the parameter one every primitive under the capability takes, of
+    type `Integer` or `Decimal` (`budget-parameter` otherwise); the
+    absolute values summed in the same windows, the call past the
+    limit refused before anything leaves; budgets on `python` too,
+    `PythonError.OverBudget`; the bytecode file at format 12; both
+    compilers, the conformance fixture `tests/conformance/python/`
+    with `ledger.py`. Done. Open: the amount budget's effect on the
+    36 pairs that fit every grant, a measure of its own.
 
 ## 3. The tracks
 
@@ -965,7 +976,8 @@ state of each line.
   `tests/readability/`; they run only on request (V1).
 - **I. Research**: stage 47 (the authority gap, the three statements,
   the model in the loop, the programs run for utility, the loop and
-  the three theorems in Lean, AX1 to AX9). Open: the amount budget.
+  the three theorems in Lean, AX1 to AX9) and stage 48 (the amount
+  budget, AY1). Open: the amount budget measured on the 36 pairs.
 
 ## 4. What is next
 
@@ -1107,5 +1119,6 @@ above by track (R3-1, 40c, the switch of the front end, the verified
 domain), none of them scheduled. The research track opened on
 2026-10-16 evening (AX1): the authority gap, the three statements, the
 model in the loop, the utility runs, the loop and the three theorems in
-Lean are done (stage 47, AX1 to AX9); next, on the owner's answers of
-2026-10-17, the amount budget as a surface change under V11.
+Lean are done (stage 47, AX1 to AX9), and the amount budget on the
+owner's answers of 2026-10-17 (stage 48, AY1); next, that budget
+measured on the 36 pairs that fit every grant.

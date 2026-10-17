@@ -72,7 +72,9 @@ parentheses.
   function's `needs` (`capability-missing`); a test's `needs` covers its
   body likewise. A budget is `at most <n> per second|minute|hour|day|run`
   after the capability: `network.http("api.example.com") at most 60 per
-  minute`.
+  minute`; `at most <n> of <parameter> per <unit>` sums that argument
+  (an `Integer` or a `Decimal`) of every primitive under the capability
+  in place of counting calls (`budget-parameter` when one lacks it).
 - A line is at most 100 columns (`line-width`, a warning); no tabs, no
   carriage returns (`tab`, `crlf`); `renyi format` wraps inside
   parentheses, and a `purpose:` line is shortened by hand.

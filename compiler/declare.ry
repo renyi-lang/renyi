@@ -712,6 +712,7 @@ public function resolve_all(world: World) returns World
     change updated to resolve_function_items(world: updated, id: id)
     change id to id + 1
   end
+  change updated to check_amount_budgets(updated)
   change updated to check_requirements(updated)
   change id to 0
   repeat until id is at least total
@@ -3059,13 +3060,13 @@ function check_sinks(world: World, owner: Integer, grant: Grant, span: Span) ret
 end
 
 function check_budget(world: World, owner: Integer, grant: Grant, span: Span) returns World
-  purpose: A budget applies to network, process and filesystem only; the memory budget to `memory`.
+  purpose: A budget applies to network, process, filesystem and python; a memory one to `memory`.
 
   let joined be grant.path.join(".")
   if joined is "memory" then
     let fine be
       match grant.budget
-        when some(found) then effects.is_memory_unit(found.unit)
+        when some(found) then effects.is_memory_unit(found.unit) and found.parameter is nothing
         when nothing then false
       end
     if fine then return world end
@@ -3079,13 +3080,13 @@ function check_budget(world: World, owner: Integer, grant: Grant, span: Span) re
     )
   end
   let budget be grant.budget otherwise return world
-  let head be grant.path.first() otherwise ""
-  if not ["network", "process", "filesystem"].contains(head) then
+  if not effects.budgeted_kind(grant.path) then
+    let kinds be "network, process, filesystem and python"
     return push_error(
       world: world,
       owner: owner,
       code: "grant-clause",
-      message: "`{joined}` takes no budget; budgets apply to network, process and filesystem",
+      message: "`{joined}` takes no budget; budgets apply to {kinds}",
       span: span,
       fix: "drop the `at most` clause"
     )
@@ -3101,6 +3102,105 @@ function check_budget(world: World, owner: Integer, grant: Grant, span: Span) re
     )
   end
   return world
+end
+
+function check_amount_budgets(world: World) returns World
+  purpose: `at most LIMIT of PARAMETER per UNIT` (decision AY1) on every function and test.
+
+  let mutable updated be world
+  let total be world.modules.length()
+  let mutable id be 0
+  repeat until id is at least total
+    let info be module_at(world: world, id: id)
+    if not info.is_library then
+      for each item in info.tree.items
+        let grants be
+          match item
+            when FunctionItem(value: func) then func.capabilities
+            when TestItem(value: block) then block.capabilities
+            otherwise []
+          end
+        for each syntax in grants
+          change updated to check_amount_budget(world: updated, owner: id, syntax: syntax)
+        end
+      end
+    end
+    change id to id + 1
+  end
+  return updated
+end
+
+function check_amount_budget(world: World, owner: Integer, syntax: Capability) returns World
+  purpose: Every primitive the capability covers takes the parameter as a number, and one does.
+
+  let grant be effects.from_ast(syntax)
+  let budget be grant.budget otherwise return world
+  let parameter be budget.parameter otherwise return world
+  if grant.path.join(".") is "memory" then return world end
+  let mutable primitives be 0
+  let mutable offenders: List of Text be []
+  for each found in world.functions
+    let holder be module_at(world: world, id: found.owner)
+    let bridged be holder.python is not nothing or holder.foreign is not nothing
+    let primitive be found.is_library or bridged
+    if primitive and covers_a_need(grant: grant, wanted: found.capabilities) then
+      change primitives to primitives + 1
+      if not takes_amount(world: world, params: found.params, parameter: parameter) then
+        change offenders to offenders.append("`{holder.name}.{found.name}`")
+      end
+    end
+  end
+  let spelled be effects.spelling(grant)
+  if primitives is 0 then
+    return push_error(
+      world: world,
+      owner: owner,
+      code: "budget-parameter",
+      message: "no primitive under `{spelled}` takes a parameter `{parameter}`",
+      span: syntax.span,
+      fix: "drop `of {parameter}`, or budget a capability whose primitives take it"
+    )
+  end
+  if offenders.is_empty() then return world end
+  let listed be offenders.join(", ")
+  let not_every be "is not a parameter of type Integer or Decimal of every primitive under"
+  let narrow be "of type Integer or Decimal, or narrow the capability"
+  return push_error(
+    world: world,
+    owner: owner,
+    code: "budget-parameter",
+    message: "`{parameter}` {not_every} `{spelled}`: {listed}",
+    span: syntax.span,
+    fix: "name a parameter every primitive under `{spelled}` takes, {narrow}"
+  )
+end
+
+function covers_a_need(grant: Grant, wanted: List of Grant) returns Boolean
+  purpose: Whether the grant covers one of a primitive's needs.
+
+  for each need in wanted
+    if effects.covers(granted: grant, needed: need, runtime_scoped: true) then return true end
+  end
+  return false
+end
+
+function takes_amount(world: World, params: List of NamedTy, parameter: Text) returns Boolean
+  purpose: Whether a parameter of that name is typed Integer or Decimal.
+
+  for each param in params
+    if param.name is parameter and is_amount_type(world: world, ty: param.ty) then return true end
+  end
+  return false
+end
+
+function is_amount_type(world: World, ty: Ty) returns Boolean
+  purpose: `Integer` or `Decimal`, the types a budget on an amount sums.
+
+  match ty
+    when App(id, args) then
+      return args.is_empty() and (id is world.builtins.integer or id is world.builtins.decimal)
+    otherwise return false
+  end
 end
 
 function check_guard_reachable(

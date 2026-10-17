@@ -121,8 +121,9 @@ public type Capability
 end
 
 public type Budget
-  purpose: `at most LIMIT per UNIT`.
+  purpose: `at most LIMIT per UNIT`, or `at most LIMIT of PARAMETER per UNIT` on an amount (decision AY1).
   has limit: Text
+  has parameter: maybe Name
   has unit: Name
   has span: Span
   can ToJson

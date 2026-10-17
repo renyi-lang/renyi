@@ -9,9 +9,22 @@ pub struct Capability {
     pub path: Vec<String>,
     pub scope: Option<String>,
     /// `at most COUNT per UNIT` on a grant (decision P2); not part of coverage.
-    pub budget: Option<(String, String)>,
+    pub budget: Option<Budget>,
     /// `only to` sinks on a grant (decision P3); not part of coverage.
     pub only_to: Vec<(Vec<String>, Option<String>)>,
+}
+
+/// `at most LIMIT per UNIT` on a grant (decision P2), or `at most LIMIT of
+/// PARAMETER per UNIT` on an amount (decision AY1): the sum of that
+/// parameter's absolute values over the calls, the limit then a whole
+/// number or a decimal.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub struct Budget {
+    pub limit: String,
+    /// The parameter whose values the budget sums; `None` for a count of
+    /// calls.
+    pub parameter: Option<String>,
+    pub unit: String,
 }
 
 /// The built-in tree: a parent covers its children.
@@ -32,6 +45,27 @@ pub const TREE: &[&str] = &[
     "screen",
     "memory",
 ];
+
+/// The capabilities that take a budget (decisions P2 and AY1): `network`,
+/// `process` and `filesystem` with their children, and `python`.
+pub fn budgeted_kind(path: &[String]) -> bool {
+    matches!(
+        path.first().map(String::as_str),
+        Some("network") | Some("process") | Some("filesystem") | Some("python")
+    )
+}
+
+/// Whether a text is the limit of a budget on an amount (decision AY1): a
+/// whole number or a decimal, as the literals are spelled.
+pub fn is_amount_literal(text: &str) -> bool {
+    let (whole, fraction) = match text.split_once('.') {
+        Some((whole, fraction)) => (whole, Some(fraction)),
+        None => (text, None),
+    };
+    let digits =
+        |part: &str| !part.is_empty() && part.bytes().all(|b| b.is_ascii_digit() || b == b'_');
+    digits(whole) && fraction.is_none_or(digits)
+}
 
 /// Whether a budget's unit is one of memory (decision AW64).
 pub fn is_memory_unit(unit: &str) -> bool {
@@ -69,10 +103,11 @@ impl Capability {
         Capability {
             path: capability.path.iter().map(|n| n.text.clone()).collect(),
             scope: capability.scope.clone(),
-            budget: capability
-                .budget
-                .as_ref()
-                .map(|b| (b.count.clone(), b.per.text.clone())),
+            budget: capability.budget.as_ref().map(|b| Budget {
+                limit: b.count.clone(),
+                parameter: b.parameter.as_ref().map(|name| name.text.clone()),
+                unit: b.per.text.clone(),
+            }),
             only_to: capability
                 .only_to
                 .iter()

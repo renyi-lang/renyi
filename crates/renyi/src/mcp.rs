@@ -691,7 +691,7 @@ fn tool_json(name: &str) -> Json {
                     ("allow_host", strings_property("hosts `network.http` is narrowed to")),
                     ("allow_read", strings_property("path prefixes `filesystem.read` is narrowed to")),
                     ("allow_write", strings_property("path prefixes `filesystem.write` is narrowed to")),
-                    ("at_most", strings_property("budgets to add, `<capability>=<count>/<unit>`, such as `network.http=10/run`")),
+                    ("at_most", strings_property("budgets to add, `<capability>=<count>[ of <parameter>]/<unit>`, such as `network.http=10/run` or `python(\"tools.send_money\")=500 of amount/run`")),
                     ("replay", string_property("a recording to answer every effect from; nothing is written or sent")),
                     ("explain", boolean_property("narrate the run: purposes, arguments, results and effects")),
                 ],

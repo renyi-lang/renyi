@@ -44,7 +44,7 @@ use std::path::Path;
 use std::process::ExitCode;
 use std::sync::OnceLock;
 
-use renyi_check::effects::Capability;
+use renyi_check::effects::{self, Budget, Capability};
 use renyi_check::Library;
 use renyi_syntax::diagnostics::{render_json, render_text};
 use renyi_syntax::layout::check_layout;
@@ -279,8 +279,9 @@ options of run and record:
   --allow-host <host>                 narrow network.http to one host
   --allow-read <path>                 narrow filesystem.read to a path prefix
   --allow-write <path>                narrow filesystem.write to a path prefix
-  --at-most <capability>=<count>/<unit>
-                                      add a budget; the unit is second, minute, hour, day or run
+  --at-most <capability>=<count>[ of <parameter>]/<unit>
+                                      add a budget on the calls, or on the sum of a parameter; the unit
+                                      is second, minute, hour, day or run
   --redact <name>                     record and test --refresh: replace the argument, header or
                                       environment variable of that name with a placeholder
   --sandbox <grant.json>              run, record and serve: a grant narrower than `main` declares, as
@@ -1311,15 +1312,22 @@ pub(crate) fn scoped(path: &[&str], scope: &str) -> Capability {
     }
 }
 
-/// `network.http=60/minute`, or with a scope, `network.http("host")=60/minute`.
+/// `network.http=60/minute`, or with a scope, `network.http("host")=60/minute`;
+/// `python("tools.send_money")=500 of amount/run` for a budget on an amount
+/// (decision AY1).
 pub(crate) fn parse_budget(text: &str) -> Result<Capability, String> {
-    let (capability, budget) = text
-        .rsplit_once('=')
-        .ok_or_else(|| format!("`{text}`: a budget is <capability>=<count>/<unit>"))?;
-    let (count, unit) = budget
-        .split_once('/')
-        .ok_or_else(|| format!("`{text}`: a budget is <capability>=<count>/<unit>"))?;
-    if count.parse::<u64>().is_err() {
+    let shape = || format!("`{text}`: a budget is <capability>=<count>[ of <parameter>]/<unit>");
+    let (capability, budget) = text.rsplit_once('=').ok_or_else(shape)?;
+    let (count, unit) = budget.split_once('/').ok_or_else(shape)?;
+    let (count, parameter) = match count.split_once(" of ") {
+        Some((count, parameter)) => (count.trim(), Some(parameter.trim().to_string())),
+        None => (count.trim(), None),
+    };
+    if parameter.is_some() {
+        if !effects::is_amount_literal(count) {
+            return Err(format!("`{text}`: the limit `{count}` is not a number"));
+        }
+    } else if count.parse::<u64>().is_err() {
         return Err(format!(
             "`{text}`: the count `{count}` is not a whole number"
         ));
@@ -1330,16 +1338,17 @@ pub(crate) fn parse_budget(text: &str) -> Result<Capability, String> {
         ));
     }
     let mut capability = parse_capability(capability)?;
-    if !matches!(
-        capability.path.first().map(String::as_str),
-        Some("network" | "process" | "filesystem")
-    ) {
+    if !effects::budgeted_kind(&capability.path) {
         return Err(format!(
-            "`{}` takes no budget; budgets apply to network, process and filesystem",
+            "`{}` takes no budget; budgets apply to network, process, filesystem and python",
             capability.spelling()
         ));
     }
-    capability.budget = Some((count.to_string(), unit.to_string()));
+    capability.budget = Some(Budget {
+        limit: count.to_string(),
+        parameter,
+        unit: unit.to_string(),
+    });
     Ok(capability)
 }
 

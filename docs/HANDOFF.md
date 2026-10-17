@@ -4402,12 +4402,21 @@ again before a run (the memory note has the steps). Then Theorems 2
 and 3 in Lean by a subagent (AX9: `formal/RenyiCore/Guards.lean` and
 `Replay.lean`, a machine each, Theorem 1's files untouched, `propext`
 alone, rebuilt clean in the session; the replay starts from the live
-run's initial state, the one deviation the README names). Open on the
-track: the amount budget as a surface change under V11 (the owner's
-four answers of 2026-10-17: budgets extend to `python` kinds, `at most
-LIMIT of PARAMETER per UNIT`, the parameter on every primitive the
-capability covers typed Integer or Decimal, absolute values summed and
-the call that would exceed refused before anything leaves).
+run's initial state, the one deviation the README names). Then the
+amount budget as a surface change under V11 (AY1, stage 48, the
+owner's four answers of 2026-10-17: budgets extend to `python` kinds,
+`at most LIMIT of PARAMETER per UNIT`, the parameter on every
+primitive the capability covers typed Integer or Decimal, absolute
+values summed and the call that would exceed refused before anything
+leaves; the grammar, the reference, the cheat sheet at 2,999 tokens,
+both compilers, the bytecode file at format 12, the binary encoding
+at 10, the conformance fixture `tests/conformance/python/` with
+`ledger.py`, `budget.ry` and `budget_bad.ry`, the guides, the research
+document's caveat that its *prompt+budget* row assumed budgets on
+`python` kinds before the language allowed them, the article). Open on
+the track: the amount budget measured on the 36 pairs that fit every
+grant (a row of `authority_gap.py` reading the amounts of the
+injections' `send_money` calls against a limit from the task).
 `paper/endorsement.md` is the request the owner sends with the
 submission's link; the arXiv procedure was explained to the owner (the
 endorsement link from the submission form, the endorsers found through

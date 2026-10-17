@@ -332,6 +332,10 @@ impl<'a> Encoder<'a> {
                 optional(capability.budget.as_ref().map(|budget| {
                     Json::Object(vec![
                         ("limit", string(&budget.count)),
+                        (
+                            "parameter",
+                            optional(budget.parameter.as_ref().map(|name| self.name(name))),
+                        ),
                         ("unit", self.name(&budget.per)),
                         ("span", self.span(budget.span)),
                     ])

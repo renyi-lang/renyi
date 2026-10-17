@@ -1,0 +1,19 @@
+module budget_bad
+  purpose: A budget on an amount names a parameter every primitive under it takes (decision AY1).
+
+import std.console
+import std.python exposing PythonError
+import analysis
+
+function main()
+  or fails with PythonError
+  needs console, python("analysis") at most 5 of times per run
+  purpose: `times` is a parameter of `oddly` alone.
+
+  let value be analysis.oddly(1) otherwise fail
+  console.print("{value}")
+end
+
+test "no primitive is under the capability" needs network.socket at most 5 of port per run
+  check 1 is 1
+end

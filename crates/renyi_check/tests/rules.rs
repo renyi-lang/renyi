@@ -542,7 +542,7 @@ fn process_and_foreign_are_capabilities_of_the_tree() {
 }
 
 #[test]
-fn python_is_a_capability_of_the_tree_with_a_package_and_no_budget() {
+fn python_is_a_capability_of_the_tree_with_a_package_and_a_budget() {
     // decision AJ3: `python("<package>")`, the package the manifest binds
     for source in [
         "public function main() needs console, python(\"analysis\")\n  purpose: Bridge.\n\n  console.print(\"hi\")\nend\n",
@@ -556,9 +556,62 @@ fn python_is_a_capability_of_the_tree_with_a_package_and_no_budget() {
             "{source}: {found:?}"
         );
     }
+    // decision AY1: `python` takes a budget, on the calls or on an amount
+    let budgeted = codes(&program("public function main() needs python(\"analysis\") at most 3 per run\n  purpose: Bridge.\n\n  ignore 1\nend\n"));
+    assert!(
+        !budgeted.iter().any(|code| code == "grant-clause"),
+        "{budgeted:?}"
+    );
+}
+
+#[test]
+fn a_budget_on_an_amount_names_a_parameter_every_primitive_takes() {
+    // decision AY1: `of PARAMETER` is a parameter of type Integer or Decimal
+    // of every primitive the capability covers, and of at least one
+    let binding = renyi_syntax::PythonBinding {
+        module: renyi_syntax::PythonModule {
+            package: "ledger".to_string(),
+            symbols: Vec::new(),
+            deadline: None,
+        },
+        interpreter: None,
+        root: String::new(),
+        deadline: None,
+    };
+    let declarations = "module ledger\n  purpose: Bound to Python.\n\nimport std.python exposing PythonError\n\npublic function spend(amount: Decimal) returns Decimal or fails with PythonError needs python(\"ledger\")\n  purpose: Spend.\n\npublic function refund(amount: Integer) returns Integer or fails with PythonError needs python(\"ledger\")\n  purpose: Refund.\n";
+    let found = |budget: &str| -> Vec<(String, String)> {
+        let main = format!("module pay\n  purpose: Pay.\n\nimport std.console\nimport std.python exposing PythonError\nimport ledger\n\npublic function main() or fails with PythonError needs console, python(\"ledger\") {budget}\n  purpose: Pay.\n\n  let spent be ledger.spend(1.5) otherwise fail\n  console.print(\"{{spent}}\")\nend\n");
+        let files = [
+            SourceFile::new("pay.ry", &main),
+            SourceFile::new("ledger.ry", declarations).in_python(binding.clone()),
+        ];
+        renyi_check::check_project(&files)
+            .modules
+            .iter()
+            .flat_map(|m| {
+                m.diagnostics
+                    .iter()
+                    .map(|d| (d.code.to_string(), d.message.clone()))
+            })
+            .collect()
+    };
+    assert_eq!(found("at most 10 of amount per run"), Vec::new());
+    assert_eq!(found("at most 9.50 of amount per day"), Vec::new());
+    let offenders = found("at most 10 of nothing_here per run");
+    assert_eq!(offenders.len(), 1, "{offenders:?}");
+    assert_eq!(offenders[0].0, "budget-parameter");
+    assert_eq!(
+        offenders[0].1,
+        "`nothing_here` is not a parameter of type Integer or Decimal of every primitive under `python(\"ledger\")`: `ledger.spend`, `ledger.refund`"
+    );
     raises(
-        &program("public function main() needs python(\"analysis\") at most 3 per run\n  purpose: Bridge.\n\n  ignore 1\nend\n"),
-        "grant-clause",
+        &program("public function main() needs network.http at most 5 of url per run\n  purpose: Bound.\n\n  ignore 1\nend\n"),
+        "budget-parameter",
+    );
+    // a memory takes no parameter: the parser's rule
+    raises(
+        &program("public function main() needs memory at most 5 of amount megabytes\n  purpose: Bound.\n\n  ignore 1\nend\n"),
+        "expected",
     );
 }
 

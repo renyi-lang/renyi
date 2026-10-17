@@ -233,7 +233,9 @@ standard library's primitives: \texttt{console}, \texttt{environment},
 \texttt{foreign} and \texttt{python}. A capability may carry a \emph{scope} (a path, a host, or
 a parameter of the function, so that a library function can say
 \texttt{needs network.http(host)}), a \emph{budget} (\texttt{at most $n$
-per} second, minute, hour, day or run) and a \emph{guard} (\texttt{only to} a sink, below).
+per} second, minute, hour, day or run; \texttt{at most $n$ of} a
+parameter \texttt{per} unit sums that argument in place of counting
+calls) and a \emph{guard} (\texttt{only to} a sink, below).
 
 Capabilities form a tree (\texttt{filesystem} covers
 \texttt{filesystem.read}) and scopes an order: a path prefix contains
@@ -700,8 +702,9 @@ separate those, by construction; what acts on them is the recording and
 the narration after the run, the reviewer who sees \texttt{send\_money}
 without a scope and knows the bill chooses the recipient, and, for the
 attacks that move as much money as possible, a budget on an amount,
-which Renyi's budgets, counting calls, do not express: the one extension
-the measure argues for. The measure assumes a program fixed before any
+which Renyi's budgets, counting calls, did not express when the measure
+was made: the one extension it argued for, added since (\texttt{at most
+1000 of amount per run}). The measure assumes a program fixed before any
 effect, uses the ground truth as the task's authority (the kinds row is
 the floor, the ceiling row the bound a broader review could reach), and
 runs no model, so it says nothing about utility; CaMeL reports utility

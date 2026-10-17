@@ -1028,7 +1028,8 @@ the iterations as the tasks of section 12.
 Capabilities        ::= Capability (',' Capability)*
 Capability          ::= CapabilityPath Budget? ('only to' CapabilityPath ('or' CapabilityPath)*)?
 CapabilityPath      ::= DottedName ('(' PlainText ')')?
-Budget              ::= 'at most' Integer ('per' ('second' | 'minute' | 'hour' | 'day' | 'run') | 'bytes' | 'kilobytes' | 'megabytes' | 'gigabytes')
+Budget              ::= 'at most' (Integer ('of' Identifier)? | Decimal 'of' Identifier) 'per' ('second' | 'minute' | 'hour' | 'day' | 'run')
+                      | 'at most' Integer ('bytes' | 'kilobytes' | 'megabytes' | 'gigabytes')
 ```
 
 ### Meaning
@@ -1075,10 +1076,15 @@ public function main() or fails with AppError
 ```
 
 Two **grant clauses** may follow a capability in the `needs` of `main` or
-of a `test`, and only there. `at most COUNT per UNIT` is a budget (decision
+of a `test`, and only there. `at most LIMIT per UNIT` is a budget (decision
 P2): the units are `second`, `minute`, `hour` and `day` (sliding windows)
-and `run` (the whole program); budgets apply to `network`, `process` and
-`filesystem` and their children. `memory at most 256 megabytes` is the
+and `run` (the whole program); budgets apply to `network`, `process`,
+`filesystem` and `python` and their children (decision AY1). `at most
+LIMIT of PARAMETER per UNIT` is a **budget on an amount** (decision AY1):
+the limit a whole number or a decimal, the parameter one that every
+primitive under the capability takes, of type `Integer` or `Decimal`,
+and the budget sums the absolute values of that argument in place of
+counting the calls. `memory at most 256 megabytes` is the
 **memory budget** (decision AW64; the units `bytes`, `kilobytes`,
 `megabytes` and `gigabytes`): the bytes the run may hold above the level
 at its start, counted by the allocator and read at every call, primitive
@@ -1131,10 +1137,14 @@ leave the program only through the listed sinks.
 - A sink after `only to` is a capability of the tree
   (`unknown-capability`); a scope is a text literal (`capability-scope`).
 - A budget or a guard stands in the `needs` of `main` or a test
-  (`grant-clause`); `memory` stands only with a budget in bytes, and a
-  budget per a unit of time only on `network`, `process` or `filesystem`
-  (`grant-clause`); a guard whose sinks are all outside the grant can let
-  nothing leave (`guard-no-sink`, a warning).
+  (`grant-clause`); `memory` stands only with a budget in bytes and no
+  parameter, and a budget per a unit of time only on `network`,
+  `process`, `filesystem` or `python` (`grant-clause`); the parameter of
+  a budget on an amount is one that every primitive the capability
+  covers takes, of type `Integer` or `Decimal`, and at least one
+  primitive is under it (`budget-parameter`); a guard whose sinks are
+  all outside the grant can let nothing leave (`guard-no-sink`, a
+  warning).
 - Across a package boundary only the capability kind is checked
   statically; the scope is the grant stack's business.
 
@@ -1162,14 +1172,18 @@ nothing is resolved on disk, so a symbolic link under the
 scope reaches wherever it points. The command line
 narrows the grant and can only tighten it: `--deny capability` refuses to
 start when any function needs it, `--allow-host`, `--allow-read` and
-`--allow-write` narrow a scope, `--at-most capability=count/unit` adds a
-budget, and `--sandbox` (appendix B) tightens the memory budget to the
+`--allow-write` narrow a scope, `--at-most capability=limit/unit` (or
+`limit of parameter/unit`) adds a budget, and `--sandbox` (appendix B) tightens the memory budget to the
 smaller of the file's and the program's.
 
 A budget keeps a counter per capability and scope; the primitive call that
 would exceed it fails with the module's `OverBudget` variant
 (`HttpError.OverBudget(host)`, `FileError.OverBudget(path)`), which the
-program handles like any failure. A guard tags the values a guarded
+program handles like any failure. A budget on an amount keeps the sum
+of the absolute values of the named argument of every call under it,
+within the same windows; the call whose amount would take the sum past
+the limit fails the same way, before anything leaves, and the sum stays
+as it was (decision AY1). A guard tags the values a guarded
 capability produces and everything computed from them; an outgoing
 primitive (a `console` print, a `filesystem.write`, an `http` request's
 URL, headers or body) that would send a tagged value toward a sink the
@@ -1205,13 +1219,14 @@ message)` when the function let an exception escape,
 JSON does not carry it, `Unavailable(detail)` when no interpreter
 answers, the module does not import, the function is not there or the
 worker ended (the next call starts one again), `PermissionDenied(package)`
-for a package outside the grant, `TimedOut(after)` when the call ran past
+for a package outside the grant, `OverBudget(package)` for a call past
+a budget on the package (decision AY1), `TimedOut(after)` when the call ran past
 the deadline the manifest's `python` section sets (decision AW49:
 `"deadline": "5 seconds"`, a count and a unit, for the section or for one
 module's entry; the worker is killed and the next call starts one
 again). The call is recorded like any primitive
 and a replay answers it without starting the worker; a guarded value
-refuses to cross; `python` takes a scope and no budget; `renyi run` says
+refuses to cross; `python` takes a scope and a budget; `renyi run` says
 "this program can run Python through `analysis`" on its standard error
 when `main` grants `python`. What the Python side does is outside every
 guarantee of the VM.
@@ -1527,6 +1542,7 @@ that `renyi check --strict` makes an error.
 | `bare-fail` | E | 9 |
 | `block-text-start` | E | 1 |
 | `body-length` | E | 3 |
+| `budget-parameter` | E | 11 |
 | `capability-missing` | E | 11 |
 | `capability-scope` | E | 11 |
 | `check-outside-test` | E | 14 |

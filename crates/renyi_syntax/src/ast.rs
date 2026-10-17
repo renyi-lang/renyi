@@ -120,10 +120,15 @@ pub struct Capability {
 }
 
 /// `at most COUNT per UNIT`; the unit is `second`, `minute`, `hour`, `day`
-/// or `run`.
+/// or `run`. With `of PARAMETER` (decision AY1) the budget is on an amount,
+/// the sum of that parameter over the calls, and the limit may be a
+/// decimal literal.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Budget {
     pub count: String,
+    /// `of amount`: the parameter whose values the budget sums (decision
+    /// AY1); `None` for a budget on the number of calls.
+    pub parameter: Option<Name>,
     /// The unit: one of time after `per`, or one of memory (decision AW64).
     pub per: Name,
     pub span: Span,
